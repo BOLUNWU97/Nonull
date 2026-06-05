@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
+from .driving_persona import PersonaType
 from .persona_orchestrator import (
     # Core enums
     DrivingArchetype,
@@ -50,6 +51,7 @@ __description__ = "Persona Orchestration for Autonomous Driving AI (驾驶人格
 
 __all__: List[str] = [
     # Enums
+    "PersonaType",
     "DrivingArchetype",
     "DrivingStyle",
     "ExperienceLevel",

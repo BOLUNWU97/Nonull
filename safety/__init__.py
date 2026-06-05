@@ -193,7 +193,7 @@ __all__ = [
     "SafetyVerdict",
     "Action",
     "SafetyRule",
-    "Guardian",
+    "SafetyGuardian",
     "DenyFirstEngine",
     "ComplianceChecker",
 ]
@@ -215,3 +215,33 @@ def get_compliance_checker_class():
     """Lazy import for ComplianceChecker class. Returns the class, not an instance."""
     from safety.compliance import ComplianceChecker as ComplianceCheckerClass
     return ComplianceCheckerClass
+
+
+# Module-level re-exports of the most commonly used classes. We use PEP 562
+# module-level `__getattr__` (instead of eager `from safety.guardian import
+# ...`) to avoid circular-import issues: the guardian / deny_first / compliance
+# submodules themselves do `from safety import ...` at the top, so re-entering
+# `safety/__init__.py` mid-load would be problematic. PEP 562 defers the
+# submodule import until the caller actually accesses the name, by which time
+# the safety package has finished initializing.
+_LAZY_EXPORTS = {
+    "SafetyGuardian": "safety.guardian",
+    "DenyFirstEngine": "safety.deny_first",
+    "ComplianceChecker": "safety.compliance",
+}
+
+
+def __getattr__(name: str):  # PEP 562
+    if name in _LAZY_EXPORTS:
+        import importlib
+        module = importlib.import_module(_LAZY_EXPORTS[name])
+        value = getattr(module, name)
+        globals()[name] = value  # cache for subsequent lookups
+        return value
+    if name == "Guardian":  # backward-compat alias
+        return __getattr__("SafetyGuardian")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(list(globals().keys()) + list(_LAZY_EXPORTS.keys()) + ["Guardian"])

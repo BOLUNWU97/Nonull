@@ -844,8 +844,7 @@ def main() -> None:
 
     async def _run():
         channel = CLIChannel()
-        await channel.connect()
-        await channel.receive_message()
+        # `connect()` already starts the auto-receive loop; we just run the REPL.
         await channel.run()
 
     try:
