@@ -79,11 +79,11 @@ class PersonaOrchestrator:
     def record_interaction(self, context: dict) -> dict:
         """记录一次交互，评估安全评分"""
         score = self.badges.evaluate_interaction(context)
-        new_badge = self.badges.check_and_award()
+        new_level = self.badges.check_and_record()
         return {
             "score": score,
-            "new_badge": new_badge,
-            "total_badges": len(self.badges.get_earned_badges()),
+            "new_level": new_level,
+            "total_levels": len(self.badges.get_achieved_levels()),
         }
 
     def get_scorecard(self) -> dict:

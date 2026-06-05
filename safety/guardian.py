@@ -1,4 +1,8 @@
 """
+ADVISORY SAFETY — does not implement ISO 26262 veto semantics. The 'VETO POWER'
+described in this file is a software recommendation, not a certified safety gate.
+See README §Disclaimer and `safety.disclaimer: advisory_only` in config.
+
 Safety Guardian — Main Safety Layer for Nonull
 ========================================================
 

@@ -5,12 +5,17 @@
 Manages the autonomous driving knowledge base: safety standards, tech stack, best practices.
 
 设计要点 / Design Highlights:
-    - 向量存储集成 / Vector store for semantic search
+    - 向量存储集成 / Vector store for semantic search (in-process n-gram by default)
     - 结构化知识图 / Structured knowledge graph (nodes + relations)
     - 安全标准索引 / Safety standards indexing (ISO 26262, ASPICE)
     - 技术栈知识 / Tech stack knowledge (ROS, Autoware, Apollo, CARLA)
     - 最佳实践模式 / Best practices and design patterns
     - 知识版本追踪 / Knowledge version tracking
+
+Note on embeddings: the default EmbeddingProvider produces 256-dim
+dependency-free n-gram vectors. It is NOT a 1536-dim transformer embedding
+and FAISS is NOT installed by default. To swap in a real vector store,
+implement a MemoryBackend — see docs/architecture.md §5.4.
 """
 
 from __future__ import annotations

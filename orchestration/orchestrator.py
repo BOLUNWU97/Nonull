@@ -1,4 +1,11 @@
 """
+ADVISORY SAFETY — The 'ISO 26262 / ASPICE Alignment' section below describes
+PATTERNS for ASPICE-style logging and traceability. It does NOT claim ASPICE
+process compliance, ISO 26262 process conformance, or certified functional
+safety. The 'safety-rated escalation path' and 'audit trail reconstruction'
+are ADVISORY traceability features, not certified safety mechanisms. See
+README §Disclaimer and `safety.disclaimer: advisory_only` in config.
+
 Orchestrator — Nexus Pattern Core (编排器 — Nexus 模式核心)
 =============================================================
 
@@ -35,10 +42,12 @@ Lifecycle (生命周期)::
                              v
                   resolve_conflict(conflict) ──> final output
 
-ISO 26262 / ASPICE Alignment (功能安全对齐):
-    - The orchestrator logs every decision with a traceable ID
-    - Conflict resolution follows a safety-rated escalation path
-    - State snapshots enable full audit trail reconstruction
+ASPICE-Style Logging Patterns (ASPICE 风格日志模式 — advisory only, NOT compliance):
+    - The orchestrator logs every decision with a traceable ID (pattern reference, not ASPICE process conformance)
+    - Conflict resolution follows an ADVISORY severity-keyed escalation path (vote/merge/escalate);
+      this is a software convenience and is NOT a "safety-rated" mechanism in the ISO 26262 sense
+    - State snapshots enable ADVISORY audit trail reconstruction for developer review;
+      they are NOT a certified ASIL-D/ASIL-C audit log
 """
 
 from __future__ import annotations

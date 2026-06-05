@@ -1,4 +1,12 @@
 """
+ADVISORY SAFETY — Skills in this module are advisory pattern checkers, NOT
+certified safety analysis. HARA, FMEA, ISO 26262, and safety case outputs
+are template-driven suggestions for developer review; they do NOT constitute
+ISO 26262 process compliance, ASPICE process conformance, or any certified
+hazard/risk assessment. The hazard templates use random / hard-coded values
+for demonstration (rule-based in production is itself an aspirational note).
+See README §Disclaimer and `safety.disclaimer: advisory_only` in config.
+
 Safety Skills - 功能安全技能
 
 自动驾驶功能安全分析、HARA、FMEA、ISO 26262 合规检查和安全案例生成。
@@ -31,13 +39,16 @@ logger = logging.getLogger(__name__)
 class HazardAnalysisSkill(BaseSkill):
     """
     危害分析与风险评估技能 (HARA)。
-    Hazard Analysis and Risk Assessment (HARA) per ISO 26262.
+    Hazard Analysis and Risk Assessment (HARA) — ADVISORY template only,
+    not a certified HARA. The output pattern references ISO 26262-3 clause
+    structure (S/E/C → ASIL) but is not "per ISO 26262" in a process
+    compliance sense. It is NOT compliant or certified HARA.
 
     执行步骤 / Steps:
         1. 功能危害识别 / Functional hazard identification
         2. 情境分析 / Situational analysis
         3. 危害等级评定 (S/E/C) / Severity/Exposure/Controllability rating
-        4. ASIL 等级确定 / ASIL determination
+        4. ASIL 等级确定 / ASIL determination (advisory classification, not certified ASIL)
         5. 安全目标定义 / Safety goal definition
     """
 
@@ -171,12 +182,16 @@ class HazardAnalysisSkill(BaseSkill):
 
     def _determine_asil(self, severity: int, exposure: int, controllability: int) -> str:
         """
-        确定 ASIL 等级依据 ISO 26262-3:2018 Table 2.
-        Determine ASIL level per ISO 26262-3:2018 Table 2.
+        Determine ASIL level — ADVISORY pattern reference, not a certified
+        reproduction of ISO 26262-3:2018 Table 2. The weighted score below
+        (S + E + C with hand-picked cutoffs) is a simplified heuristic; it
+        does NOT match the exact lookup table in the standard.
+        确定 ASIL 等级 — 建议性模式参考，非 ISO 26262-3:2018 Table 2 的认证复现。
+        下面的加权评分是简化启发式，并非标准的精确查找表。
 
-        Returns: "QM", "ASIL_A", "ASIL_B", "ASIL_C", "ASIL_D"
+        Returns: "QM", "ASIL_A", "ASIL_B", "ASIL_C", "ASIL_D" (advisory only)
         """
-        # S + E + C 加权评分 / Weighted scoring
+        # S + E + C 加权评分 / Weighted scoring (advisory heuristic, not the standard's lookup table)
         score = severity * 3 + exposure * 2 + controllability * 2
 
         if severity == 0 or score <= 8:

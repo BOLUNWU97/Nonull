@@ -22,9 +22,9 @@
 
 ## 1. 概述 / Overview
 
-Nonull 内置了 8 个核心技能，覆盖智驾系统开发的完整生命周期。每个技能都经过安全级别评估，与系统的拒绝优先安全策略集成。
+Nonull 内置了 31 个技能（见 `skills/__init__.py` 的 `__all__`），覆盖智驾系统开发的完整生命周期。本目录列出 8 个代表性核心技能（按功能域挑选）。每个技能都经过安全级别评估，与系统的拒绝优先安全策略集成。
 
-Nonull ships with 8 core skills covering the full lifecycle of autonomous driving system development. Each skill is safety-level assessed and integrated with the system's deny-first safety policy.
+Nonull ships with 31 skills (see `__all__` in `skills/__init__.py`) covering the full lifecycle of autonomous driving system development. This catalog highlights 8 representative core skills (selected by functional domain). Each skill is safety-level assessed and integrated with the system's deny-first safety policy.
 
 ### Skill Overview Table
 
@@ -781,19 +781,19 @@ class MyCustomSkill(BaseSkill):
 
 ```bash
 # 从本地文件注册 / Register from local file
-python -m Nonull skill register ./skills/my_custom_skill.py
+python -m nonull skill register ./skills/my_custom_skill.py
 
 # 从目录自动发现 / Auto-discover from directory
-python -m Nonull skill discover ./skills/
+python -m nonull skill discover ./skills/
 
 # 从技能市场安装 / Install from marketplace
-python -m Nonull skill install my-custom-skill
+python -m nonull skill install my-custom-skill
 
 # 列出所有技能 / List all skills
-python -m Nonull skill list
+python -m nonull skill list
 
 # 移除技能 / Remove a skill
-python -m Nonull skill remove my-custom-skill
+python -m nonull skill remove my-custom-skill
 ```
 
 ### 技能开发指南 / Skill Development Guidelines

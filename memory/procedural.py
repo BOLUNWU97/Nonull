@@ -11,6 +11,10 @@ Manages skill execution workflows, tool usage patterns, and procedural knowledge
     - 技能推荐系统 / Skill recommendation based on context
     - 可复现的执行步骤 / Reproducible execution steps
 
+Note on embeddings: the default EmbeddingProvider is dependency-free
+n-gram hashing. For higher-quality semantic skill search, plug in a custom
+embedder via `embedder=...` — see docs/architecture.md §5.4.
+
 设计灵感 / Design Inspirations:
     - 认知科学中的程序记忆 / Procedural memory in cognitive science
     - "如何做"的知识而非"是什么" / "How-to" vs "What-is" knowledge

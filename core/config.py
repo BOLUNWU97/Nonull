@@ -140,8 +140,14 @@ _CONFIG_SCHEMA: Dict[str, Dict[str, Any]] = {
     },
     "memory.vector_dim": {
         "type": int,
-        "default": 1536,
-        "description": "向量维度 / Vector embedding dimension",
+        "default": 256,
+        "description": (
+            "向量维度 / Vector embedding dimension. The default in-memory "
+            "EmbeddingProvider uses 256-dim n-gram hashing. The previous "
+            "1536-dim default assumed sentence-transformers, which is NOT "
+            "installed by default. If you plug in a real embedder, set this "
+            "to match its output dim."
+        ),
     },
     ###########################################################################
     # Safety Guardian

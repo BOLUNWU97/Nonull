@@ -1,4 +1,9 @@
 # Nonull Dependencies 依赖
+#
+# Nonull uses an in-memory memory store (working/episodic/semantic/procedural).
+# Vector search is NOT enabled by default. See docs/architecture.md for details
+# on upgrading to a real vector backend (FAISS / Milvus / pgvector) by
+# implementing the MemoryBackend interface.
 
 # Core
 pyyaml>=6.0
@@ -17,11 +22,12 @@ httpx>=0.24
 # Storage
 # sqlite3 is part of Python stdlib
 
-# Optional: Vector search for Neocortex memory
-# faiss-cpu>=1.7
-
-# Optional: Text embeddings for memory indexing
-# sentence-transformers>=2.2
+# Note: faiss-cpu and sentence-transformers are NOT installed by default.
+# Nonull's default EmbeddingProvider uses a lightweight bag-of-words
+# implementation with no external dependencies. For production scale
+# (1B+ tokens) or higher-quality semantic search, implement a custom
+# MemoryBackend that wraps FAISS / Milvus / pgvector and install the
+# required packages yourself. See docs/architecture.md -> "Backend Plugins".
 
 # Development
 pytest>=7.0

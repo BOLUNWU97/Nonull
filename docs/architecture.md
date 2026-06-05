@@ -264,7 +264,7 @@ Nonull borrows openHuman's dual-system cognitive architecture, dividing memory i
 ```
 Neocortex Memory Architecture
 ┌─────────────────────────────────────────────────────────┐
-│                   NEOCORTEX (1B tokens)                  │
+│              NEOCORTEX (in-memory, pluggable)            │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  ┌─────────────────────────────────────────────────┐   │
@@ -287,8 +287,9 @@ Neocortex Memory Architecture
 │                                                         │
 │  ┌─────────────────────────────────────────────────┐   │
 │  │                Index Store (索引存储)             │   │
-│  │  Vector embeddings for fast similarity search    │   │
-│  │  over all memory types (FAISS-based)             │   │
+│  │  Default: lightweight bag-of-words n-gram index  │   │
+│  │  Plugin: see "Backend Plugins" below for FAISS / │
+│  │  Milvus / pgvector swap-in                        │   │
 │  └─────────────────────────────────────────────────┘   │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
@@ -296,10 +297,11 @@ Neocortex Memory Architecture
 
 **Neocortex Properties:**
 - Append-only: once written, memories are immutable
-- Capacity: 1 billion tokens (hard limit)
-- Index: FAISS-based vector index with cosine similarity
-- Retrieval: hybrid (keyword + semantic) search
+- Capacity: configurable, default 10,000 entries per layer (not a 1B-token hard limit)
+- Index: in-memory inverted index + lightweight n-gram vector hashing (no FAISS / sentence-transformers by default)
+- Retrieval: hybrid (keyword + semantic via the default EmbeddingProvider)
 - Namespace isolation per profile
+- **Pluggable backend** — see "🔌 Backend Plugins" below
 
 #### Subconscious (潜意识) — 后台循环 / Background Loop
 
@@ -346,44 +348,40 @@ Subconscious Loop (10,000 cycles/day)
 #### Memory Indexing
 
 ```python
-# Pseudocode: Neocortex Index Flow
+# Pseudocode: Neocortex Index Flow (default in-memory backend)
 class NeocortexIndex:
-    def __init__(self, capacity: int = 1_000_000_000):
-        self.episodic = EpisodicStore(capacity // 3)
-        self.semantic = SemanticStore(capacity // 3)
-        self.procedural = ProceduralStore(capacity // 3)
-        self.index = FAISSIndex(dimension=1536)  # embedding dimension
+    def __init__(self, embedder: EmbeddingProvider = EmbeddingProvider(dim=256)):
+        # Default: lightweight bag-of-words n-gram embeddings.
+        # No external dependencies (FAISS / sentence-transformers are NOT
+        # required for the default install). To upgrade to a real vector
+        # store, swap in a custom backend — see "Backend Plugins" below.
+        self.embedder = embedder
+        self._inverted_index: Dict[str, List[Tuple[str, str]]] = defaultdict(list)
+        self._vector_keys: Dict[str, np.ndarray] = {}
 
-    async def store(self, memory: Memory) -> str:
-        # 1. Embed the memory content
-        embedding = await self.embed(memory.content)
+    def index_entry(self, source: str, entry_id: str, text: str) -> None:
+        key = f"{source}:{entry_id}"
+        self._vector_keys[key] = self.embedder.encode(text)
+        for token in set(text.lower().split()):
+            if len(token) > 1:
+                self._inverted_index[token].append((source, entry_id))
 
-        # 2. Store in the appropriate memory type store
-        mem_id = await self._type_store(memory).add(memory)
-
-        # 3. Index the embedding
-        await self.index.add(mem_id, embedding)
-
-        # 4. Trigger subconscious consolidation signal
-        await self.signal_consolidation(memory)
-
-        return mem_id
-
-    async def retrieve(self, query: str, top_k: int = 10) -> list[Memory]:
-        # 1. Embed query
-        query_emb = await self.embed(query)
-
-        # 2. Similarity search
-        mem_ids, scores = await self.index.search(query_emb, top_k)
-
-        # 3. Retrieve full memories
-        memories = []
-        for mem_id in mem_ids:
-            memory = await self._fetch(mem_id)
-            memories.append(memory)
-
-        return memories
+    def search_vector(self, query: str, top_k: int = 10):
+        query_vec = self.embedder.encode(query)
+        scored = [
+            (key.split(":", 1)[0], key.split(":", 1)[1],
+             float(np.dot(query_vec, vec)))
+            for key, vec in self._vector_keys.items()
+        ]
+        scored.sort(key=lambda x: x[2], reverse=True)
+        return scored[:top_k]
 ```
+
+> **Honest note**: the shipped `EmbeddingProvider` is a hash-based n-gram
+> embedder. It is dependency-free, deterministic, and good enough for small
+> in-process corpora (a few thousand entries). It is **not** a substitute for
+> sentence-transformers / OpenAI embeddings at production scale. To upgrade,
+> implement the `MemoryBackend` protocol (see "🔌 Backend Plugins" below).
 
 ### 2.4 Claude Code 安全与钩子系统 / Claude Code Safety and Hooks
 
@@ -675,21 +673,21 @@ SubAgentManager.spawn_batch([
 │  ┌──────────────────────────────────────────────────────┐    │
 │  │                  NEOCORTEX (新皮质)                    │    │
 │  │  ┌──────────────┐  ┌──────────────┐                 │    │
-│  │  │  Episodic    │  │  Semantic    │  Capacity: 1B   │    │
-│  │  │  Store       │  │  Store       │  tokens total   │    │
+│  │  │  Episodic    │  │  Semantic    │  Capacity:     │    │
+│  │  │  Store       │  │  Store       │  configurable   │    │
 │  │  │              │  │              │                 │    │
 │  │  │  • Task logs │  │  • Domain    │  Append-only    │    │
 │  │  │  • Outcomes  │  │    knowledge │  Immutable      │    │
 │  │  │  • Sessions  │  │  • Concepts  │                 │    │
-│  │  │  • Errors    │  │  • Patterns  │  FAISS index    │    │
-│  │  └──────────────┘  └──────────────┘  1536d          │    │
+│  │  │  • Errors    │  │  • Patterns  │  In-mem index   │    │
+│  │  └──────────────┘  └──────────────┘  (n-gram)       │    │
 │  │  ┌──────────────┐  ┌──────────────┐                 │    │
 │  │  │  Procedural  │  │  Index       │                 │    │
 │  │  │  Store       │  │  Store       │                 │    │
-│  │  │              │  │  (FAISS)     │                 │    │
+│  │  │              │  │  (default)   │                 │    │
 │  │  │  • Workflows │  │              │                 │    │
-│  │  │  • Templates │  │  • Embedding │                 │    │
-│  │  │  • Patterns  │  │  • Metadata  │                 │    │
+│  │  │  • Templates │  │  • Inverted  │                 │    │
+│  │  │  • Patterns  │  │  • Vector    │                 │    │
 │  │  └──────────────┘  └──────────────┘                 │    │
 │  └──────────────────────────────────────────────────────┘    │
 │                                                               │
@@ -736,15 +734,19 @@ SubAgentManager.spawn_batch([
 ### 5.3 Memory Capacity Management (容量管理)
 
 ```python
-# Capacity management strategy
+# Capacity management strategy (in-memory backend)
 class CapacityManager:
-    def __init__(self, max_tokens: int = 1_000_000_000):
-        self.max_tokens = max_tokens
-        self.watermark_high = int(max_tokens * 0.85)  # 850M
-        self.watermark_low = int(max_tokens * 0.60)   # 600M
+    def __init__(self, max_entries: int = 10_000):
+        # Default 10,000 entries per layer. NOT a 1B-token hard limit.
+        # The previous "1B tokens" figure was aspirational and did not
+        # reflect the actual default in-memory backend. Tune this to
+        # the host's available RAM and your workload.
+        self.max_entries = max_entries
+        self.watermark_high = int(max_entries * 0.85)
+        self.watermark_low = int(max_entries * 0.60)
 
     async def check_capacity(self, current_usage: int) -> CapacityAction:
-        if current_usage >= self.max_tokens:
+        if current_usage >= self.max_entries:
             return CapacityAction.BLOCK  # Cannot write
         elif current_usage >= self.watermark_high:
             return CapacityAction.PRUNE  # Trigger pruning
@@ -759,20 +761,93 @@ class CapacityManager:
         freed = 0
         for mem in candidates:
             if mem.importance < 0.2:
-                # Remove entirely
                 await store.delete(mem.id)
                 freed += mem.token_count
             elif mem.importance < 0.5:
-                # Compress: keep summary only
                 summary = await self.summarize(mem.content)
                 await store.update(mem.id, content=summary)
                 freed += mem.token_count - len(summary)
         return freed
 ```
 
+### 5.4 🔌 Backend Plugins (后端插件)
+
+Neocortex coordinates four memory layers with **in-memory indexes by
+default**. The default `EmbeddingProvider` is a dependency-free bag-of-words
+n-gram embedder — it is **not** FAISS, and it is **not** sentence-transformers.
+This keeps `pip install -r requirements.txt` minimal but caps useful scale at
+roughly tens of thousands of entries per process.
+
+Production deployments that need more — millions of entries, semantic
+similarity at scale, persistent cross-process storage — should swap in a
+real vector store by implementing a `MemoryBackend` and passing it to
+`Neocortex`:
+
+```python
+from typing import Protocol
+import numpy as np
+
+class MemoryBackend(Protocol):
+    """Pluggable backend contract for Neocortex index storage."""
+
+    def add(self, key: str, vector: np.ndarray, metadata: dict) -> None: ...
+    def search(self, query: np.ndarray, top_k: int) -> list[tuple[str, float]]: ...
+    def delete(self, key: str) -> None: ...
+    def clear(self) -> None: ...
+
+
+# Example: drop-in FAISS backend (requires: pip install faiss-cpu)
+class FaissBackend:
+    def __init__(self, dim: int = 768):
+        import faiss  # type: ignore
+        self.index = faiss.IndexFlatIP(dim)
+        self.keys: list[str] = []
+
+    def add(self, key, vector, metadata=None):
+        self.index.add(np.asarray([vector], dtype=np.float32))
+        self.keys.append(key)
+
+    def search(self, query, top_k=10):
+        scores, ids = self.index.search(np.asarray([query], dtype=np.float32), top_k)
+        return [(self.keys[i], float(s)) for s, i in zip(scores[0], ids[0]) if i >= 0]
+
+    def delete(self, key): ...   # FAISS does not support per-key delete on flat index
+    def clear(self): self.__init__(self.index.d)
+
+
+# Wire it up — sentence-transformers for embeddings, FAISS for ANN search.
+from memory import Neocortex
+
+def build_neocortex_with_faiss() -> Neocortex:
+    from sentence_transformers import SentenceTransformer  # type: ignore
+    embedder = SentenceTransformer("all-MiniLM-L6-v2")      # 384-dim
+
+    class STProvider:
+        dim = 384
+        def encode(self, text: str) -> np.ndarray:
+            return embedder.encode(text, normalize_embeddings=True)
+
+    return Neocortex(embedder=STProvider(), backend=FaissBackend(dim=384))
+```
+
+Other viable backends: **Milvus** (distributed, billion-scale), **pgvector**
+(Postgres-native), **Qdrant** (Rust, gRPC), **Chroma** (local dev). The
+contract is intentionally tiny — five methods — so any of them can be
+wrapped in a few dozen lines.
+
+> Install extra dependencies yourself; they are intentionally **not** in
+> `requirements.txt` to keep the default footprint minimal. See
+> `docs/architecture.md` and `requirements.txt` for the rationale.
+
 ---
 
 ## 6. 安全系统 / Safety System
+
+> **⚠️ Disclaimer / 免责声明**
+>
+> **This is an ADVISORY safety layer, not a certified safety mechanism.** It does not implement ISO 26262 ASIL-D requirements (freedom from interference, MC/DC coverage, formal verification, SEooC, etc.). Use only as a developer assistant. Do not rely on this layer for any production deployment, safety-critical decision, or as a substitute for a certified safety element.
+>
+> **本节描述的是一个"建议性（advisory）"安全层，不是经过认证的安全机制。** 它**不**实现 ISO 26262 ASIL-D 的相关要求（抗干扰、MC/DC 覆盖、形式化验证、SEooC 等）。请仅作为开发助手使用，不可用于任何量产部署、安全关键决策，也不可替代经过认证的安全要素。
 
 ### 6.1 Architecture (架构)
 
@@ -1193,7 +1268,12 @@ class ModelConfig(BaseModel):
 
 class NeocortexConfig(BaseModel):
     enabled: bool = True
-    capacity: int = 1_000_000_000  # 1B tokens
+    # Configurable entry count per layer. The previous "1_000_000_000" (1B
+    # tokens) figure was aspirational — the default in-memory backend caps
+    # useful scale at ~10K entries per process. Tune `max_entries` to your
+    # host's RAM or wire up a real vector backend (see section 5.4).
+    max_entries: int = 10_000
+    backend: str = "in_memory"  # "in_memory" | "faiss" | "milvus" | "pgvector" | ...
     index_speed: str = "fast"
 
 

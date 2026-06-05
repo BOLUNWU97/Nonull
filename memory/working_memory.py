@@ -9,6 +9,9 @@ Manages context window, token budget, and auto-summarization for active tasks.
     - Token 预算追踪与告警 / Token budget tracking with alerts
     - 自动摘要压缩（溢出时）/ Auto-summarization on overflow
     - 优先级驱动的上下文保留 / Priority-driven context retention
+
+Note: in-memory only. Token budget is per-process; for cross-session
+persistence use a MemoryBackend plugin (see docs/architecture.md §5.4).
 """
 
 from __future__ import annotations

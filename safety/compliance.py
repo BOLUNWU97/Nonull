@@ -1,4 +1,10 @@
 """
+ADVISORY SAFETY — does not perform certified compliance assessments. The
+ISO 26262, MISRA, ASPICE, and ISO 21434 checks in this file are PATTERN
+MATCHING against published rule templates and clause text, NOT certified
+compliance assessments. See README §Disclaimer and `safety.disclaimer:
+advisory_only` in config.
+
 Automotive Compliance Checker
 ==============================
 

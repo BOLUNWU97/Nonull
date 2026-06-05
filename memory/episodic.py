@@ -11,6 +11,12 @@ Manages past driving scenarios, debugging sessions, code reviews, and experience
     - 遗忘机制（openHuman 启发——"遗忘是功能"）/ Forgetting mechanism
     - 记忆衰退与巩固 / Memory decay and consolidation
 
+Note on embeddings: the default EmbeddingProvider is a dependency-free
+n-gram embedder (dim=256 by default). It is NOT a 1536-dim transformer
+embedding. For higher-quality semantic search, plug in a custom provider
+backed by sentence-transformers / OpenAI / Voyage and pass it via
+`embedder=...` — see docs/architecture.md §5.4.
+
 设计灵感 / Design Inspirations:
     - openHuman 的遗忘机制：记忆强度随时间衰减，但巩固后可以持久化
     - Ebbinghaus 遗忘曲线：指数衰减模型

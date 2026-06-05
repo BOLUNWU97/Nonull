@@ -1,6 +1,11 @@
 """
 新皮层记忆管理器 / Neocortex Memory Manager (中央枢纽 / Central Hub)
 
+Note: Default in-memory implementation. For 1B+ token scale, see Backend
+Plugins in docs/architecture.md (section 5.4). The default EmbeddingProvider
+is a lightweight n-gram embedder — FAISS / sentence-transformers are NOT
+installed by default.
+
 统一协调所有记忆类型的综合管理器。
 Unified interface over all memory types — working, episodic, semantic, procedural.
 
@@ -8,8 +13,10 @@ Unified interface over all memory types — working, episodic, semantic, procedu
     - 统一接口 / Unified interface over all memory types
     - 跨记忆搜索与相关性评分 / Cross-memory search and relevance scoring
     - 记忆巩固（短时→长时）/ Memory consolidation (short-term → long-term)
-    - 1B token 容量设计 / 1B token capacity design
-    - 快速索引（<10s 处理 10M tokens）/ Fast indexing (<10s for 10M tokens)
+    - 可配置容量（默认 10,000 条目/层，非 1B token 硬上限）/ Configurable
+      capacity, default 10,000 entries per layer (NOT a 1B-token hard limit)
+    - 快速索引（基于倒排索引 + n-gram 向量）/ Fast indexing (inverted
+      index + n-gram vector hashing — no external vector DB)
     - 潜意识触发集成 / Subconscious trigger integration
 
 架构 / Architecture:
@@ -22,6 +29,12 @@ Unified interface over all memory types — working, episodic, semantic, procedu
 工作流 / Workflow:
     感知输入 → 跨记忆检索 → 相关性排序 → 上下文注入 → 响应生成
     Perceive → Cross-retrieve → Rank → Context-inject → Respond
+
+可插拔后端 / Pluggable Backend:
+    Default backend is in-process (n-gram hashing). For production scale,
+    implement a `MemoryBackend` (see docs/architecture.md §5.4) and pass it
+    to `Neocortex(backend=...)`. Viable: FAISS, Milvus, pgvector, Qdrant,
+    Chroma, etc.
 """
 
 from __future__ import annotations
@@ -200,19 +213,22 @@ class MemoryQuery:
 
 
 # ---------------------------------------------------------------------------
-# 容量管理器 / Capacity Manager (1B Token Design)
+# 容量管理器 / Capacity Manager (configurable, default ~10K entries / layer)
 # ---------------------------------------------------------------------------
 
 @dataclass
 class CapacityStats:
-    """容量统计 / Capacity statistics for the 1B token design."""
+    """容量统计 / Capacity statistics (configurable; not 1B tokens)."""
     total_tokens: int = 0
     working_tokens: int = 0
     episodic_tokens: int = 0
     semantic_tokens: int = 0
     procedural_tokens: int = 0
     total_entries: int = 0
-    max_capacity_tokens: int = 1_000_000_000  # 1B tokens
+    # Default soft cap is 10K entries. The previous 1_000_000_000 (1B) figure
+    # was aspirational and does not reflect the in-memory backend. Override
+    # this with a real value matching your RAM or a MemoryBackend plugin.
+    max_capacity_tokens: int = 10_000
     usage_ratio: float = 0.0
 
     @property

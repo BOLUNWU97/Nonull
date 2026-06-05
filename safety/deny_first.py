@@ -1,4 +1,9 @@
 """
+ADVISORY SAFETY — does not implement ISO 26262 ASIL ratings. The ASIL tags
+throughout this file are advisory risk classifications used for prioritizing
+deny rules, NOT certified ASIL ratings. See README §Disclaimer and
+`safety.disclaimer: advisory_only` in config.
+
 Deny-First Rule Engine
 ======================
 

@@ -1,4 +1,11 @@
 """
+ADVISORY NOTE — The hook system supports the project's deny-first safety
+pipeline (PreAction / PostAction, PreToolUse / PostToolUse, PermissionRequest
+/ PermissionDenied). These hooks are ADVISORY observability and gating
+points, not certified ISO 26262 safety mechanisms. Hooks do NOT implement
+freedom from interference, MC/DC, or any certified safety element. See
+README §Disclaimer and `safety.disclaimer: advisory_only` in config.
+
 Nonull — Hook System
 ==============================
 钩子系统 | Lifecycle Hook System

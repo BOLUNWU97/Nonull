@@ -1,4 +1,12 @@
 """
+ADVISORY SAFETY — The deny-first validation and risk-scoring code in this
+file (SafetyGuardian) is an ADVISORY software gate. Risk scores and the
+"max_risk_score" threshold are developer-configured heuristics, NOT certified
+ISO 26262 ASIL-D (or any ASIL) classifications. The "deny-first" label is
+borrowed from Claude Code's security pattern, not from a certified safety
+process. See README §Disclaimer and `safety.disclaimer: advisory_only` in
+config.
+
 Nonull - 主智能体循环 (Main Agent Loop)
 ================================================
 
@@ -186,13 +194,18 @@ class SafetyGuardian:
             return True, 0.0, "safety_disabled"
 
         # 0) Deny-first: 默认拒绝
+        # ADVISORY: "deny-first" here is a software gate pattern, not a certified
+        # safety mechanism. The 0.5 starting risk_score is an arbitrary heuristic,
+        # NOT an ASIL rating (there is no ASIL mapping in this file).
         if self._deny_first:
-            risk_score = 0.5  # 起步分数
+            risk_score = 0.5  # 起步分数 (advisory heuristic, not ASIL)
 
         # 1) 正则黑名单检查
         import re
         for pattern, compiled in zip(self._blocked_patterns, self._compiled_patterns):
             if compiled.search(action):
+                # ADVISORY: 1.0 risk_score is "denied" in this heuristic; it does
+                # NOT mean the action is ASIL-D or worse in any certified sense.
                 risk_score = 1.0
                 reason = f"命中黑名单模式: {pattern}"
                 logger.warning("安全拦截: %s | %s", action, reason)
@@ -202,6 +215,8 @@ class SafetyGuardian:
         # 2) 命令白名单检查
         action_type = action.split(":")[0] if ":" in action else action
         if self._allowed_commands and action_type not in self._allowed_commands:
+            # ADVISORY: the +0.3 increment and max_risk_score threshold are
+            # developer-configured heuristics, not safety-rated limits.
             risk_score = min(1.0, risk_score + 0.3)
             if risk_score > self._max_risk_score:
                 reason = f"操作类型不在白名单中: {action_type}"

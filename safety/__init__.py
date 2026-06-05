@@ -1,4 +1,9 @@
 """
+ADVISORY SAFETY — does not implement ISO 26262 veto semantics. The safety
+features in this package (guardian, deny-first engine, compliance checker)
+are ADVISORY pattern checkers and risk hints, NOT certified safety gates.
+See README §Disclaimer and `safety.disclaimer: advisory_only` in config.
+
 Nonull Safety Guardian System
 =======================================
 

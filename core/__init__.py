@@ -13,12 +13,14 @@ Nonull (智驾智能体) - Core Framework Package
 @since:   2026-06-05
 """
 
+# Single source of truth for the project version
+__version__ = "0.1.0"
+
 import asyncio
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Version info
-__version__ = "0.1.0"
 __author__ = "Nonull Team"
 __license__ = "MIT"
 __description__ = "Autonomous Driving AI Agent Framework (自动驾驶AI智能体框架)"

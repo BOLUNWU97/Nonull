@@ -12,7 +12,12 @@ agent:
 memory:
   neocortex:
     enabled: true
-    capacity: 1e9  # 1B tokens
+    # The previous "capacity: 1e9" was aspirational. The default in-memory
+    # backend caps useful scale at ~10K entries per process. Tune to your
+    # host's RAM or wire up a real vector backend (see
+    # docs/architecture.md §5.4).
+    max_entries: 10000  # per-layer soft cap
+    backend: in_memory  # in_memory | faiss | milvus | pgvector | ...
     index_speed: fast
   subconscious:
     enabled: true
@@ -23,6 +28,10 @@ safety:
   deny_first: true
   iso26262: true
   audit_log: true
+  # The safety layer is ADVISORY ONLY.
+  # This project is NOT certified for ISO 26262 / ASIL-D production deployment.
+  # Do not use for safety-critical decisions or as a substitute for a certified safety element.
+  disclaimer: "advisory_only"  # advisory_only | certified  (always set to advisory_only in this project)
 
 orchestration:
   max_concurrent_agents: 8

@@ -4,11 +4,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat-square"/>
+  <img src="https://img.shields.io/badge/version-0.1.0-blue?style=flat-square"/>
   <img src="https://img.shields.io/badge/python-3.10%2B-green?style=flat-square&logo=python&logoColor=white"/>
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square"/>
-  <img src="https://img.shields.io/badge/ASIL-D%20Ready-red?style=flat-square"/>
-  <img src="https://img.shields.io/badge/ISO%2026262-Compliant-success?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Advisory%20Safety-orange?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Advisory%20Checks-yellow?style=flat-square"/>
   <img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square"/>
 </p>
 
@@ -24,11 +24,11 @@
 </p>
 
 <h3 align="center">
-  🚗 有性格 · 有记忆 · 有安全 · 能成长的智驾 AI 工程师
+  🚗 有性格 · 有记忆 · 有安全的智驾 AI 工程师
 </h3>
 
 <p align="center">
-  <i>A self-evolving AI engineer for autonomous driving — with personality, memory, and safety awareness.</i>
+  <i>An AI engineer for autonomous driving — with personality, memory, and safety awareness.</i>
 </p>
 
 <br>
@@ -40,8 +40,22 @@
 <p align="center">
   <b>Nonull</b> 是专为 <b>智能驾驶行业</b> 设计的下一代 AI 智能体。<br>
   它像一位经验丰富的资深工程师，帮你审查代码、分析安全、设计测试、生成场景。<br>
-  而且它<b>有记忆、有安全意识、有自己的性格</b>，还会从经验中不断进步。
+  而且它<b>有记忆、有安全意识、有自己的性格</b>。
 </p>
+
+<br>
+
+> **📌 重要声明 / Important Disclaimer**
+>
+> Nonull 是一个**内部使用的 ADAS 工程开发助手（developer assistant）**，**不是**经过 ISO 26262 / ASIL-D 认证的车规级安全产品。
+>
+> 本项目中的"安全层 / safety layer"是**建议性（advisory）**的：它参考 ISO 26262 / MISRA / ASPICE 等标准的**模式与术语**进行风险提示和检查建议，但**并不实现** ASIL-D 要求的"抗干扰（freedom from interference）"、"MC/DC 覆盖"、"形式化验证"、"独立安全单元（SEooC）流程"等条款。
+>
+> **请勿将本项目用于任何量产部署、安全关键决策，或替代经过认证的安全机制。**
+>
+> ---
+>
+> Nonull is an **internal ADAS engineering assistant**, **not** an ISO 26262 / ASIL-D certified safety product. The safety layer in this project is **advisory only** — it references ISO 26262 / MISRA / ASPICE patterns and terminology for risk hints, but does **not** implement ASIL-D requirements such as freedom from interference, MC/DC coverage, formal verification, or SEooC processes. **Do not use this project for production deployment, safety-critical decisions, or as a substitute for certified safety mechanisms.**
 
 <br>
 
@@ -73,17 +87,12 @@
   <tr>
     <td align="center">🧠 <b>记忆</b></td>
     <td align="center">聊完就忘，每次都是新会话</td>
-    <td align="center"><b>四种记忆系统</b>，1B Token 容量，越用越懂你</td>
+    <td align="center"><b>四种记忆系统</b>，可配置容量（默认 10K 条目），越用越懂你</td>
   </tr>
   <tr>
     <td align="center">🛡️ <b>安全</b></td>
     <td align="center">你说啥它做啥，没有安全检查</td>
-    <td align="center"><b>五关安全验证</b> + ISO 26262，不安全的事坚决不做</td>
-  </tr>
-  <tr>
-    <td align="center">🌱 <b>成长</b></td>
-    <td align="center">功能固定，不会变</td>
-    <td align="center"><b>自我进化系统</b>，从经验中学习，能自己生成新技能</td>
+    <td align="center"><b>五关安全建议</b> + ASIL 风险提示（开发助手级，非认证）</td>
   </tr>
   <tr>
     <td align="center">👤 <b>性格</b></td>
@@ -91,14 +100,9 @@
     <td align="center"><b>三种驾驶人格</b>：保守派 🛡️ / 运动派 🚀 / 老司机 🧓</td>
   </tr>
   <tr>
-    <td align="center">👋 <b>主动性</b></td>
-    <td align="center">你问它才答，被动响应</td>
-    <td align="center"><b>副驾模式</b>，像经验丰富的副驾主动提醒风险</td>
-  </tr>
-  <tr>
-    <td align="center">🏅 <b>激励</b></td>
+    <td align="center">🏅 <b>反馈</b></td>
     <td align="center">没有反馈机制</td>
-    <td align="center"><b>安全徽章系统</b>，像打游戏一样攒成就</td>
+    <td align="center"><b>安全徽章系统</b>（基础反馈统计，非游戏化进度）</td>
   </tr>
 </table>
 
@@ -127,35 +131,32 @@
 |------|------|-------------------|
 | 🦞 **OpenClaw** | 三层架构 | Gateway / Agent / Channels 三层分离 + Nexus+Tendrils 编排 |
 | 🏛️ **Hermes Agent** | 配置隔离 | Profile 隔离（dev/test/prod/simulation）+ 工具注册表 |
-| 🧠 **openHuman** | 记忆系统 | Neocortex 1B Token 记忆 + 潜意识循环 + 遗忘曲线 |
-| 🔐 **Claude Code** | 安全体系 | Deny-First 安全 + 28 个钩子事件 + SubAgent 隔离 |
+| 🧠 **openHuman** | 记忆系统 | Neocortex 多层记忆 + 潜意识循环 + 遗忘曲线（默认内存实现，可插拔后端） |
+| 🔐 **Claude Code** | 安全体系 | Deny-First 安全 + 38 个钩子事件 + SubAgent 隔离 |
 
 <br>
 
 ---
 
-<h2 align="center">⚡ 30 秒上手</h2>
+<h2 align="center">⚡ 60 秒上手</h2>
 
 <br>
 
-<h3 align="left">📦 安装</h3>
+<h3 align="left">📦 Installation / 安装</h3>
 
 ```bash
-git clone https://github.com/BOLUNWU97/nonull.git
-cd nonull
-pip install -r requirements.txt
-```
+# Install (after git clone)
+pip install -e .
 
-<h3 align="left">🚀 启动交互模式</h3>
-
-```bash
-python -m Nonull
+# Run
+nonull                    # after pip install
+python -m nonull          # any time
 ```
 
 <p align="center">
   <img src="https://img.shields.io/badge/CLI-Rich%20Formatting-FF6B35?style=flat-square"/>
   &nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/13%20Slash%20Commands-Ready-success?style=flat-square"/>
+  <img src="https://img.shields.io/badge/11%20Slash%20Commands-Ready-success?style=flat-square"/>
   &nbsp;&nbsp;
   <img src="https://img.shields.io/badge/Multi--line-Supported-blue?style=flat-square"/>
 </p>
@@ -185,17 +186,46 @@ print(result["output"])
 | 🤖 **核心引擎** | ReAct + 规划 + 反思 融合状态机 | ✅ |
 | 🧠 **记忆系统** | 工作/情景/知识/技能 四种记忆 + 潜意识 | ✅ |
 | 🛡️ **安全卫士** | ISO 26262 + Deny-First + 五关检查流水线 | ✅ |
-| 🔧 **27 个技能** | 覆盖代码/安全/感知/规划/测试/仿真/数据/研究/DevOps | ✅ |
+| 🔧 **31 个技能** | 覆盖代码/安全/感知/规划/测试/仿真/数据/研究/DevOps 9 大领域 | ✅ |
 | 🔄 **多Agent** | DAG 任务分解 + 8 个 Agent 并行 + 冲突解决 | ✅ |
 | 👤 **驾驶人格** | 🛡️ 保守派 / 🚀 运动派 / 🧓 老司机 | ✅ 🆕 |
 | 🧠 **场景思维** | 36 个标准场景自动关联 + 覆盖率分析 | ✅ 🆕 |
 | 🏅 **安全徽章** | 游戏化成就系统 + 安全评分卡 | ✅ 🆕 |
 | 👋 **副驾模式** | 主动风险提醒 + 每日简报 | ✅ 🆕 |
-| 🌱 **自我进化** | 经验挖掘 + 技能创生 + 元认知 + 提示词优化 | ✅ |
-| 🌟 **自我意识** | SelfModel + 好奇心驱动 + 自主成长引擎 | ✅ |
 | 🔌 **多通道** | CLI / API / MCP / 飞书 / 钉钉 / Telegram | ✅ |
 
 </div>
+
+<br>
+
+---
+
+<h2 align="center">🧪 实验性功能</h2>
+
+<p align="center">
+  <b>⚠️ 警告 / WARNING</b>：以下模块是<strong>实验性的</strong>，未达到生产环境要求。<br>
+  The following modules are <strong>experimental</strong> and not production-ready.
+</p>
+
+<div align="center">
+
+| 模块 | 描述 | 风险 |
+|------|------|------|
+| 🧬 **自我进化**（`experimental/evolution/`） | 经验挖掘 / 技能创生 / 元认知 / 提示词优化 | 会自我修改技能注册表和提示词库 |
+| 🌟 **自我意识**（`experimental/consciousness/`） | SelfModel / 好奇心 / 自主成长 / 意识循环 | 非确定性、行为不可预测 |
+
+</div>
+
+<p align="center">
+  <b>绝对不要</b>将实验性模块接入任何<strong>影响车辆控制决策</strong>的路径。<br>
+  它们与 ISO 26262 的"无不可接受风险"原则直接冲突。<br><br>
+  <b>Never</b> wire experimental modules into any path that influences a vehicle control decision.<br>
+  They directly conflict with ISO 26262's "freedom from unacceptable risk" principle.
+</p>
+
+<p align="center">
+  详见 <a href="experimental/README.md">experimental/README.md</a>
+</p>
 
 <br>
 
@@ -265,7 +295,7 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 │   ├── episodic.py           #    情景记忆（海马体）
 │   ├── semantic.py           #    语义记忆（新皮层）
 │   ├── procedural.py         #    程序性记忆（小脑）
-│   ├── neocortex.py          #    新皮层聚合（1B Token）
+│   ├── neocortex.py          #    新皮层聚合（默认内存后端，可插拔）
 │   └── subconscious_loop.py  #    潜意识循环
 │
 ├── 📁 safety/                # 🛡️ 安全卫士
@@ -273,7 +303,7 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 │   ├── deny_first.py         #    Deny-First 规则引擎
 │   └── compliance.py         #    ISO 26262 / MISRA 合规
 │
-├── 📁 skills/                # 🔧 27 个技能
+├── 📁 skills/                # 🔧 31 个技能
 │   ├── registry.py           #    动态注册中心
 │   ├── code_skills.py        #    代码技能组
 │   ├── safety_skills.py      #    安全技能组
@@ -298,30 +328,19 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 │   ├── communication.py      #    EventBus 通信
 │   └── workflows.py          #    8 个预置工作流
 │
-├── 📁 evolution/             # 🌱 自我进化
-│   ├── experience_miner.py   #    经验挖掘
-│   ├── skill_genesis.py      #    技能创生
-│   ├── meta_cognition.py     #    元认知
-│   ├── prompt_optimizer.py   #    提示词优化
-│   ├── knowledge_consolidator.py # 知识整合
-│   └── evolution_orchestrator.py # 进化编排器
-│
-├── 📁 consciousness/         # 🌟 自我意识
-│   ├── self_model.py         #    自我模型
-│   ├── curiosity_driver.py   #    好奇心引擎
-│   ├── autonomy_engine.py    #    自主引擎
-│   ├── growth_journal.py     #    成长日志
-│   ├── consciousness_loop.py #    意识循环
-│   └── consciousness_orchestrator.py # 意识编排器
+├── 📁 experimental/          # 🧪 实验性模块（⚠️ 非生产就绪）
+│   ├── README.md             #    警告与使用说明
+│   ├── consciousness/        #    🌟 自我意识（实验性）
+│   └── evolution/            #    🌱 自我进化（实验性）
 │
 ├── 📁 channels/              # 🔌 通信通道
 │   ├── cli.py                #    CLI 交互（Rich 格式化）
 │   ├── gateway.py            #    网关路由
 │   ├── mcp_adapter.py        #    MCP 协议适配
-│   └── platform_adapters.py  #    飞书/钉钉/Telegram
+│   └── platform_adapters.py  #    飞书/钉钉/Telegram/WebSocket/HTTP 5 个适配器
 │
 ├── 📁 hooks/                 # 🪝 钩子系统
-│   └── hook_system.py        #    28 钩子事件 × 4 类型
+│   └── hook_system.py        #    38 钩子事件 × 4 类型
 │
 ├── 📁 docs/                  # 📚 文档
 │   ├── 说明书-完整版.md       #    完整使用说明书
@@ -398,7 +417,7 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 <p align="center">
   <b>Nonull</b> is a next-generation AI agent built for the <b>autonomous driving industry</b>.<br>
   It's like a seasoned senior engineer — reviewing code, analyzing safety, designing tests, and generating scenarios.<br>
-  With <b>memory, safety awareness, unique personality, and self-evolution</b>.
+  With <b>memory, safety awareness, and a unique personality</b>.
 </p>
 
 <br>
@@ -409,12 +428,15 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
     <th>Description</th>
   </tr>
   <tr><td>🤖 Core Engine</td><td>ReAct + Plan-and-Execute + Reflexion fused state machine</td></tr>
-  <tr><td>🧠 Memory System</td><td>Working/Episodic/Semantic/Procedural + Neocortex 1B Tokens</td></tr>
+  <tr><td>🧠 Memory System</td><td>Working/Episodic/Semantic/Procedural + Neocortex (configurable capacity, default in-memory backend)</td></tr>
   <tr><td>🛡️ Safety Guardian</td><td>ISO 26262 + Deny-First + 5-layer safety pipeline</td></tr>
-  <tr><td>🔧 27 Skills</td><td>Code/Safety/Perception/Planning/Testing/Simulation/Data/Research/DevOps</td></tr>
+  <tr><td>🔧 31 Skills</td><td>9 categories: Code/Safety/Perception/Planning/Testing/Simulation/Data/Research/DevOps</td></tr>
   <tr><td>👤 Driving Persona</td><td>Conservative 🛡️ / Sporty 🚀 / Veteran 🧓 — three characters</td></tr>
   <tr><td>🧠 Scenario Engine</td><td>36 built-in driving scenarios + coverage analysis</td></tr>
-  <tr><td>🏅 Safety Badges</td><td>Gamified achievement system</td></tr>
-  <tr><td>🌱 Self-Evolution</td><td>Experience mining, skill genesis, meta-cognition</td></tr>
+  <tr><td>🏅 Safety Badges</td><td>Safety metrics tracking (advisory, not gamified)</td></tr>
   <tr><td>🔌 Multi-Channel</td><td>CLI / API / MCP / Telegram / Feishu / DingTalk</td></tr>
 </table>
+
+<br>
+
+> **Note**: Self-evolution and self-awareness modules are <b>experimental</b> and have been moved to <code>experimental/</code>. They are not wired into the production agent loop and must not be used in any safety-critical path. See <a href="experimental/README.md">experimental/README.md</a> for warnings.

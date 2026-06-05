@@ -41,6 +41,8 @@ from .persona_orchestrator import (
     # Main orchestrator
     PersonaOrchestrator,
 )
+from .scenario_engine import ScenarioEngine
+from .safety_badge import SafetyBadgeSystem
 
 logger = logging.getLogger(__name__)
 
@@ -74,4 +76,8 @@ __all__: List[str] = [
 
     # Main orchestrator
     "PersonaOrchestrator",
+
+    # Engines & systems
+    "ScenarioEngine",
+    "SafetyBadgeSystem",
 ]

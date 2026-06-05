@@ -4,17 +4,19 @@ Nonull — Package Setup
 智能体包配置 | Nonull Package Configuration
 
 Nonull (智驾智能体) is a next-generation multi-channel agent framework
-featuring a multi-channel gateway system, 20+ platform adapters, and a
-28-hook lifecycle system. Inspired by OpenClaw's gateway architecture,
-Hermes Agent's platform adapters, and Claude Code's hook lifecycle.
+featuring a multi-channel gateway system, 5 built-in platform adapters
+(Telegram / Feishu / DingTalk / WebSocket / HTTP), and a 38-hook lifecycle
+system. Inspired by OpenClaw's gateway architecture, Hermes Agent's
+platform adapters, and Claude Code's hook lifecycle.
 
 Nonull (智驾智能体) 是新一代多通道智能体框架，具有多通道网关系统、
-20+ 平台适配器和 28 钩子生命周期系统。受 OpenClaw 的网关架构、
-Hermes Agent 的平台适配器和 Claude Code 的钩子生命周期启发。
+5 个内置平台适配器（Telegram / 飞书 / 钉钉 / WebSocket / HTTP）和
+38 钩子生命周期系统。受 OpenClaw 的网关架构、Hermes Agent 的平台
+适配器和 Claude Code 的钩子生命周期启发。
 
 Core modules:
-    channels      — Multi-channel communication gateway with platform adapters
-    hooks         — Lifecycle hook system with 28 events and 4 execution types
+    channels      — Multi-channel communication gateway with 5 built-in platform adapters
+    hooks         — Lifecycle hook system with 38 events and 4 execution types
 """
 
 from __future__ import annotations
@@ -111,6 +113,9 @@ EXTRAS_REQUIRE = {
         "aiohttp>=3.9.0",
         "websockets>=12.0",
         "mcp>=1.0.0",
+        "python-telegram-bot>=20.0",
+        "lark-oapi>=1.0.0",
+        "dingtalk-sdk>=2.0.0",
     ],
     "dev": [
         "pytest>=7.0.0",
@@ -127,25 +132,25 @@ EXTRAS_REQUIRE = {
 # ---------------------------------------------------------------------------
 
 setup(
-    name="Nonull",
+    name="nonull",
     version=_get_version(),
     author="Nonull Team",
-    author_email="dev@Nonull.ai",
+    author_email="dev@nonull.ai",
     description=(
         "Nonull - Multi-Channel Agent Framework / 多通道智能体框架. "
-        "Multi-channel gateway + 20+ platform adapters + 28 lifecycle hooks."
+        "Multi-channel gateway + 5 built-in platform adapters + 38 lifecycle hooks."
     ),
     long_description=_get_long_description(),
     long_description_content_type="text/markdown",
-    url="https://github.com/BOLUNWU97/nonull",
+    url="https://github.com/BOLUNWU97/Nonull",
     project_urls={
-        "Documentation": "https://github.com/BOLUNWU97/nonull",
-        "Source": "https://github.com/BOLUNWU97/nonull",
-        "Bug Tracker": "https://github.com/BOLUNWU97/nonull/issues",
+        "Documentation": "https://github.com/BOLUNWU97/Nonull",
+        "Source": "https://github.com/BOLUNWU97/Nonull",
+        "Bug Tracker": "https://github.com/BOLUNWU97/Nonull/issues",
     },
     license="MIT",
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
@@ -162,14 +167,21 @@ setup(
     ],
     python_requires=">=3.10",
     packages=find_packages(
-        exclude=["tests", "tests.*", "docs", "docs.*", "examples", "examples.*"]
+        exclude=[
+            "tests", "tests.*",
+            "docs", "docs.*",
+            "examples", "examples.*",
+            "experimental", "experimental.*",
+            "consciousness", "consciousness.*",
+            "evolution", "evolution.*",
+        ]
     ),
     include_package_data=True,
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
     entry_points={
         "console_scripts": [
-            "Nonull=channels.cli:main",
+            "nonull=channels.cli:main",
         ],
     },
     zip_safe=False,
