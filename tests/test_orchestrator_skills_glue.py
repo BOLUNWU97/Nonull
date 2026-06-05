@@ -333,6 +333,42 @@ def test_run_with_skills_explicit_mapping_dispatches_method():
     assert result["dispatch_method"] == "explicit"
 
 
+def test_run_with_skills_async_mirrors_sync_result_shape():
+    """The async dispatcher should return the same Result shape as the sync one.
+
+    This is a parity check, not a concurrency check. The detailed concurrency
+    and error-isolation tests live in tests/test_orchestrator_async.py.
+    """
+    skill = FakeSkill("x", return_value="ok")
+    registry = FakeSkillRegistry([skill])
+    plan = _make_plan([{"name": "step", "description": "s"}])
+
+    sync_result = Orchestrator().run_with_skills(
+        plan=plan,
+        registry=registry,
+        name_to_skill={"step": "x"},
+        context={},
+    )
+
+    async_result = Orchestrator().run_with_skills_async(
+        plan=plan,
+        registry=registry,
+        name_to_skill={"step": "x"},
+        context={},
+        max_concurrent=2,
+    )
+
+    # Same keys, same status, same outputs
+    assert async_result["status"] == sync_result["status"] == "succeeded"
+    assert async_result["outputs"] == sync_result["outputs"]
+    assert async_result["skill_used"] == sync_result["skill_used"]
+    assert async_result["errors"] == sync_result["errors"]
+    assert async_result["summary"] == sync_result["summary"]
+    assert async_result["dispatch_method"] == sync_result["dispatch_method"]
+    # The skill was actually called
+    assert len(skill._calls) == 2  # once by sync, once by async
+
+
 def test_run_workflow_classmethod_end_to_end(monkeypatch):
     """Orchestrator.run_workflow should instantiate a workflow and run it."""
     # Build a minimal plan-shaped workflow + skill to avoid
@@ -362,6 +398,7 @@ def test_run_workflow_classmethod_end_to_end(monkeypatch):
         registry=registry,
         task="Review some code",
         context={"language": "cpp"},
+        name_to_skill={"step": "x"},
     )
 
     fake_workflow_registry.instantiate.assert_called_once()

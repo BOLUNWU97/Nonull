@@ -79,6 +79,13 @@ class SkillRegistry:
         # 搜索路径 / Plugin search paths
         self._search_paths: List[str] = []
 
+        # 失败模块记录 / Track modules that failed during auto-discovery.
+        # Each entry is a dict with at least: module, error.
+        # Auto-discovery must never hard-fail; broken modules are isolated
+        # and surfaced via get_diagnostics() so demos and examples keep
+        # running even when one skill file is malformed.
+        self._broken_modules: List[Dict[str, Any]] = []
+
         # 注册记录器 / Logger
         self.logger = logging.getLogger(f"{__name__}.SkillRegistry")
 
@@ -429,6 +436,14 @@ class SkillRegistry:
         自动扫描并注册所有 BaseSkill 子类。
         Auto-scan and register all BaseSkill subclasses.
 
+        本方法采用"逐模块隔离"策略：即使某个技能模块在导入或注册阶段
+        抛出异常，本次自动发现也不会被中断——失败模块会被记录到
+        ``self._broken_modules``，调用方可通过 ``get_diagnostics()`` 查看。
+        This method uses a per-module isolation strategy: if a single
+        skill module raises during import or registration, auto-discovery
+        will continue with the remaining modules. Failures are recorded in
+        ``self._broken_modules`` and surfaced via ``get_diagnostics()``.
+
         Args:
             package_path: 扫描的包路径（默认扫描 skills 包及其子包）。
                           Package path to scan; defaults to the skills package.
@@ -440,6 +455,9 @@ class SkillRegistry:
             # 默认扫描当前包 / Default to scanning current package
             package_path = os.path.dirname(os.path.abspath(__file__))
 
+        # 每次 auto_discover 都重新开始统计 / Reset diagnostics per call
+        self._broken_modules = []
+
         count = 0
         sys.path.insert(0, os.path.dirname(package_path))
 
@@ -450,34 +468,170 @@ class SkillRegistry:
                 continue
             try:
                 module = importlib.import_module(modname)
-                count += self._register_from_module(module)
+                count += self._register_from_module(module, module_name=modname)
             except Exception as e:
+                # 记录失败模块但继续扫描 / Record but keep going
+                self._broken_modules.append(
+                    {
+                        "module": modname,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    }
+                )
                 self.logger.warning(
                     f"Failed to load module '{modname}': {e}"
                 )
 
+        # 摘要日志 / Summary log so operators can see at a glance which
+        # modules were skipped without trawling debug output.
+        if self._broken_modules:
+            broken_names = ", ".join(
+                entry["module"] for entry in self._broken_modules
+            )
+            self.logger.warning(
+                f"Auto-discovery completed with {len(self._broken_modules)} "
+                f"broken module(s) skipped: [{broken_names}]. "
+                f"Registered {count} skill(s). "
+                f"Call get_diagnostics() for details."
+            )
+        else:
+            self.logger.info(
+                f"Auto-discovery completed cleanly: registered {count} skill(s)."
+            )
+
         return count
 
-    def _register_from_module(self, module) -> int:
+    def _register_from_module(
+        self,
+        module,
+        module_name: Optional[str] = None,
+    ) -> int:
         """
         从模块中发现并注册 BaseSkill 子类。
         Discover and register BaseSkill subclasses from a module.
+
+        本方法对每一次 ``inspect.getmembers`` 迭代都做了 try/except 隔离，
+        以避免单个有问题的技能类（例如 import 时副作用抛错、
+        ``__init_subclass__`` 自爆、或 ``metadata`` 属性访问失败）拖垮
+        整个 ``auto_discover`` 调用。所有失败都会记录到
+        ``self._broken_modules`` 而不是直接抛出。
+        Each iteration of ``inspect.getmembers`` is wrapped in its own
+        try/except block so a single problematic skill class — e.g. one
+        whose import-time side effect raises, whose ``__init_subclass__``
+        blows up, or whose ``metadata`` property access fails — will
+        NOT take down the entire ``auto_discover`` call. Failures are
+        recorded into ``self._broken_modules`` instead of propagating.
+
+        Args:
+            module:      目标模块 / Target module object.
+            module_name: 可选的模块名（用于诊断）/ Optional module name for diagnostics.
+
+        Returns:
+            成功注册的技能数 / Number of skills successfully registered.
         """
         count = 0
-        for name, obj in inspect.getmembers(module, inspect.isclass):
-            if (
-                obj is not BaseSkill
-                and issubclass(obj, BaseSkill)
-                and not inspect.isabstract(obj)
-            ):
-                try:
+        if module_name is None:
+            module_name = getattr(module, "__name__", "<unknown>")
+
+        try:
+            members = list(inspect.getmembers(module, inspect.isclass))
+        except Exception as e:
+            # 整个模块无法枚举（如模块级 import 失败） / The whole module
+            # is un-introspectable. Record and bail out of this module.
+            self._broken_modules.append(
+                {
+                    "module": module_name,
+                    "error": f"getmembers() failed: {e}",
+                    "error_type": type(e).__name__,
+                }
+            )
+            self.logger.warning(
+                f"Could not introspect module '{module_name}': {e}"
+            )
+            return 0
+
+        for name, obj in members:
+            # 逐类隔离 / Per-class isolation: 一类坏了不影响其他类。
+            try:
+                if (
+                    obj is not BaseSkill
+                    and issubclass(obj, BaseSkill)
+                    and not inspect.isabstract(obj)
+                ):
                     self.register(obj)
                     count += 1
-                except (TypeError, ValueError) as e:
-                    self.logger.debug(
-                        f"Skipping '{name}': {e}"
-                    )
+            except (TypeError, ValueError) as e:
+                # 注册阶段的预期错误 / Expected registration errors
+                self.logger.debug(
+                    f"Skipping '{name}' in '{module_name}': {e}"
+                )
+            except Exception as e:
+                # 任何其它异常（例如 import 副作用、metadata 属性崩溃、
+                # __init_subclass__ 抛出） / Any other exception
+                # (import side effects, metadata access crashes,
+                # __init_subclass__ explosions, etc.)
+                self._broken_modules.append(
+                    {
+                        "module": module_name,
+                        "skill": name,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    }
+                )
+                self.logger.warning(
+                    f"Failed to register '{name}' from '{module_name}': {e}"
+                )
         return count
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        """
+        返回自动发现的诊断信息。
+        Return diagnostics from the last ``auto_discover`` (or
+        ``discover_from_paths``) call.
+
+        Returns:
+            Dict 形如 / Dict shaped like::
+
+                {
+                    "successful": [skill_name, ...],   # 成功注册的技能名
+                    "broken":     [                   # 失败模块/技能明细
+                        {
+                            "module":     "skills.foo",
+                            "skill":      "FooSkill" | None,
+                            "error":      "human readable message",
+                            "error_type": "ImportError",
+                        },
+                        ...
+                    ],
+                    "summary": {
+                        "successful_count": int,
+                        "broken_count":     int,
+                        "total_count":      int,  # successful + broken
+                    },
+                }
+
+        Notes:
+            该方法不会触发新的发现，只反映上一次 ``auto_discover`` /
+            ``discover_from_paths`` 的结果。
+            This method does NOT trigger a new discovery; it only
+            reflects the last ``auto_discover`` / ``discover_from_paths``
+            call.
+        """
+        successful: List[str] = list(self._skills.keys()) + list(
+            self._skill_classes.keys()
+        )
+
+        summary = {
+            "successful_count": len(successful),
+            "broken_count": len(self._broken_modules),
+            "total_count": len(successful) + len(self._broken_modules),
+        }
+
+        return {
+            "successful": successful,
+            "broken": list(self._broken_modules),
+            "summary": summary,
+        }
 
     def add_search_path(self, path: str) -> None:
         """

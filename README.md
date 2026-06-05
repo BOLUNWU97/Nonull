@@ -416,6 +416,21 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 
 ---
 
+<h2 align="center">🧑‍💻 Internal use guide</h2>
+
+<p align="center">
+  First day on the team? Start with the one-page warning sheet:
+  <a href="INTERNAL-NOTES.md"><b>INTERNAL-NOTES.md</b></a>.<br>
+  It covers first install, LLM setup, the three workflows every new
+  engineer uses (code review, scenario coverage, multi-agent),
+  known limitations, and where to ask for help.<br>
+  <i>Advisory only — does not replace the disclaimer above.</i>
+</p>
+
+<br>
+
+---
+
 <h2 align="center">🏅 Nonull = 非空 = Never Null</h2>
 
 <p align="center">

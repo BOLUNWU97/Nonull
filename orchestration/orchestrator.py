@@ -52,6 +52,7 @@ ASPICE-Style Logging Patterns (ASPICE 风格日志模式 — advisory only, NOT 
 
 from __future__ import annotations
 
+import asyncio
 import enum
 import hashlib
 import json
@@ -948,6 +949,9 @@ class Orchestrator:
               levels — but inside a level, subtasks are dispatched
               serially for predictability (skills are usually in-process
               and I/O is bounded).
+            - For better throughput, use `run_with_skills_async` which
+              uses asyncio.gather to dispatch subtasks in the same level
+              concurrently (bounded by a semaphore).
         """
         with self._lock:
             base_context: Dict[str, Any] = dict(context or {})
@@ -1140,6 +1144,335 @@ class Orchestrator:
             )
             return result
 
+    # ------------------------------------------------------------------
+    # Async Skill-Registry Glue (异步技能注册表粘合层)
+    # ------------------------------------------------------------------
+
+    def run_with_skills_async(
+        self,
+        plan: OrchestrationPlan,
+        registry: Any,
+        name_to_skill: Optional[Dict[str, str]] = None,
+        context: Optional[Dict[str, Any]] = None,
+        max_concurrent: int = 4,
+    ) -> Dict[str, Any]:
+        """
+        Sync wrapper that runs the async concurrent dispatch via ``asyncio.run``.
+
+        Mirrors :meth:`run_with_skills` but dispatches subtasks in the same
+        dependency level *concurrently* using ``asyncio.gather`` and an
+        ``asyncio.Semaphore`` to bound concurrency to ``max_concurrent``.
+        Each blocking ``skill.execute(...)`` call is offloaded to a worker
+        thread via ``asyncio.to_thread`` so the event loop stays responsive.
+
+        This is a sync method so non-async callers can use it directly. If
+        you are already inside an event loop, use
+        :meth:`_run_with_skills_async_impl` directly and ``await`` it.
+
+        Args:
+            plan: The OrchestrationPlan (DAG of subtasks) to execute.
+            registry: A SkillRegistry-like object (same contract as
+                :meth:`run_with_skills`).
+            name_to_skill: Optional explicit subtask-name -> skill-name map.
+                If omitted, an auto-mapping is derived.
+            context: Optional execution context shared by every skill.
+                A shallow copy is given to each skill so mutations from
+                one skill do not leak into the next.
+            max_concurrent: Maximum number of subtasks in a single level
+                to dispatch simultaneously. Defaults to 4.
+
+        Returns:
+            The same Result dict shape as :meth:`run_with_skills`.
+        """
+        return asyncio.run(
+            self._run_with_skills_async_impl(
+                plan=plan,
+                registry=registry,
+                name_to_skill=name_to_skill,
+                context=context,
+                max_concurrent=max_concurrent,
+            )
+        )
+
+    async def _run_with_skills_async_impl(
+        self,
+        plan: OrchestrationPlan,
+        registry: Any,
+        name_to_skill: Optional[Dict[str, str]] = None,
+        context: Optional[Dict[str, Any]] = None,
+        max_concurrent: int = 4,
+    ) -> Dict[str, Any]:
+        """
+        Async implementation of concurrent skill dispatch.
+
+        Walks the plan topologically level-by-level. Within a level, all
+        eligible subtasks are launched concurrently via
+        ``asyncio.gather``, gated by an ``asyncio.Semaphore(max_concurrent)``.
+        Per-subtask error isolation is preserved: each subtask is wrapped
+        in its own try/except so one failing skill does not break the
+        level. Dependency-failure skipping is also preserved: subtasks
+        with failed/skipped dependencies are marked SKIPPED before any
+        concurrent work is launched.
+
+        Blocking ``skill.execute(...)`` calls run in worker threads via
+        ``asyncio.to_thread`` so they do not block the event loop.
+        """
+        with self._lock:
+            base_context: Dict[str, Any] = dict(context or {})
+            self._plans[plan.id] = plan
+
+            # 1. Resolve subtask -> skill mapping
+            if name_to_skill is None:
+                mapping = self._auto_derive_skill_mapping(plan, registry)
+                dispatch_method = "auto"
+            else:
+                mapping = dict(name_to_skill)
+                dispatch_method = "explicit"
+
+            # 2. Topologically-ordered levels
+            levels = plan.topological_order()
+
+            # 3. Shared state (mutated under self._lock)
+            outputs: Dict[str, Any] = {}
+            errors: Dict[str, str] = {}
+            skill_used: Dict[str, str] = {}
+            subtask_status: Dict[str, str] = {}
+            skipped_count = 0
+
+        # Bounded concurrency: cap simultaneously running subtasks per level
+        sem = asyncio.Semaphore(max(1, int(max_concurrent)))
+
+        async def _dispatch_one(
+            sid: str, level_prev_outputs: Dict[str, Any]
+        ) -> None:
+            """Dispatch a single subtask to its skill (errors isolated)."""
+            async with sem:
+                subtask = plan.subtasks.get(sid)
+                if subtask is None:
+                    return
+
+                skill_name = mapping.get(subtask.name)
+                if not skill_name:
+                    msg = (
+                        f"No skill mapped for subtask {subtask.name!r}. "
+                        f"Provide a name_to_skill mapping or ensure "
+                        f"the registry has matching skills."
+                    )
+                    with self._lock:
+                        subtask.status = SubtaskStatus.FAILED
+                        subtask.error = msg
+                        subtask_status[subtask.name] = "failed"
+                        errors[subtask.name] = msg
+                    logger.warning(msg)
+                    return
+
+                skill = registry.get_skill(skill_name)
+                if skill is None:
+                    msg = (
+                        f"Skill {skill_name!r} not found in registry "
+                        f"for subtask {subtask.name!r}"
+                    )
+                    with self._lock:
+                        subtask.status = SubtaskStatus.FAILED
+                        subtask.error = msg
+                        subtask_status[subtask.name] = "failed"
+                        errors[subtask.name] = msg
+                    logger.warning(msg)
+                    return
+
+                # Build per-skill context (shallow copy)
+                skill_context: Dict[str, Any] = {
+                    **base_context,
+                    "subtask_name": subtask.name,
+                    "subtask_id": subtask.id,
+                    "subtask_description": subtask.description,
+                    "subtask_capabilities": list(
+                        subtask.required_capabilities
+                    ),
+                }
+                # Inject upstream results as a "previous_outputs" map
+                if level_prev_outputs:
+                    skill_context["previous_outputs"] = dict(
+                        level_prev_outputs
+                    )
+
+                # Mark as running
+                with self._lock:
+                    subtask.status = SubtaskStatus.RUNNING
+                    subtask.started_at = (
+                        datetime.now(timezone.utc).isoformat()
+                    )
+                self._run_hooks("pre", subtask, plan, skill_name)
+
+                # Execute the (potentially blocking) skill in a worker thread
+                def _blocking_execute() -> Any:
+                    return skill.execute(skill_context)
+
+                try:
+                    skill_result = await asyncio.to_thread(_blocking_execute)
+                    with self._lock:
+                        subtask.completed_at = (
+                            datetime.now(timezone.utc).isoformat()
+                        )
+
+                    if skill_result is None:
+                        # Defensive — skill should always return SkillResult
+                        with self._lock:
+                            subtask.status = SubtaskStatus.FAILED
+                            subtask.error = "Skill returned None"
+                            subtask_status[subtask.name] = "failed"
+                            errors[subtask.name] = "Skill returned None"
+                    elif getattr(skill_result, "success", False):
+                        data = getattr(
+                            skill_result, "data", skill_result
+                        )
+                        with self._lock:
+                            subtask.status = SubtaskStatus.SUCCEEDED
+                            subtask.result = data
+                            outputs[subtask.name] = data
+                            skill_used[subtask.name] = skill_name
+                            subtask_status[subtask.name] = "succeeded"
+                        logger.debug(
+                            "Subtask %s dispatched to skill %s OK (async)",
+                            subtask.name,
+                            skill_name,
+                        )
+                    else:
+                        err_msg = getattr(
+                            skill_result,
+                            "error",
+                            "Skill reported failure",
+                        )
+                        with self._lock:
+                            subtask.status = SubtaskStatus.FAILED
+                            subtask.error = err_msg
+                            subtask_status[subtask.name] = "failed"
+                            errors[subtask.name] = err_msg
+                        logger.warning(
+                            "Skill %s failed for subtask %s (async): %s",
+                            skill_name,
+                            subtask.name,
+                            err_msg,
+                        )
+                except Exception as exc:
+                    # Per-subtask error isolation: log, do not raise.
+                    with self._lock:
+                        subtask.status = SubtaskStatus.FAILED
+                        subtask.error = str(exc)
+                        subtask.completed_at = (
+                            datetime.now(timezone.utc).isoformat()
+                        )
+                        subtask_status[subtask.name] = "failed"
+                        errors[subtask.name] = str(exc)
+                    logger.exception(
+                        "Subtask %s dispatch raised exception "
+                        "(isolated, async workflow continues): %s",
+                        subtask.name,
+                        exc,
+                    )
+                finally:
+                    self._run_hooks("post", subtask, plan, skill_name)
+
+        # 4. Walk levels
+        for level_idx, level_sids in enumerate(levels):
+            logger.debug(
+                "Async dispatch: level %d/%d (%d subtasks)",
+                level_idx + 1,
+                len(levels),
+                len(level_sids),
+            )
+
+            # Pre-process: handle dependency-failed subtasks synchronously
+            pending_sids: List[str] = []
+            for sid in level_sids:
+                subtask = plan.subtasks.get(sid)
+                if subtask is None:
+                    continue
+                with self._lock:
+                    if self._dependency_failed(subtask, plan):
+                        subtask.status = SubtaskStatus.SKIPPED
+                        subtask.error = "Dependency failed or skipped"
+                        subtask_status[subtask.name] = "skipped"
+                        skipped_count += 1
+                        logger.info(
+                            "Subtask %s (%s) skipped — dependency failed",
+                            subtask.name,
+                            sid[:8],
+                        )
+                        continue
+                pending_sids.append(sid)
+
+            if not pending_sids:
+                continue
+
+            # Snapshot outputs once per level so all sibling subtasks
+            # see the same prior-level outputs (correct peer semantics).
+            with self._lock:
+                level_prev_outputs = dict(outputs) if outputs else {}
+
+            # 5. Dispatch all subtasks in this level concurrently
+            results = await asyncio.gather(
+                *(
+                    _dispatch_one(sid, level_prev_outputs)
+                    for sid in pending_sids
+                ),
+                return_exceptions=True,
+            )
+            # Safety net: per-subtask try/except should prevent these, but
+            # gather(return_exceptions=True) guarantees other coroutines
+            # finish even if one of the dispatch wrappers itself blows up.
+            for r in results:
+                if isinstance(r, BaseException):
+                    logger.exception(
+                        "Unexpected exception in async dispatch: %s", r
+                    )
+
+        # 6. Aggregate
+        with self._lock:
+            total = len(plan.subtasks)
+            succeeded = sum(
+                1 for s in subtask_status.values() if s == "succeeded"
+            )
+            failed = sum(
+                1 for s in subtask_status.values() if s == "failed"
+            )
+
+            if failed == 0 and skipped_count == 0:
+                overall_status = "succeeded"
+            elif succeeded > 0:
+                overall_status = "partial"
+            else:
+                overall_status = "failed"
+
+            result: Dict[str, Any] = {
+                "task_id": plan.id,
+                "status": overall_status,
+                "outputs": outputs,
+                "skill_used": skill_used,
+                "errors": errors,
+                "summary": {
+                    "total": total,
+                    "succeeded": succeeded,
+                    "failed": failed,
+                    "skipped": skipped_count,
+                },
+                "dispatch_method": dispatch_method,
+                "subtask_status": subtask_status,
+            }
+
+            logger.info(
+                "run_with_skills_async: plan=%s status=%s "
+                "(%d/%d succeeded, %d failed, %d skipped, max_concurrent=%d)",
+                plan.id[:8],
+                overall_status,
+                succeeded,
+                total,
+                failed,
+                skipped_count,
+                max_concurrent,
+            )
+            return result
+
     @classmethod
     def run_workflow(
         cls,
@@ -1147,6 +1480,7 @@ class Orchestrator:
         registry: Any,
         task: str,
         context: Optional[Dict[str, Any]] = None,
+        name_to_skill: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         High-level convenience: instantiate a workflow and run it with skills.
@@ -1168,6 +1502,11 @@ class Orchestrator:
                 workflow's decomposition function.
             context: Optional context for both plan decomposition and
                 skill execution.
+            name_to_skill: Optional explicit subtask-name -> skill-name
+                mapping forwarded to ``run_with_skills``. When omitted,
+                the orchestrator auto-derives the mapping (which only
+                works when the registry's skill names align with the
+                workflow's subtask names).
 
         Returns:
             The Result dict from ``run_with_skills``.
@@ -1190,6 +1529,7 @@ class Orchestrator:
         return orchestrator.run_with_skills(
             plan=plan,
             registry=registry,
+            name_to_skill=name_to_skill,
             context=context,
         )
 
