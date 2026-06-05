@@ -153,6 +153,30 @@ nonull                    # after pip install
 python -m nonull          # any time
 ```
 
+<h3 align="left">🔐 Set up environment / 配置环境变量</h3>
+
+To run the LLM agent, you need an API key. Copy the example file and fill in your key:
+
+```bash
+# 1. Copy the template
+cp .env.example .env
+
+# 2. Edit .env and set your key
+#    (on Windows: notepad .env, or use any editor)
+NONULL_LLM_API_KEY=sk-your-key-here
+
+# Optional: pick a different provider / model
+# NONULL_LLM_PROVIDER=openai
+# NONULL_LLM_MODEL=gpt-4o
+# NONULL_LLM_API_BASE=https://api.openai.com/v1
+```
+
+**Without a key?** The CLI still works for slash commands (`/help`, `/clear`, `/history`, `/session`, `/stats`, etc.) — you just can't run the LLM agent. On startup you'll see:
+
+```
+(Agent mode disabled — set NONULL_LLM_API_KEY to enable)
+```
+
 <p align="center">
   <img src="https://img.shields.io/badge/CLI-Rich%20Formatting-FF6B35?style=flat-square"/>
   &nbsp;&nbsp;

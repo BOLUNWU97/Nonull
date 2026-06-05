@@ -63,13 +63,17 @@ INSTALL_REQUIRES = [
     "pydantic>=2.0",
     "numpy>=1.24",
 
-    # CLI channel extras (optional, but recommended):
-    # "rich>=13.0.0",         # Rich text formatting
+    # CLI rich formatting (default install — CLI is the primary entrypoint)
+    "rich>=13.0",
+
+    # HTTP client for LLM provider integrations (default install)
+    "httpx>=0.24",
+
+    # CLI channel extras (optional — prompt_toolkit is heavier):
     # "prompt_toolkit>=3.0.0", # Enhanced REPL
 
-    # HTTP client (optional, for HTTP-based adapters):
+    # HTTP client/server (optional, for HTTP-based adapters):
     # "aiohttp>=3.9.0",       # Async HTTP client/server
-    # "httpx>=0.25.0",        # Alternative HTTP client
 
     # WebSocket (optional):
     # "websockets>=12.0",     # WebSocket server/client
@@ -86,7 +90,6 @@ INSTALL_REQUIRES = [
 
 EXTRAS_REQUIRE = {
     "cli": [
-        "rich>=13.0.0",
         "prompt_toolkit>=3.0.0",
     ],
     "http": [
@@ -108,7 +111,6 @@ EXTRAS_REQUIRE = {
         "dingtalk-sdk>=2.0.0",
     ],
     "all": [
-        "rich>=13.0.0",
         "prompt_toolkit>=3.0.0",
         "aiohttp>=3.9.0",
         "websockets>=12.0",

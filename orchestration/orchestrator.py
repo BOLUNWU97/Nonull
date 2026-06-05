@@ -887,6 +887,394 @@ class Orchestrator:
         self._execution_results[plan.id] = result
         return result
 
+    # ------------------------------------------------------------------
+    # Skill-Registry Glue (技能注册表粘合层)
+    # ------------------------------------------------------------------
+
+    def run_with_skills(
+        self,
+        plan: OrchestrationPlan,
+        registry: Any,
+        name_to_skill: Optional[Dict[str, str]] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Execute an OrchestrationPlan by dispatching each subtask to a skill.
+
+        This is a convenience method that closes the gap between the
+        Orchestrator and the SkillRegistry. Instead of writing your own
+        ``executor_fn`` glue for ``execute_plan``, you can call this
+        method directly to:
+
+          1. Auto-derive a subtask -> skill mapping (if not provided)
+             using tag/trigger matching, or use the explicit mapping you pass in.
+          2. Look up the skill via ``registry.get_skill(skill_name)``.
+          3. Call ``skill.execute(context)`` for each subtask, honoring
+             dependency order defined by the plan's DAG.
+          4. Isolate failures so one broken skill does not kill the
+             whole workflow.
+
+        Args:
+            plan: The OrchestrationPlan (DAG of subtasks) to execute.
+            registry: A SkillRegistry-like object. Must provide
+                ``get_skill(name) -> BaseSkill | None`` and
+                ``get_all_skills() -> List[BaseSkill]``.
+            name_to_skill: Optional explicit mapping from subtask
+                ``name`` to ``skill name``. If omitted, an auto-mapping
+                is derived by scoring each skill's tags/description
+                against the subtask's name/description/capabilities.
+            context: Optional execution context passed to every skill.
+                A shallow copy is given to each skill so mutations
+                from one skill do not leak into the next.
+
+        Returns:
+            A Result dict::
+
+                {
+                    "task_id":         "<plan id>",
+                    "status":          "succeeded" | "partial" | "failed",
+                    "outputs":         {<subtask_name>: <skill_data>, ...},
+                    "skill_used":      {<subtask_name>: <skill_name>, ...},
+                    "errors":          {<subtask_name>: <error_message>, ...},
+                    "summary":         {total, succeeded, failed, skipped},
+                    "dispatch_method": "explicit" | "auto",
+                }
+
+        Notes:
+            - Errors are caught per subtask; the workflow continues.
+            - Subtasks with unmet (failed/skipped) dependencies are
+              marked SKIPPED and not dispatched.
+            - The order of execution follows the plan's topological
+              levels — but inside a level, subtasks are dispatched
+              serially for predictability (skills are usually in-process
+              and I/O is bounded).
+        """
+        with self._lock:
+            base_context: Dict[str, Any] = dict(context or {})
+            self._plans[plan.id] = plan
+
+            # 1. Resolve subtask -> skill mapping
+            if name_to_skill is None:
+                mapping = self._auto_derive_skill_mapping(plan, registry)
+                dispatch_method = "auto"
+            else:
+                mapping = dict(name_to_skill)
+                dispatch_method = "explicit"
+
+            # 2. Topologically-ordered levels
+            levels = plan.topological_order()
+
+            # 3. Walk levels, dispatch each subtask to its skill
+            outputs: Dict[str, Any] = {}
+            errors: Dict[str, str] = {}
+            skill_used: Dict[str, str] = {}
+            subtask_status: Dict[str, str] = {}
+            skipped_count = 0
+
+            for level_idx, level_sids in enumerate(levels):
+                for sid in level_sids:
+                    subtask = plan.subtasks.get(sid)
+                    if subtask is None:
+                        continue
+
+                    # Check dependencies — skip if any failed/skipped
+                    if self._dependency_failed(subtask, plan):
+                        subtask.status = SubtaskStatus.SKIPPED
+                        subtask_status[subtask.name] = "skipped"
+                        subtask.error = "Dependency failed or skipped"
+                        skipped_count += 1
+                        logger.info(
+                            "Subtask %s (%s) skipped — dependency failed",
+                            subtask.name,
+                            sid[:8],
+                        )
+                        continue
+
+                    skill_name = mapping.get(subtask.name)
+                    if not skill_name:
+                        msg = (
+                            f"No skill mapped for subtask {subtask.name!r}. "
+                            f"Provide a name_to_skill mapping or ensure "
+                            f"the registry has matching skills."
+                        )
+                        subtask.status = SubtaskStatus.FAILED
+                        subtask.error = msg
+                        subtask_status[subtask.name] = "failed"
+                        errors[subtask.name] = msg
+                        logger.warning(msg)
+                        continue
+
+                    skill = registry.get_skill(skill_name)
+                    if skill is None:
+                        msg = (
+                            f"Skill {skill_name!r} not found in registry "
+                            f"for subtask {subtask.name!r}"
+                        )
+                        subtask.status = SubtaskStatus.FAILED
+                        subtask.error = msg
+                        subtask_status[subtask.name] = "failed"
+                        errors[subtask.name] = msg
+                        logger.warning(msg)
+                        continue
+
+                    # Build per-skill context (shallow copy)
+                    skill_context: Dict[str, Any] = {
+                        **base_context,
+                        "subtask_name": subtask.name,
+                        "subtask_id": subtask.id,
+                        "subtask_description": subtask.description,
+                        "subtask_capabilities": list(
+                            subtask.required_capabilities
+                        ),
+                    }
+                    # Inject upstream results as a "previous_outputs" map
+                    if outputs:
+                        skill_context["previous_outputs"] = dict(outputs)
+
+                    # 4. Execute (errors isolated per subtask)
+                    subtask.status = SubtaskStatus.RUNNING
+                    subtask.started_at = (
+                        datetime.now(timezone.utc).isoformat()
+                    )
+                    self._run_hooks("pre", subtask, plan, skill_name)
+
+                    try:
+                        skill_result = skill.execute(skill_context)
+                        subtask.completed_at = (
+                            datetime.now(timezone.utc).isoformat()
+                        )
+
+                        if skill_result is None:
+                            # Defensive — skill should always return SkillResult
+                            subtask.status = SubtaskStatus.FAILED
+                            subtask.error = "Skill returned None"
+                            errors[subtask.name] = "Skill returned None"
+                            subtask_status[subtask.name] = "failed"
+                        elif getattr(skill_result, "success", False):
+                            subtask.status = SubtaskStatus.SUCCEEDED
+                            subtask.result = getattr(
+                                skill_result, "data", skill_result
+                            )
+                            outputs[subtask.name] = subtask.result
+                            skill_used[subtask.name] = skill_name
+                            subtask_status[subtask.name] = "succeeded"
+                            logger.debug(
+                                "Subtask %s dispatched to skill %s OK",
+                                subtask.name,
+                                skill_name,
+                            )
+                        else:
+                            subtask.status = SubtaskStatus.FAILED
+                            err_msg = getattr(
+                                skill_result,
+                                "error",
+                                "Skill reported failure",
+                            )
+                            subtask.error = err_msg
+                            errors[subtask.name] = err_msg
+                            subtask_status[subtask.name] = "failed"
+                            logger.warning(
+                                "Skill %s failed for subtask %s: %s",
+                                skill_name,
+                                subtask.name,
+                                err_msg,
+                            )
+                    except Exception as exc:
+                        subtask.status = SubtaskStatus.FAILED
+                        subtask.error = str(exc)
+                        subtask.completed_at = (
+                            datetime.now(timezone.utc).isoformat()
+                        )
+                        errors[subtask.name] = str(exc)
+                        subtask_status[subtask.name] = "failed"
+                        # Per-subtask error isolation: log, do not raise.
+                        logger.exception(
+                            "Subtask %s dispatch raised exception "
+                            "(isolated, workflow continues): %s",
+                            subtask.name,
+                            exc,
+                        )
+                    finally:
+                        self._run_hooks("post", subtask, plan, skill_name)
+
+            # 5. Aggregate
+            total = len(plan.subtasks)
+            succeeded = sum(
+                1 for s in subtask_status.values() if s == "succeeded"
+            )
+            failed = sum(
+                1 for s in subtask_status.values() if s == "failed"
+            )
+
+            if failed == 0 and skipped_count == 0:
+                overall_status = "succeeded"
+            elif succeeded > 0:
+                overall_status = "partial"
+            else:
+                overall_status = "failed"
+
+            result: Dict[str, Any] = {
+                "task_id": plan.id,
+                "status": overall_status,
+                "outputs": outputs,
+                "skill_used": skill_used,
+                "errors": errors,
+                "summary": {
+                    "total": total,
+                    "succeeded": succeeded,
+                    "failed": failed,
+                    "skipped": skipped_count,
+                },
+                "dispatch_method": dispatch_method,
+                "subtask_status": subtask_status,
+            }
+
+            logger.info(
+                "run_with_skills: plan=%s status=%s (%d/%d succeeded, %d failed, %d skipped)",
+                plan.id[:8],
+                overall_status,
+                succeeded,
+                total,
+                failed,
+                skipped_count,
+            )
+            return result
+
+    @classmethod
+    def run_workflow(
+        cls,
+        workflow_id: str,
+        registry: Any,
+        task: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        High-level convenience: instantiate a workflow and run it with skills.
+
+        This method:
+          1. Imports ``WorkflowRegistry`` and ``create_workflow_registry``
+             from ``orchestration.workflows``.
+          2. Builds a fresh ``WorkflowRegistry`` containing all built-in
+             workflows (code_review, safety_analysis, etc.).
+          3. Instantiates the requested workflow as an OrchestrationPlan.
+          4. Dispatches the plan via ``run_with_skills`` using the
+             provided ``SkillRegistry``.
+
+        Args:
+            workflow_id: The workflow identifier (e.g. ``"code_review"``,
+                ``"safety_analysis"``).
+            registry: A ``SkillRegistry`` (or compatible object).
+            task: The high-level task description passed to the
+                workflow's decomposition function.
+            context: Optional context for both plan decomposition and
+                skill execution.
+
+        Returns:
+            The Result dict from ``run_with_skills``.
+
+        Raises:
+            KeyError: If the workflow_id is not registered.
+            ImportError: If ``orchestration.workflows`` cannot be imported.
+        """
+        # Local import to avoid circular imports (workflows imports orchestrator)
+        from orchestration.workflows import create_workflow_registry
+
+        workflow_registry = create_workflow_registry()
+        plan = workflow_registry.instantiate(
+            workflow_id=workflow_id,
+            task=task,
+            context=context,
+        )
+
+        orchestrator = cls()
+        return orchestrator.run_with_skills(
+            plan=plan,
+            registry=registry,
+            context=context,
+        )
+
+    def _auto_derive_skill_mapping(
+        self,
+        plan: OrchestrationPlan,
+        registry: Any,
+    ) -> Dict[str, str]:
+        """
+        Auto-derive subtask -> skill mapping by scoring tag/description overlap.
+
+        For each subtask, the registry's skills are scored based on
+        the number of matching tags/triggers between the subtask and
+        the skill. The highest-scoring skill is selected. Ties are
+        broken by alphabetical order for determinism.
+        """
+        mapping: Dict[str, str] = {}
+
+        # Build a cached list of (skill_name, tag_set, description, name)
+        all_skills_cache: List[Tuple[str, Set[str], str, str]] = []
+        try:
+            for skill in registry.get_all_skills():
+                meta = skill.metadata
+                tags = {t.lower() for t in (meta.tags or [])}
+                all_skills_cache.append(
+                    (meta.name, tags, (meta.description or "").lower(), meta.name.lower())
+                )
+        except Exception as exc:
+            logger.warning(
+                "Could not enumerate registry skills for auto-mapping: %s", exc
+            )
+            return mapping
+
+        for subtask in plan.subtasks.values():
+            # Build a corpus from the subtask's name, description, capabilities
+            subtask_tokens: Set[str] = set()
+            for raw in (subtask.name, subtask.description):
+                if raw:
+                    subtask_tokens.update(
+                        tok.lower()
+                        for tok in raw.replace("_", " ").replace("-", " ").split()
+                        if len(tok) > 2
+                    )
+            for cap in (subtask.required_capabilities or set()):
+                subtask_tokens.add(cap.lower())
+
+            best_name: Optional[str] = None
+            best_score = 0
+            for skill_name, tags, desc_lower, name_lower in all_skills_cache:
+                score = 0
+                # Tag overlap is the strongest signal
+                if tags:
+                    overlap = len(subtask_tokens & tags)
+                    score += overlap * 3
+                # Description overlap is weaker
+                for tok in subtask_tokens:
+                    if tok in desc_lower:
+                        score += 1
+                    if tok in name_lower:
+                        score += 2
+                # Subtask name itself in skill name is the strongest hint
+                if subtask.name and subtask.name.lower() in name_lower:
+                    score += 5
+
+                if score > best_score:
+                    best_score = score
+                    best_name = skill_name
+
+            if best_name and best_score > 0:
+                mapping[subtask.name] = best_name
+                logger.debug(
+                    "Auto-mapped subtask %s -> skill %s (score=%d)",
+                    subtask.name,
+                    best_name,
+                    best_score,
+                )
+            else:
+                logger.debug(
+                    "No skill match for subtask %s (corpus=%s)",
+                    subtask.name,
+                    subtask_tokens,
+                )
+
+        return mapping
+
     def aggregate_results(
         self, result: ExecutionResult
     ) -> Dict[str, Any]:

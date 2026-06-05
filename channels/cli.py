@@ -148,6 +148,10 @@ SLASH_COMMANDS: Dict[str, Dict[str, str]] = {
         "description": "退出 CLI (Exit the CLI)",
         "usage": "/quit",
     },
+    "/agent": {
+        "description": "查看 LLM 智能体连接状态 (Show LLM agent status)",
+        "usage": "/agent",
+    },
 }
 
 
@@ -223,6 +227,11 @@ class CLIChannel(BaseChannel):
         # Callbacks
         self._on_command: List[Callable] = []
         self._on_stream: List[Callable] = []
+
+        # Optional bound agent (set via bind_agent). If not bound, regular
+        # (non-slash) input will try to lazy-import the core agent.
+        self._agent: Any = None
+        self._agent_status: str = "unbound"  # "unbound" | "ready" | "unavailable"
 
         logger.info("CLIChannel initialized (rich=%s, ptk=%s)", self._use_rich, self._use_ptk)
 
@@ -436,14 +445,36 @@ class CLIChannel(BaseChannel):
             return
 
         # Regular message -> dispatch to external handlers
-        for handler in self._message_handlers:
-            try:
-                if asyncio.iscoroutinefunction(handler):
-                    await handler(message)
-                else:
-                    handler(message)
-            except Exception as e:
-                await self._output(f"Handler error: {e}", style="error")
+        if self._message_handlers:
+            for handler in self._message_handlers:
+                try:
+                    if asyncio.iscoroutinefunction(handler):
+                        await handler(message)
+                    else:
+                        handler(message)
+                except Exception as e:
+                    await self._output(f"Handler error: {e}", style="error")
+            return
+
+        # No registered handlers: try the bound agent first, then a
+        # lazy-imported core agent. If neither is available, surface a
+        # friendly message explaining how to enable the LLM-backed agent.
+        if self._agent is None:
+            self._agent = self._try_load_core_agent()
+            if self._agent is not None:
+                self._agent_status = "ready"
+
+        if self._agent is None:
+            await self._output(
+                "No agent is currently loaded. Use /help to see available "
+                "commands. To use the LLM-backed agent, set the "
+                "NONULL_LLM_API_KEY environment variable.",
+                style="warning",
+            )
+            return
+
+        # Run the agent synchronously to keep REPL behavior predictable.
+        await self._run_bound_agent(message)
 
     # ------------------------------------------------------------------
     # Built-in Slash Commands
@@ -465,6 +496,7 @@ class CLIChannel(BaseChannel):
             "config": self._cmd_config,
             "stats": self._cmd_stats,
             "export": self._cmd_export,
+            "agent": self._cmd_agent,
             "quit": self._cmd_quit,
             "exit": self._cmd_quit,
             "q": self._cmd_quit,
@@ -616,6 +648,42 @@ class CLIChannel(BaseChannel):
         """退出 CLI / Exit CLI."""
         await self._output("Goodbye! 再见！", style="welcome")
         self._running = False
+
+    async def _cmd_agent(self, args: str = "") -> None:
+        """显示智能体连接状态 / Show LLM agent connection status."""
+        api_key_set = bool(os.environ.get("NONULL_LLM_API_KEY"))
+        # Probe the lazy import only when the env var is set so we don't
+        # generate noise for users who intentionally haven't configured one.
+        if self._agent is None and api_key_set:
+            self._agent = self._try_load_core_agent()
+            if self._agent is not None:
+                self._agent_status = "ready"
+
+        status = "ready" if self._agent is not None else self._agent_status
+
+        lines = [
+            f"LLM agent:          {status}",
+            f"NONULL_LLM_API_KEY: {'set' if api_key_set else 'not set'}",
+            f"Bound agent:        {'yes' if self._agent is not None else 'no'}",
+            f"Message handlers:   {len(self._message_handlers)}",
+        ]
+        if status == "ready":
+            lines.append(
+                "\nNon-slash input will be forwarded to the bound agent."
+            )
+        elif status == "unavailable":
+            lines.append(
+                "\nSet NONULL_LLM_API_KEY and restart, or call "
+                "bind_agent(agent) to wire an LLM-backed agent."
+            )
+        else:
+            lines.append(
+                "\nNo agent is wired. Regular text will print a warning "
+                "until an agent is bound or the env var is set."
+            )
+
+        style = "info" if status == "ready" else "warning"
+        await self._output("\n".join(lines), style=style)
 
     # ------------------------------------------------------------------
     # Output Methods
@@ -791,6 +859,140 @@ class CLIChannel(BaseChannel):
         logger.debug("Custom command '/%s' registered", name)
 
     # ------------------------------------------------------------------
+    # Agent Wiring
+    # ------------------------------------------------------------------
+
+    def register_message_handler(
+        self, handler: Callable[["Message"], Any]
+    ) -> Callable[["Message"], Any]:
+        """Register an external message handler (alias for on_message).
+
+        Allows wiring an agent or any callback that should receive every
+        non-slash user input. The handler may be sync or async and receives
+        the full ``Message`` object so it has access to metadata, session id,
+        and user id in addition to the raw content.
+
+        注册外部消息处理程序 (``on_message`` 的别名)。允许接入智能体或任何
+        接收每条非斜杠用户输入的回调。处理程序可以是同步或异步,并接收完整
+        的 ``Message`` 对象。
+
+        Args:
+            handler: Callable accepting a ``Message`` (sync or async).
+
+        Returns:
+            The same handler (usable as a decorator).
+        """
+        self._message_handlers.append(handler)
+        logger.debug(
+            "Message handler registered on '%s': %s",
+            self.name,
+            getattr(handler, "__name__", repr(handler)),
+        )
+        return handler
+
+    def bind_agent(self, agent: Any) -> None:
+        """Bind a pre-constructed agent to be used for non-slash input.
+
+        Wires an LLM-backed agent (or any object exposing ``run_sync`` or
+        ``run``) so that regular text input is forwarded to it. This is the
+        recommended way to enable the LLM-backed CLI experience without
+        relying on the lazy import.
+
+        绑定一个已构造的智能体,用于处理非斜杠输入。推荐在希望启用 LLM 支持的
+        CLI 时使用,以避免依赖延迟导入。
+
+        Args:
+            agent: Object exposing ``run_sync`` (preferred) or ``run``.
+        """
+        self._agent = agent
+        self._agent_status = "ready"
+        logger.info("Agent bound to CLI channel '%s'", self.name)
+
+    def _try_load_core_agent(self) -> Any:
+        """Attempt a lazy import of the core agent.
+
+        Tries to import :class:`core.agent_core.Nonull` and instantiate it.
+        Returns ``None`` (and sets ``_agent_status = 'unavailable'``) if the
+        import or construction fails for any reason — the CLI must never
+        crash simply because no LLM is configured.
+
+        尝试懒加载核心智能体 ``Nonull``。任何一步失败都不会让 CLI 崩溃。
+
+        Returns:
+            The constructed agent instance, or ``None`` on failure.
+        """
+        # Honor the env-var contract documented in /agent output.
+        if not os.environ.get("NONULL_LLM_API_KEY"):
+            self._agent_status = "unavailable"
+            logger.debug(
+                "Skipping lazy core-agent import: NONULL_LLM_API_KEY not set"
+            )
+            return None
+
+        try:
+            # Local import to keep the CLI usable without the core package.
+            from core.agent_core import Nonull as CoreAgent  # type: ignore
+        except Exception as e:  # pragma: no cover - environment dependent
+            self._agent_status = "unavailable"
+            logger.debug("Core agent import failed: %s", e)
+            return None
+
+        try:
+            return CoreAgent()
+        except Exception as e:  # pragma: no cover - environment dependent
+            self._agent_status = "unavailable"
+            logger.debug("Core agent construction failed: %s", e)
+            return None
+
+    async def _run_bound_agent(self, message: "Message") -> None:
+        """Run the bound (or lazy-loaded) agent for a single user message.
+
+        Prefers the synchronous ``run_sync`` entry point; falls back to
+        awaiting an async ``run`` coroutine. Any exception is surfaced as a
+        warning, not a crash, so the REPL remains usable.
+        """
+        agent = self._agent
+        if agent is None:
+            return
+
+        try:
+            if hasattr(agent, "run_sync") and callable(agent.run_sync):
+                result = agent.run_sync(message.content)
+            elif hasattr(agent, "run") and callable(agent.run):
+                coro = agent.run(message.content)
+                if asyncio.iscoroutine(coro):
+                    result = await coro
+                else:
+                    result = coro
+            else:
+                await self._output(
+                    "Bound agent has neither run_sync() nor run(); cannot "
+                    "process message.",
+                    style="error",
+                )
+                return
+
+            # Display the result. Support common return shapes.
+            text: Optional[str] = None
+            if isinstance(result, str):
+                text = result
+            elif isinstance(result, dict):
+                # Common Nonull run_sync() shape: {"output": ..., "response": ...}
+                for key in ("output", "response", "result", "content", "message"):
+                    if key in result and isinstance(result[key], str):
+                        text = result[key]
+                        break
+                if text is None:
+                    text = json.dumps(result, ensure_ascii=False, indent=2)
+            else:
+                text = str(result)
+
+            if text:
+                await self._output(text, style="message")
+        except Exception as e:  # pragma: no cover - environment dependent
+            await self._output(f"Agent error: {e}", style="error")
+
+    # ------------------------------------------------------------------
     # Signal Handling
     # ------------------------------------------------------------------
 
@@ -841,6 +1043,11 @@ def main() -> None:
         print("Usage: Nonull [--help]")
         print("       Nonull  # 启动交互模式")
         return
+
+    # Startup check: warn if LLM API key is not configured.
+    # 启动检查:未配置 LLM API key 时给出友好提示。
+    if not os.environ.get("NONULL_LLM_API_KEY"):
+        print("(Agent mode disabled — set NONULL_LLM_API_KEY to enable)")
 
     async def _run():
         channel = CLIChannel()
