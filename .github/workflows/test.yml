@@ -60,11 +60,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check for forbidden marketing claims
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install -e ".[dev]"
+      - name: Run marketing-claims guard
         run: |
-          ! grep -rn "ASIL-D Ready" docs/ README.md CLAUDE.md AGENT.md || (echo "ERROR: ASIL-D Ready claim found" && exit 1)
-          ! grep -rn "ISO 26262 Compliant" docs/ README.md CLAUDE.md AGENT.md || (echo "ERROR: ISO 26262 Compliant claim found" && exit 1)
-          ! grep -rn "production-ready" docs/ README.md CLAUDE.md AGENT.md || (echo "ERROR: production-ready claim found" && exit 1)
-          ! grep -rn "certified safety" docs/ README.md CLAUDE.md AGENT.md || (echo "ERROR: certified safety claim found" && exit 1)
-          ! grep -rn "车规级" docs/ README.md CLAUDE.md AGENT.md || (echo "ERROR: 车规级 claim found" && exit 1)
-          echo "✓ No forbidden marketing claims found"
+          python -m pytest tests/test_no_marketing_claims.py -v

@@ -15,34 +15,59 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from .driving_persona import PersonaType
-from .persona_orchestrator import (
-    # Core enums
-    DrivingArchetype,
-    DrivingStyle,
-    ExperienceLevel,
-    ScenarioType,
-    WeatherCondition,
-    RoadCondition,
-    BadgeCategory,
-    BadgeRarity,
-    CopilotInterventionStyle,
-    CopilotPersona,
-
-    # Data classes
-    PersonaProfile,
-    DrivingScenario,
-    Badge,
-    CopilotConfig,
-    GrowthStats,
-    SessionRecord,
-    PersonaState,
-
-    # Main orchestrator
-    PersonaOrchestrator,
+# ---------------------------------------------------------------------------
+# Driving persona (角色 / character)
+# ---------------------------------------------------------------------------
+from .driving_persona import (
+    PersonaType,
+    AnalysisFocus,
+    DrivingPersona,
+    ConservativePersona,
+    SportyPersona,
+    VeteranPersona,
+    get_persona,
 )
-from .scenario_engine import ScenarioEngine
-from .safety_badge import SafetyBadgeSystem
+
+# ---------------------------------------------------------------------------
+# Scenario engine (场景思维 / scenario thinking)
+# ---------------------------------------------------------------------------
+from .scenario_engine import (
+    OperationalDomain,
+    DOMAIN_LABELS,
+    DifficultyLevel,
+    ADASScenario,
+    ScenarioEngine,
+    get_engine,
+)
+
+# ---------------------------------------------------------------------------
+# Safety metrics (安全指标 / advisory safety metrics)
+# ---------------------------------------------------------------------------
+from .safety_badge import (
+    BadgeCategory,
+    CATEGORY_META,
+    BadgeLevel,
+    LEVEL_META,
+    BadgeScore,
+    SafetyBadgeSystem,
+    get_badge_system,
+)
+
+# ---------------------------------------------------------------------------
+# Co-pilot (副驾提醒 / proactive alert system)
+# ---------------------------------------------------------------------------
+from .co_pilot import (
+    AlertSeverity,
+    Alert,
+    TelemetryContext,
+    AlertRule,
+    CoPilot,
+)
+
+# ---------------------------------------------------------------------------
+# Orchestrator (人格编排器 / persona orchestrator — top-level entry point)
+# ---------------------------------------------------------------------------
+from .persona_orchestrator import PersonaOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -52,32 +77,39 @@ __license__ = "MIT"
 __description__ = "Persona Orchestration for Autonomous Driving AI (驾驶人格编排系统)"
 
 __all__: List[str] = [
-    # Enums
+    # Driving persona
     "PersonaType",
-    "DrivingArchetype",
-    "DrivingStyle",
-    "ExperienceLevel",
-    "ScenarioType",
-    "WeatherCondition",
-    "RoadCondition",
-    "BadgeCategory",
-    "BadgeRarity",
-    "CopilotInterventionStyle",
-    "CopilotPersona",
+    "AnalysisFocus",
+    "DrivingPersona",
+    "ConservativePersona",
+    "SportyPersona",
+    "VeteranPersona",
+    "get_persona",
 
-    # Data classes
-    "PersonaProfile",
-    "DrivingScenario",
-    "Badge",
-    "CopilotConfig",
-    "GrowthStats",
-    "SessionRecord",
-    "PersonaState",
-
-    # Main orchestrator
-    "PersonaOrchestrator",
-
-    # Engines & systems
+    # Scenario engine
+    "OperationalDomain",
+    "DOMAIN_LABELS",
+    "DifficultyLevel",
+    "ADASScenario",
     "ScenarioEngine",
+    "get_engine",
+
+    # Safety metrics
+    "BadgeCategory",
+    "CATEGORY_META",
+    "BadgeLevel",
+    "LEVEL_META",
+    "BadgeScore",
     "SafetyBadgeSystem",
+    "get_badge_system",
+
+    # Co-pilot
+    "AlertSeverity",
+    "Alert",
+    "TelemetryContext",
+    "AlertRule",
+    "CoPilot",
+
+    # Orchestrator (top-level entry point)
+    "PersonaOrchestrator",
 ]

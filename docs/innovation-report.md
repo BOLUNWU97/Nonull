@@ -318,7 +318,7 @@ Key capabilities:
 **Tagline:** *"Safety is not a feature — it's the architecture"*
 
 **What it is:**
-A **constitutional safety layer** inspired by Anthropic's Constitutional AI and extended with autonomous driving-specific constraints. This is a monitor-system architecture where a lightweight, formally-verified **Runtime Safety Monitor** runs alongside the driving agent, continuously checking actions against a constitution of driving rules.
+A **constitutional safety layer** inspired by Anthropic's Constitutional AI and extended with autonomous driving-specific constraints. This is a monitor-system architecture where a lightweight **Runtime Safety Monitor** runs alongside the driving agent, continuously checking actions against a constitution of driving rules. The monitor is **advisory** — it does not perform formal verification or implement certified safety-element processes.
 
 Constitutional rules include:
 - **Hard constraints:** Never exceed speed limit by more than 10%, never cross solid lines, always stop at red lights
@@ -333,9 +333,9 @@ Runtime Monitor architecture (based on NEURAL-QWEN's Constitutional AI and the L
 - **Budget-based circuit breakers:** Kill workflows exceeding configurable risk thresholds
 
 **How it benefits autonomous driving:**
-- **Provable safety bounds:** Formal verification of critical constraints
+- **Best-effort safety constraints:** Heuristic checks against a configurable rule set (advisory, not formally verified)
 - **No single point of failure:** Monitor is architecturally separate from the driving policy
-- **Regulatory compliance:** Full audit trail of safety decisions
+- **Regulatory pattern references:** Full audit trail of safety decisions (advisory, not a certified safety case)
 - **Graceful escalation:** Monitor can trigger handoff to human driver if confidence drops
 
 **Implementation difficulty:** Medium
@@ -509,7 +509,7 @@ Extended with:
 | P2 | **PE-RLHF** (Innovation 5) | Learns human preferences within physics constraints |
 | P2 | **RIA Loop with World Models** (Bonus) | Imagine-before-act paradigm for near-zero collision |
 
-**Milestone:** Nonull trains in simulation, learns from human feedback, and achieves near-perfect safety in closed-loop testing.
+**Milestone:** Nonull trains in simulation, learns from human feedback, and shows improving safety metrics in closed-loop testing (research target — does not imply certified safety or production readiness).
 
 ### Phase 3: Memory & Self-Improvement (Months 6-10)
 
@@ -613,8 +613,8 @@ Extended with:
 - **Fleet-wide** ACP V2X coordination across 10,000+ vehicles
 - **Cross-manufacturer** agent protocol compatibility
 - **Global** regulatory compliance via automated safety case maintenance
-- **Zero-fatality** safety record targeted
-- **Human-level reasoning** on 99%+ of driving scenarios
+- **Continuously improving** safety record (advisory metrics, research target — not a safety claim)
+- **Improving reasoning quality** across an expanding share of driving scenarios (research target)
 - **Open-source contributions** to AD agent community (VLM models, safety frameworks, simulation tools)
 
 ### 5 Year Horizon: "Beyond Driving"
