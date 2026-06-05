@@ -825,3 +825,34 @@ class CLIChannel(BaseChannel):
         """Check if rich console is available and configured.
         检查是否可用并配置了 rich console。"""
         return self._use_rich and self._console is not None
+
+
+def main() -> None:
+    """Nonull CLI 入口 / Nonull CLI entry point.
+
+    Usage:
+        Nonull                  # 交互模式
+        Nonull --help           # 帮助
+    """
+    import sys
+
+    if "--help" in sys.argv or "-h" in sys.argv:
+        print("Nonull 智驾智能体 CLI")
+        print("Usage: Nonull [--help]")
+        print("       Nonull  # 启动交互模式")
+        return
+
+    async def _run():
+        channel = CLIChannel()
+        await channel.connect()
+        await channel.receive_message()
+        await channel.run()
+
+    try:
+        asyncio.run(_run())
+    except KeyboardInterrupt:
+        print("\nGoodbye! 再见！")
+
+
+if __name__ == "__main__":
+    main()

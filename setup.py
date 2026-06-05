@@ -32,15 +32,15 @@ from setuptools import find_packages, setup
 HERE = Path(__file__).parent.resolve()
 
 def _get_version() -> str:
-    """Read version from channels package __init__.
-    从 channels 包的 __init__ 读取版本号。"""
-    init_path = HERE / "channels" / "__init__.py"
+    """Read version from core package __init__.
+    从 core 包的 __init__ 读取版本号。"""
+    init_path = HERE / "core" / "__init__.py"
     if init_path.exists():
         content = init_path.read_text(encoding="utf-8")
         match = re.search(r'__version__\s*=\s*"([^"]+)"', content)
         if match:
             return match.group(1)
-    return "1.0.0"
+    return "0.1.0"
 
 def _get_long_description() -> str:
     """Get the long description from README if available.
@@ -56,8 +56,10 @@ def _get_long_description() -> str:
 # ---------------------------------------------------------------------------
 
 INSTALL_REQUIRES = [
-    # Core - no dependencies beyond stdlib for the base system
-    # Platform adapters require additional dependencies (optional)
+    # Core
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "numpy>=1.24",
 
     # CLI channel extras (optional, but recommended):
     # "rich>=13.0.0",         # Rich text formatting
@@ -135,11 +137,11 @@ setup(
     ),
     long_description=_get_long_description(),
     long_description_content_type="text/markdown",
-    url="https://github.com/Nonull/Nonull",
+    url="https://github.com/BOLUNWU97/nonull",
     project_urls={
-        "Documentation": "https://docs.Nonull.ai",
-        "Source": "https://github.com/Nonull/Nonull",
-        "Bug Tracker": "https://github.com/Nonull/Nonull/issues",
+        "Documentation": "https://github.com/BOLUNWU97/nonull",
+        "Source": "https://github.com/BOLUNWU97/nonull",
+        "Bug Tracker": "https://github.com/BOLUNWU97/nonull/issues",
     },
     license="MIT",
     classifiers=[

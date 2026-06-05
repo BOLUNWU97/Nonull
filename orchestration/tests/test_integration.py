@@ -1,6 +1,7 @@
 """Integration test for the orchestration package."""
 import sys
-sys.path.insert(0, r'C:\Users\EDY\Desktop\智能体')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from orchestration import (
     AgentType, AgentStatus, ConflictRecord, ConflictSeverity,

@@ -299,7 +299,11 @@ class SafetyGuardian:
         # 文件路径
         target = context.get("target", "")
         if isinstance(target, str):
-            if ".." in target or target.startswith("/etc") or target.startswith("C:\\Windows"):
+            import os
+            dangerous_paths = ["/etc", "/proc", "/sys", "/bin", "/boot", "/dev"]
+            if os.name == "nt":
+                dangerous_paths += ["C:\\Windows", "C:\\Program Files", "C:\\System32"]
+            if ".." in target or any(target.startswith(p) for p in dangerous_paths):
                 risk += 0.4
         return risk
 
