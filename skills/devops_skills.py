@@ -1,8 +1,12 @@
 """
 DevOps Skills - DevOps 技能
 
-自动驾驶系统的CI/CD流水线管理、部署自动化和系统监控。
-CI/CD pipeline management, deployment automation, and system monitoring for autonomous driving.
+This module contains demo templates for CI/CD and monitoring workflows.
+The output is intended for development scaffolding only — integrate with
+your actual CI/monitoring systems for real data.
+
+本模块包含 CI/CD 与监控工作流的演示模板。输出仅供开发脚手架使用——
+如需真实数据，请接入实际 CI / 监控系统。
 """
 
 from __future__ import annotations
@@ -483,17 +487,41 @@ class DeploymentSkill(BaseSkill):
         self, target: str, version: str, artifacts: Optional[Dict], env: str
     ) -> Dict[str, Any]:
         """执行部署 / Execute deployment."""
-        import random
-        success = random.random() > 0.1  # 90% success rate simulation
+        # NOTE: This skill does NOT connect to real CI/CD/monitoring systems.
+        # The "metrics" returned are DEMO TEMPLATES, not real measurements.
+        # To use this in production, integrate with your actual CI/monitoring API.
+        #
+        # NOTE: 本技能并未连接真实的 CI/CD / 监控系统。
+        # 返回的 "指标" 是演示模板，不是真实测量值。
+        # 用于生产环境时，请接入实际的 CI / 监控 API。
+        #
+        # Deterministic placeholder derived from inputs (not random).
+        # 基于输入派生的确定性占位值（而非随机值）。
+        artifact_count = 0
+        artifact_size_kb = 0
+        if isinstance(artifacts, dict):
+            artifact_count = len(artifacts)
+            artifact_size_kb = sum(
+                len(str(v)) for v in artifacts.values()
+            ) // 1024
+        # Deterministic "duration" estimate (seconds) based on artifact count + size.
+        estimated_duration_s = round(30.0 + artifact_count * 5.0 + artifact_size_kb * 0.1, 1)
 
         return {
             "deployment_id": f"DEPLOY-{version}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
             "target": target,
             "version": version,
             "environment": env,
-            "status": "completed" if success else "failed",
-            "duration_s": round(random.uniform(30, 120), 1),
-            "log": "部署完成，所有服务正常运行" if success else "部署失败，正在回滚",
+            "status": "DEMO — execution not performed; integrate with real CI/CD to deploy",
+            "duration_s": "DEMO — not measured (estimated: %.1fs from artifact count=%d)" % (
+                estimated_duration_s, artifact_count
+            ),
+            "log": (
+                "DEMO_TEMPLATE: deployment not actually executed. "
+                "Wire this skill to your CI/CD system (e.g., ArgoCD, Spinnaker) "
+                "to perform real deployments."
+            ),
+            "_data_source": "n/a (demo template)",
         }
 
     def _verify_deployment(
@@ -617,46 +645,63 @@ class MonitoringSkill(BaseSkill):
         self, metrics: Dict, time_range: str, rules: List
     ) -> Dict[str, Any]:
         """系统健康检查 / System health check."""
+        # NOTE: This skill does NOT connect to real CI/CD/monitoring systems.
+        # The "metrics" returned are DEMO TEMPLATES, not real measurements.
+        # To use this in production, integrate with your actual CI/monitoring API.
+        #
+        # NOTE: 本技能并未连接真实的 CI/CD / 监控系统。
+        # 返回的 "指标" 是演示模板，不是真实测量值。
+        # 用于生产环境时，请接入实际的 CI / 监控 API。
         checks: List[Dict[str, Any]] = [
             {
                 "component": "CPU",
-                "status": "healthy",
-                "current_value": f"{random.uniform(20, 80):.1f}%",
+                "status": "unknown",
+                "current_value": "DEMO — no real telemetry source connected",
+                "unit": "%",
                 "threshold": "90%",
+                "source": "n/a",
             },
             {
                 "component": "Memory",
-                "status": "healthy",
-                "current_value": f"{random.uniform(40, 75):.1f}%",
+                "status": "unknown",
+                "current_value": "DEMO — no real telemetry source connected",
+                "unit": "%",
                 "threshold": "85%",
+                "source": "n/a",
             },
             {
                 "component": "Disk",
-                "status": "healthy",
-                "current_value": f"{random.uniform(30, 60):.1f}%",
+                "status": "unknown",
+                "current_value": "DEMO — no real telemetry source connected",
+                "unit": "%",
                 "threshold": "90%",
+                "source": "n/a",
             },
             {
                 "component": "Network",
-                "status": "healthy",
-                "current_value": f"{random.uniform(10, 100)} Mbps",
+                "status": "unknown",
+                "current_value": "DEMO — no real telemetry source connected",
+                "unit": "Mbps",
                 "threshold": "> 1 Mbps",
+                "source": "n/a",
             },
             {
                 "component": "GPU",
-                "status": "healthy",
-                "current_value": f"{random.uniform(30, 90):.1f}%",
+                "status": "unknown",
+                "current_value": "DEMO — no real telemetry source connected",
+                "unit": "%",
                 "threshold": "95%",
+                "source": "n/a",
             },
         ]
 
-        all_healthy = all(c["status"] == "healthy" for c in checks)
         return {
-            "overall_status": "healthy" if all_healthy else "degraded",
+            "overall_status": "DEMO — no real telemetry source connected",
             "checks": checks,
-            "healthy_count": sum(1 for c in checks if c["status"] == "healthy"),
+            "healthy_count": 0,
             "total_checks": len(checks),
             "last_updated": datetime.now().isoformat(),
+            "_data_source": "n/a (demo template)",
         }
 
     def _sensor_health_check(
@@ -706,38 +751,50 @@ class MonitoringSkill(BaseSkill):
         self, metrics: Dict, time_range: str, rules: List
     ) -> Dict[str, Any]:
         """性能监控 / Performance monitoring."""
+        # NOTE: This skill does NOT connect to real CI/CD/monitoring systems.
+        # The "metrics" returned are DEMO TEMPLATES, not real measurements.
+        # To use this in production, integrate with your actual CI/monitoring API.
+        #
+        # NOTE: 本技能并未连接真实的 CI/CD / 监控系统。
+        # 返回的 "指标" 是演示模板，不是真实测量值。
+        # 用于生产环境时，请接入实际的 CI / 监控 API。
         perf_metrics: Dict[str, Any] = {
             "pipeline_latency_ms": {
-                "avg": round(random.uniform(10, 50), 1),
-                "p95": round(random.uniform(30, 80), 1),
-                "p99": round(random.uniform(50, 120), 1),
+                "avg": "DEMO — no real telemetry source connected",
+                "p95": "DEMO — no real telemetry source connected",
+                "p99": "DEMO — no real telemetry source connected",
             },
             "perception_fps": {
-                "avg": round(random.uniform(15, 30), 1),
-                "min": round(random.uniform(5, 15), 1),
+                "avg": "DEMO — no real telemetry source connected",
+                "min": "DEMO — no real telemetry source connected",
             },
             "planning_cycle_ms": {
-                "avg": round(random.uniform(20, 60), 1),
-                "max": round(random.uniform(50, 100), 1),
+                "avg": "DEMO — no real telemetry source connected",
+                "max": "DEMO — no real telemetry source connected",
             },
         }
 
-        # 性能告警 / Performance alerts
-        alerts = []
-        if perf_metrics["perception_fps"]["min"] < 10:
-            alerts.append("感知模块FPS低于10，可能丢帧")
-
+        # No real alerts to derive — return a clearly empty/demo result.
+        # 无可派生的真实告警 — 返回明确的空/演示结果。
         return {
             "time_range": time_range,
             "metrics": perf_metrics,
-            "alerts": alerts,
-            "status": "warning" if alerts else "normal",
+            "alerts": [],
+            "status": "DEMO — no real telemetry source connected",
+            "_data_source": "n/a (demo template)",
         }
 
     def _manage_alerts(
         self, metrics: Dict, time_range: str, rules: List
     ) -> Dict[str, Any]:
         """管理告警 / Manage alerts."""
+        # NOTE: This skill does NOT connect to real CI/CD/monitoring systems.
+        # The "metrics" returned are DEMO TEMPLATES, not real measurements.
+        # To use this in production, integrate with your actual CI/monitoring API.
+        #
+        # NOTE: 本技能并未连接真实的 CI/CD / 监控系统。
+        # 返回的 "指标" 是演示模板，不是真实测量值。
+        # 用于生产环境时，请接入实际的 CI / 监控 API。
         if not rules:
             rules = [
                 {"name": "CPU过载", "condition": "cpu > 90%", "severity": "critical"},
@@ -749,7 +806,7 @@ class MonitoringSkill(BaseSkill):
 
         return {
             "total_alert_rules": len(rules),
-            "active_alerts_count": random.randint(0, 3),
+            "active_alerts_count": "DEMO — no real alert source",
             "alert_rules": [
                 {
                     "name": r.get("name", r.get("rule", f"Rule {i}")),
@@ -759,29 +816,30 @@ class MonitoringSkill(BaseSkill):
                 }
                 for i, r in enumerate(rules)
             ],
-            "recent_alerts": [
-                {
-                    "alert": "CPU使用率超过90%",
-                    "time": "2026-06-05 10:23:15",
-                    "severity": "critical",
-                    "resolved": True,
-                },
-                {
-                    "alert": "LiDAR数据率下降",
-                    "time": "2026-06-05 09:45:00",
-                    "severity": "warning",
-                    "resolved": True,
-                },
-            ],
+            "recent_alerts": [],
+            "_data_source": "n/a (demo template)",
         }
 
     def _analyze_incident(
         self, metrics: Dict, time_range: str, rules: List
     ) -> Dict[str, Any]:
         """分析事件 / Analyze incident."""
-        import random
-
-        incident_types = [
+        # NOTE: This skill does NOT connect to real CI/CD/monitoring systems.
+        # The "metrics" returned are DEMO TEMPLATES, not real measurements.
+        # To use this in production, integrate with your actual CI/monitoring API.
+        #
+        # NOTE: 本技能并未连接真实的 CI/CD / 监控系统。
+        # 返回的 "指标" 是演示模板，不是真实测量值。
+        # 用于生产环境时，请接入实际的 CI / 监控 API。
+        # The incident_types catalog below is a TEMPLATE for what an incident
+        # response report looks like — it is NOT an actual incident detection
+        # result. Wire this skill to your real alerting/incident-management
+        # system (e.g., PagerDuty, Opsgenie) for real incident analysis.
+        #
+        # 下面的 incident_types 目录是事件响应报告的"模板"——
+        # 并非实际的事件检测结果。如需真实事件分析，请接入您的
+        # 真实告警/事件管理系统（如 PagerDuty、Opsgenie）。
+        incident_types_template = [
             {
                 "type": "感知模块降级",
                 "symptoms": ["目标检测FPS下降", "CPU使用率突增", "内存使用率上升"],
@@ -805,14 +863,21 @@ class MonitoringSkill(BaseSkill):
             },
         ]
 
-        incident = random.choice(incident_types)
+        # No real incident has been detected — return a demo template structure
+        # without picking a fake incident type at random.
+        # 并未检测到真实事件 — 返回演示模板结构（不随机挑选伪事件类型）。
         return {
-            "incident_type": incident["type"],
-            "detected_at": "2026-06-05 10:30:00",
-            "severity": incident["severity"],
-            "symptoms": incident["symptoms"],
-            "probable_causes": incident["probable_causes"],
-            "recommended_actions": [incident["resolution"]],
-            "estimated_repair_time_min": random.randint(15, 120),
-            "affected_components": ["perception", "planning"],
+            "incident_type": "DEMO — no real incident source connected",
+            "detected_at": None,
+            "severity": "unknown",
+            "symptoms": [],
+            "probable_causes": [],
+            "recommended_actions": [
+                "DEMO_TEMPLATE: integrate with a real incident management system "
+                "(PagerDuty, Opsgenie, etc.) to receive real incidents.",
+            ],
+            "estimated_repair_time_min": "DEMO — not measured",
+            "affected_components": [],
+            "available_templates": [t["type"] for t in incident_types_template],
+            "_data_source": "n/a (demo template)",
         }

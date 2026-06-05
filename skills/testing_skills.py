@@ -1,12 +1,28 @@
 """
 Testing Skills - 测试技能
 
+These skills generate demo/test data only. For real testing/simulation workflows,
+integrate with your actual test framework and simulator.
+本技能仅用于生成演示/测试数据。真实测试/仿真工作流请接入实际测试框架与仿真器。
+
 自动驾驶系统的测试用例设计、SIL/HIL 测试和回归测试。
 Test case design, SIL/HIL testing, and regression testing for autonomous driving.
+
+重要: 这些技能生成的测试通过率、延迟、响应时间等指标都是 DEMO 模拟值。
+Important: Pass rates, latencies, and response times emitted by these skills are
+DEMO simulated values, not real measurements.
+
+To control behavior, the execution context may include:
+    {
+        "__demo_mode__": True,    # Use random data (default for backward compat)
+        "seed": 42,               # Optional: reproducible random
+        "deterministic": True,    # Optional: derive values from inputs (no random)
+    }
 """
 
 from __future__ import annotations
 
+import hashlib
 import math
 import random
 import logging
@@ -21,6 +37,53 @@ from skills.base import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# Module-level ID counters (deterministic by default)
+_REQ_COUNTER = {"value": 100}
+_TEST_VECTOR_COUNTER = {"value": 0}
+_FAULT_COUNTER = {"value": 0}
+
+
+def _make_rng(context: Optional[Dict[str, Any]]) -> random.Random:
+    """Build a per-call RNG based on context flags.
+
+    Behavior:
+        - If ``seed`` is provided in the context, use a Random(seed) instance
+          for reproducible randomness.
+        - If ``__demo_mode__`` is False OR ``deterministic`` is True, return a
+          Random instance seeded from a hash of the context so the same
+          inputs always produce the same outputs.
+        - Otherwise (default / legacy), use the global random module for
+          backwards compatibility.
+    """
+    ctx = context or {}
+    if "seed" in ctx:
+        try:
+            return random.Random(ctx["seed"])
+        except (TypeError, ValueError):
+            pass
+    if ctx.get("deterministic") or ctx.get("__demo_mode__") is False:
+        # Hash context to a stable seed
+        try:
+            payload = repr(sorted(ctx.items())).encode("utf-8")
+        except Exception:
+            payload = repr(ctx).encode("utf-8")
+        seed = int(hashlib.md5(payload).hexdigest()[:8], 16)
+        return random.Random(seed)
+    return random  # Use module-level random for backward compat
+
+
+def _next_id(counter: Dict[str, int], rng: random.Random) -> int:
+    """Return a deterministic ID derived from a counter (or RNG fallback)."""
+    counter["value"] += 1
+    return counter["value"]
+
+
+def _stable_hash_int(value: str, modulo: int) -> int:
+    """Map a string to a stable integer in [0, modulo)."""
+    h = int(hashlib.md5(value.encode("utf-8")).hexdigest()[:8], 16)
+    return h % modulo
 
 
 # =============================================================================
@@ -44,7 +107,7 @@ class TestCaseDesignSkill(BaseSkill):
     def metadata(self) -> SkillMetadata:
         return SkillMetadata(
             name="test_case_design",
-            version="1.0.0",
+            version="1.1.0",
             category=SkillCategory.TESTING,
             description="测试用例设计：等价类、边界值、场景组合测试设计",
             author="Nonull",
@@ -56,6 +119,8 @@ class TestCaseDesignSkill(BaseSkill):
                     "requirements": {"type": "array", "description": "需求列表"},
                     "specifications": {"type": "object", "description": "规格说明"},
                     "count": {"type": "integer", "description": "期望生成用例数"},
+                    "__demo_mode__": {"type": "boolean", "description": "DEMO mode flag"},
+                    "seed": {"type": "integer", "description": "Optional seed"},
                 },
                 "required": ["module", "requirements"],
             },
@@ -67,6 +132,8 @@ class TestCaseDesignSkill(BaseSkill):
         requirements: List = context.get("requirements", [])
         specs: Optional[Dict] = context.get("specifications", {})
         target_count: int = context.get("count", 0)
+
+        rng = _make_rng(context)
 
         test_cases: List[Dict[str, Any]] = []
 
@@ -95,7 +162,8 @@ class TestCaseDesignSkill(BaseSkill):
 
         # 按目标数量裁剪 / Trim to target
         if target_count > 0 and len(unique_cases) > target_count:
-            random.shuffle(unique_cases)
+            # Deterministic shuffle: use the RNG derived from context
+            rng.shuffle(unique_cases)
             unique_cases = unique_cases[:target_count]
 
         return {
@@ -105,6 +173,7 @@ class TestCaseDesignSkill(BaseSkill):
             "test_cases": unique_cases,
             "coverage_summary": self._summary_coverage(unique_cases, requirements),
             "generation_methods": ["requirement", "combination", "boundary"],
+            "is_demo_data": True,
         }
 
     def _generate_from_requirement(
@@ -114,10 +183,14 @@ class TestCaseDesignSkill(BaseSkill):
         cases = []
 
         if isinstance(req, dict):
-            req_id = req.get("id", f"REQ-{random.randint(100, 999)}")
+            # Deterministic: use the user-supplied id, or a stable hash-derived id
+            req_id = req.get("id")
+            if not req_id:
+                req_id = f"REQ-{_stable_hash_int(req.get('description', str(req)), 900) + 100}"
             req_desc = req.get("description", req.get("text", str(req)))
         else:
-            req_id = f"REQ-{random.randint(100, 999)}"
+            # Deterministic fallback for string requirements
+            req_id = f"REQ-{_stable_hash_int(str(req), 900) + 100}"
             req_desc = str(req)
 
         # 生成正例 / Positive test
@@ -282,6 +355,11 @@ class SILTestSkill(BaseSkill):
     软件在环测试技能。
     Software-in-the-loop testing for AD algorithms.
 
+    NOTE: Pass/fail results produced by this skill are DEMO placeholders,
+    not real measurements. Wire it to your real test framework (pytest, gtest,
+    etc.) for actual validation. Pass ``__demo_mode__=False`` or a numeric
+    ``seed`` to make the placeholders deterministic.
+
     测试内容 / Testing:
         - 算法单元测试 / Algorithm unit testing
         - 模块集成测试 / Module integration testing
@@ -292,7 +370,7 @@ class SILTestSkill(BaseSkill):
     def metadata(self) -> SkillMetadata:
         return SkillMetadata(
             name="sil_test",
-            version="1.0.0",
+            version="1.1.0",
             category=SkillCategory.TESTING,
             description="SIL测试：软件在环测试、接口验证与集成测试",
             author="Nonull",
@@ -307,6 +385,8 @@ class SILTestSkill(BaseSkill):
                     "module": {"type": "string"},
                     "test_vectors": {"type": "array"},
                     "test_script": {"type": "string"},
+                    "__demo_mode__": {"type": "boolean"},
+                    "seed": {"type": "integer"},
                 },
                 "required": ["test_type", "module"],
             },
@@ -319,25 +399,31 @@ class SILTestSkill(BaseSkill):
         test_vectors: List = context.get("test_vectors", [])
         test_script: Optional[str] = context.get("test_script")
 
+        rng = _make_rng(context)
+
         result: Dict[str, Any] = {
             "module": module,
             "test_type": test_type,
             "test_results": [],
             "summary": {},
             "recommendations": [],
+            "is_demo_data": True,
+            "data_source": "DEMO: replace with real test framework output",
         }
 
         if test_type in ("unit", "full"):
-            result["test_results"].extend(self._run_unit_tests(module, test_vectors))
+            result["test_results"].extend(
+                self._run_unit_tests(module, test_vectors, rng)
+            )
 
         if test_type in ("integration", "full"):
             result["test_results"].extend(
-                self._run_integration_tests(module, test_vectors)
+                self._run_integration_tests(module, test_vectors, rng)
             )
 
         if test_type in ("interface", "full"):
             result["test_results"].extend(
-                self._verify_interfaces(module, test_script)
+                self._verify_interfaces(module, test_script, rng)
             )
 
         passed = sum(1 for r in result["test_results"] if r.get("passed", False))
@@ -354,7 +440,7 @@ class SILTestSkill(BaseSkill):
 
         if passed < total:
             result["recommendations"].append(
-                f"有 {total - passed} 个测试未通过，请检查模块实现"
+                f"有 {total - passed} 个测试未通过，请检查模块实现 (DEMO占位结果)"
             )
         if coverage < 80:
             result["recommendations"].append("测试覆盖率低于80%，请补充测试用例")
@@ -362,17 +448,30 @@ class SILTestSkill(BaseSkill):
         return result
 
     def _run_unit_tests(
-        self, module: str, vectors: List
+        self, module: str, vectors: List, rng: random.Random
     ) -> List[Dict[str, Any]]:
         """运行单元测试 / Run unit tests."""
         results = []
 
         if not vectors:
-            vectors = self._generate_test_vectors(module, count=5)
+            vectors = self._generate_test_vectors(module, count=5, rng=rng)
 
         for i, vec in enumerate(vectors):
             test_name = vec.get("name", f"UT-{module}-{i:03d}")
-            passed = vec.get("expected") == vec.get("actual") if "expected" in vec and "actual" in vec else True
+            # Only declare passed when both expected and actual are present and match.
+            passed = (
+                vec.get("expected") == vec.get("actual")
+                if "expected" in vec and "actual" in vec
+                else None  # unknown — not fabricated
+            )
+            # If passed is unknown, derive a deterministic DEMO placeholder
+            # based on the input vector. Same vector => same outcome.
+            if passed is None:
+                passed = self._demo_pass(vec, "unit", rng)
+
+            # Duration is derived from input size (deterministic) instead of random
+            input_size = self._estimate_input_size(vec.get("input", {}))
+            duration_ms = round(1.0 + math.log1p(input_size) * 5.0, 2)
 
             results.append({
                 "test_name": test_name,
@@ -382,14 +481,14 @@ class SILTestSkill(BaseSkill):
                 "expected": vec.get("expected"),
                 "actual": vec.get("actual", vec.get("expected")),
                 "passed": passed,
-                "duration_ms": round(random.uniform(1, 50), 2),
+                "duration_ms": duration_ms,
                 "message": "通过" if passed else "输出与预期不符",
             })
 
         return results
 
     def _run_integration_tests(
-        self, module: str, vectors: List
+        self, module: str, vectors: List, rng: random.Random
     ) -> List[Dict[str, Any]]:
         """运行集成测试 / Run integration tests."""
         results = []
@@ -401,21 +500,31 @@ class SILTestSkill(BaseSkill):
         ]
 
         for iface in interfaces:
-            passed = random.random() > 0.1
+            iface_key = f"{iface['from']}->{iface['to']}"
+            # Deterministic DEMO pass/fail: derived from interface key, not random
+            passed = self._demo_pass({"iface": iface_key, "type": "integration"}, "integration", rng)
+            # Duration derived from data_type complexity (deterministic)
+            base_ms = self._complexity_ms(iface["data"])
+            duration_ms = round(base_ms, 2)
+
             results.append({
                 "test_name": f"INT-{iface['from']}-to-{iface['to']}",
                 "type": "integration",
                 "interface": f"{iface['from']} -> {iface['to']}",
                 "data_type": iface["data"],
                 "passed": passed,
-                "duration_ms": round(random.uniform(10, 100), 2),
-                "message": f"接口 {iface['from']}->{iface['to']} 数据传递正常" if passed else "数据传递异常",
+                "duration_ms": duration_ms,
+                "message": (
+                    f"接口 {iface['from']}->{iface['to']} 数据传递正常"
+                    if passed
+                    else "数据传递异常"
+                ),
             })
 
         return results
 
     def _verify_interfaces(
-        self, module: str, script: Optional[str]
+        self, module: str, script: Optional[str], rng: random.Random
     ) -> List[Dict[str, Any]]:
         """验证接口一致性 / Verify interface consistency."""
         results = []
@@ -428,7 +537,8 @@ class SILTestSkill(BaseSkill):
         ]
 
         for check in checks:
-            passed = random.random() > 0.05
+            # Deterministic DEMO pass/fail: derived from check name
+            passed = self._demo_pass(check, "interface", rng)
             results.append({
                 "test_name": f"IFACE-{check['name']}",
                 "type": "interface",
@@ -439,18 +549,63 @@ class SILTestSkill(BaseSkill):
 
         return results
 
-    def _generate_test_vectors(self, module: str, count: int) -> List[Dict]:
-        """生成测试向量 / Generate test vectors."""
+    def _generate_test_vectors(
+        self, module: str, count: int, rng: random.Random
+    ) -> List[Dict]:
+        """生成测试向量 / Generate test vectors.
+
+        Categories and input values are derived deterministically from the
+        index. The same ``(module, count, seed)`` always produces the same
+        vectors.
+        """
+        categories = ["functional", "boundary", "stress"]
         vectors = []
         for i in range(count):
+            # Deterministic selection: alternate through categories
+            category = categories[i % len(categories)]
+            # Deterministic value: scaled by index, not random
+            value = -10.0 + (i * (110.0 / max(count, 1)))
             vectors.append({
                 "name": f"TV-{module}-{i:03d}",
-                "category": random.choice(["functional", "boundary", "stress"]),
-                "input": {"value": random.uniform(-10, 100)},
+                "category": category,
+                "input": {"value": round(value, 3)},
                 "expected": {"status": "ok"},
                 "actual": {"status": "ok"},
             })
         return vectors
+
+    @staticmethod
+    def _estimate_input_size(obj: Any) -> int:
+        """Estimate the size of an input for deterministic duration derivation."""
+        try:
+            return len(repr(obj))
+        except Exception:
+            return 16
+
+    @staticmethod
+    def _complexity_ms(data_type: str) -> float:
+        """Map a data type name to a base DEMO duration in ms (deterministic)."""
+        mapping = {
+            "object_list": 50.0,
+            "trajectory": 75.0,
+            "ego_pose": 25.0,
+        }
+        return mapping.get(data_type, 30.0)
+
+    def _demo_pass(self, vec: Dict[str, Any], test_kind: str, rng: random.Random) -> bool:
+        """Derive a deterministic DEMO pass/fail from the input.
+
+        Real test outcomes MUST come from a real test framework. This method
+        exists only so that smoke tests and demos are reproducible.
+        """
+        if rng is random:
+            # Backward-compat: legacy non-deterministic mode kept on demand
+            return random.random() > 0.1
+        # Deterministic: hash the test vector to get a stable 0..1 value
+        key = f"{test_kind}|{repr(sorted(vec.items()))}"
+        h = int(hashlib.md5(key.encode("utf-8")).hexdigest()[:8], 16)
+        # Use a default 90% pass rate; the same vector always gets the same outcome
+        return (h % 100) < 90
 
 
 # =============================================================================
@@ -463,6 +618,11 @@ class HILTestSkill(BaseSkill):
     硬件在环测试技能。
     Hardware-in-the-loop testing for AD/ADAS ECUs.
 
+    NOTE: This skill emits DEMO placeholder data. It does not connect to real
+    HIL hardware. For real HIL testing, integrate with your dSPACE / Vector /
+    National Instruments stack and feed the results back into this skill via
+    its context.
+
     测试内容 / Testing:
         - 传感器 HIL / Sensor HIL
         - 执行器 HIL / Actuator HIL
@@ -474,7 +634,7 @@ class HILTestSkill(BaseSkill):
     def metadata(self) -> SkillMetadata:
         return SkillMetadata(
             name="hil_test",
-            version="1.0.0",
+            version="1.1.0",
             category=SkillCategory.TESTING,
             description="HIL测试：硬件在环测试、故障注入与实时性验证",
             author="Nonull",
@@ -486,6 +646,8 @@ class HILTestSkill(BaseSkill):
                     "test_duration_s": {"type": "number", "description": "测试时长"},
                     "test_cases": {"type": "array"},
                     "fault_injection": {"type": "boolean"},
+                    "__demo_mode__": {"type": "boolean"},
+                    "seed": {"type": "integer"},
                 },
                 "required": ["ecu_type"],
             },
@@ -498,6 +660,8 @@ class HILTestSkill(BaseSkill):
         test_cases: List = context.get("test_cases", [])
         fault_injection: bool = context.get("fault_injection", False)
 
+        rng = _make_rng(context)
+
         result: Dict[str, Any] = {
             "ecu_type": ecu_type,
             "test_duration_s": duration,
@@ -506,6 +670,8 @@ class HILTestSkill(BaseSkill):
             "timing_analysis": {},
             "verdict": "",
             "recommendations": [],
+            "is_demo_data": True,
+            "data_source": "DEMO: replace with real HIL hardware output",
         }
 
         # HIL 测试阶段 / HIL test phases
@@ -521,42 +687,54 @@ class HILTestSkill(BaseSkill):
         all_passed = True
         for phase in phases:
             phase_duration = duration * phase["duration_pct"] / 100
-            passed = self._simulate_hil_phase(ecu_type, phase["name"])
+            # Deterministic pass derived from (ecu_type, phase) and RNG
+            passed = self._simulate_hil_phase(ecu_type, phase["name"], rng)
             if not passed:
                 all_passed = False
             phase_results.append({
                 "phase": phase["name"],
                 "duration_s": round(phase_duration, 1),
                 "passed": passed,
-                "details": f"{phase['name']} {'通过' if passed else '失败'}",
+                "details": f"{phase['name']} {'通过' if passed else '失败'} (DEMO占位)",
             })
 
         result["test_phases"] = phase_results
 
         # 故障注入测试 / Fault injection tests
         if fault_injection:
-            fault_tests = self._run_fault_injection(ecu_type)
+            fault_tests = self._run_fault_injection(ecu_type, rng)
             result["fault_injection_tests"] = fault_tests
             if any(ft.get("system_response") == "critical_failure" for ft in fault_tests):
                 all_passed = False
 
-        # 时序分析 / Timing analysis
-        result["timing_analysis"] = self._analyze_timing(ecu_type)
+        # 时序分析 / Timing analysis — deterministic from ecu_type
+        result["timing_analysis"] = self._analyze_timing(ecu_type, rng)
 
         result["verdict"] = "PASS" if all_passed else "FAIL"
         if not all_passed:
-            result["recommendations"].append("HIL测试未通过，检查硬件连接或固件版本")
+            result["recommendations"].append("HIL测试未通过 (DEMO)，请接入真实HIL硬件获取真实结论")
 
         return result
 
-    def _simulate_hil_phase(self, ecu_type: str, phase: str) -> bool:
-        """模拟HIL测试阶段 / Simulate HIL test phase."""
-        # 随机模拟HIL测试结果（实际应用中连接真实硬件）
-        # Simulate HIL result (real implementation would connect to actual HW)
-        return random.random() > 0.05
+    def _simulate_hil_phase(
+        self, ecu_type: str, phase: str, rng: random.Random
+    ) -> bool:
+        """模拟HIL测试阶段 / Simulate HIL test phase (DEMO).
 
-    def _run_fault_injection(self, ecu_type: str) -> List[Dict]:
-        """运行故障注入测试 / Run fault injection tests."""
+        Real implementations must connect to actual HIL hardware. This
+        placeholder produces a stable outcome based on (ecu_type, phase).
+        """
+        if rng is random:
+            return random.random() > 0.05
+        # Deterministic: hash (ecu_type, phase) to a stable outcome
+        key = f"hil_phase|{ecu_type}|{phase}"
+        h = int(hashlib.md5(key.encode("utf-8")).hexdigest()[:8], 16)
+        return (h % 100) >= 5  # ~95% pass rate, but stable per phase
+
+    def _run_fault_injection(
+        self, ecu_type: str, rng: random.Random
+    ) -> List[Dict]:
+        """运行故障注入测试 / Run fault injection tests (DEMO)."""
         faults = [
             {"fault": "CAN总线断开", "duration_s": 2.0},
             {"fault": "传感器信号丢失", "duration_s": 1.0},
@@ -565,30 +743,77 @@ class HILTestSkill(BaseSkill):
             {"fault": "时钟信号异常", "duration_s": 1.5},
         ]
 
+        responses = ["graceful_degradation", "safe_state", "error_recovery", "critical_failure"]
+
         results = []
         for f in faults:
-            responses = ["graceful_degradation", "safe_state", "error_recovery", "critical_failure"]
-            response = random.choices(responses, weights=[0.4, 0.3, 0.2, 0.1])[0]
+            # Deterministic response based on fault name and ecu_type
+            response = self._demo_fault_response(ecu_type, f["fault"], responses, rng)
             results.append({
                 "injected_fault": f["fault"],
                 "duration_s": f["duration_s"],
                 "system_response": response,
-                "recovery_time_ms": round(random.uniform(10, 200), 1),
+                "recovery_time_ms": round(self._demo_recovery_ms(ecu_type, f["fault"]), 1),
                 "expected_response": "safe_state_or_degradation",
                 "passed": response != "critical_failure",
             })
 
         return results
 
-    def _analyze_timing(self, ecu_type: str) -> Dict:
-        """分析时序 / Analyze timing."""
+    def _analyze_timing(self, ecu_type: str, rng: random.Random) -> Dict:
+        """分析时序 / Analyze timing (DEMO).
+
+        Values are stable per ecu_type. Real HIL timing should come from
+        oscilloscope / ECU trace data.
+        """
+        if rng is random:
+            return {
+                "max_latency_ms": round(random.uniform(1, 15), 2),
+                "average_latency_ms": round(random.uniform(0.5, 5), 2),
+                "jitter_ms": round(random.uniform(0.1, 2), 2),
+                "deadline_misses": random.randint(0, 3),
+                "meets_real_time_requirements": random.random() > 0.1,
+            }
+        # Deterministic per ecu_type
+        h = int(hashlib.md5(f"timing|{ecu_type}".encode("utf-8")).hexdigest(), 16)
+        max_lat = 1.0 + (h % 1400) / 100.0          # 1.0 .. 15.0
+        avg_lat = 0.5 + ((h >> 8) % 450) / 100.0    # 0.5 .. 5.0
+        jitter = 0.1 + ((h >> 16) % 190) / 100.0    # 0.1 .. 2.0
+        misses = (h >> 24) % 4
+        meets = ((h >> 32) % 10) != 0
         return {
-            "max_latency_ms": round(random.uniform(1, 15), 2),
-            "average_latency_ms": round(random.uniform(0.5, 5), 2),
-            "jitter_ms": round(random.uniform(0.1, 2), 2),
-            "deadline_misses": random.randint(0, 3),
-            "meets_real_time_requirements": random.random() > 0.1,
+            "max_latency_ms": round(max_lat, 2),
+            "average_latency_ms": round(avg_lat, 2),
+            "jitter_ms": round(jitter, 2),
+            "deadline_misses": misses,
+            "meets_real_time_requirements": meets,
         }
+
+    def _demo_fault_response(
+        self,
+        ecu_type: str,
+        fault: str,
+        responses: List[str],
+        rng: random.Random,
+    ) -> str:
+        """Derive a deterministic fault response from (ecu_type, fault)."""
+        if rng is random:
+            return random.choices(responses, weights=[0.4, 0.3, 0.2, 0.1])[0]
+        h = int(hashlib.md5(f"fault|{ecu_type}|{fault}".encode("utf-8")).hexdigest()[:8], 16)
+        weights = [0.4, 0.3, 0.2, 0.1]
+        total = sum(weights)
+        target = (h % 1000) / 1000.0 * total
+        cumulative = 0.0
+        for resp, w in zip(responses, weights):
+            cumulative += w
+            if target < cumulative:
+                return resp
+        return responses[-1]
+
+    def _demo_recovery_ms(self, ecu_type: str, fault: str) -> float:
+        """Deterministic recovery time in ms derived from (ecu_type, fault)."""
+        h = int(hashlib.md5(f"recovery|{ecu_type}|{fault}".encode("utf-8")).hexdigest()[:8], 16)
+        return 10.0 + (h % 19000) / 100.0  # 10.0 .. 200.0
 
 
 # =============================================================================
@@ -611,7 +836,7 @@ class RegressionTestSkill(BaseSkill):
     def metadata(self) -> SkillMetadata:
         return SkillMetadata(
             name="regression_test",
-            version="1.0.0",
+            version="1.1.0",
             category=SkillCategory.TESTING,
             description="回归测试：影响分析、用例选择和自动化流程设计",
             author="Nonull",
@@ -623,6 +848,8 @@ class RegressionTestSkill(BaseSkill):
                     "release_notes": {"type": "string"},
                     "existing_tests": {"type": "array"},
                     "impact_analysis": {"type": "object"},
+                    "__demo_mode__": {"type": "boolean"},
+                    "seed": {"type": "integer"},
                 },
                 "required": ["changed_modules", "release_notes"],
             },
@@ -635,6 +862,9 @@ class RegressionTestSkill(BaseSkill):
         existing_tests: List = context.get("existing_tests", [])
         impact: Optional[Dict] = context.get("impact_analysis")
 
+        # We pass context through so durations can be deterministic when seeded
+        rng = _make_rng(context)
+
         result: Dict[str, Any] = {
             "impact_analysis": impact or self._analyze_impact(changed_modules),
             "selected_tests": [],
@@ -645,17 +875,18 @@ class RegressionTestSkill(BaseSkill):
             "automation_plan": {},
             "estimated_execution_time_min": 0,
             "recommendations": [],
+            "is_demo_data": True,
         }
 
         impact_result = result["impact_analysis"]
         affected = impact_result.get("affected_modules", changed_modules)
 
         # 选择烟幕测试 / Select smoke tests
-        smoke = self._select_smoke_tests(affected, existing_tests)
+        smoke = self._select_smoke_tests(affected, rng, context)
         result["regression_suite"]["smoke_tests"] = smoke
 
         # 选择全回归测试 / Select full regression tests
-        full = self._select_full_regression(affected, existing_tests)
+        full = self._select_full_regression(affected, rng, context)
         result["regression_suite"]["full_regression"] = full
 
         # 汇总 / Summary
@@ -705,19 +936,26 @@ class RegressionTestSkill(BaseSkill):
         }
 
     def _select_smoke_tests(
-        self, affected: List[str], existing: List
+        self,
+        affected: List[str],
+        rng: random.Random,
+        context: Optional[Dict[str, Any]] = None,
     ) -> List[Dict]:
-        """选择冒烟测试 / Select smoke tests."""
+        """选择冒烟测试 / Select smoke tests.
+
+        Duration is derived deterministically from the module name unless
+        ``__demo_mode__`` is left at its backward-compatible default (random).
+        """
         smoke = []
 
-        # 为每个受影响的模块生成烟雾测试 / Generate smoke test per affected module
-        for mod in affected:
+        for idx, mod in enumerate(affected):
+            duration = self._demo_duration_min(mod, idx, 1, 5, rng, context)
             smoke.append({
                 "name": f"SMOKE-{mod}-001",
                 "module": mod,
                 "type": "smoke",
                 "description": f"{mod} 模块基本功能冒烟测试",
-                "duration_min": random.randint(1, 5),
+                "duration_min": duration,
                 "priority": "critical",
                 "automated": True,
             })
@@ -725,32 +963,62 @@ class RegressionTestSkill(BaseSkill):
         return smoke
 
     def _select_full_regression(
-        self, affected: List[str], existing: List
+        self,
+        affected: List[str],
+        rng: random.Random,
+        context: Optional[Dict[str, Any]] = None,
     ) -> List[Dict]:
-        """选择全回归测试 / Select full regression tests."""
+        """选择全回归测试 / Select full regression tests (deterministic)."""
         regression = []
 
-        for mod in affected:
-            # 功能回归 / Functional regression
+        for idx, mod in enumerate(affected):
+            # Functional regression
+            func_dur = self._demo_duration_min(mod, idx, 5, 20, rng, context, kind="func")
             regression.append({
                 "name": f"REGR-{mod}-FUNC-001",
                 "module": mod,
                 "type": "functional",
                 "description": f"{mod} 功能回归测试",
-                "duration_min": random.randint(5, 20),
+                "duration_min": func_dur,
                 "priority": "high",
                 "automated": True,
             })
 
-            # 接口回归 / Interface regression
+            # Interface regression
+            iface_dur = self._demo_duration_min(mod, idx, 3, 10, rng, context, kind="iface")
             regression.append({
                 "name": f"REGR-{mod}-IFACE-001",
                 "module": mod,
                 "type": "interface",
                 "description": f"{mod} 接口回归测试",
-                "duration_min": random.randint(3, 10),
+                "duration_min": iface_dur,
                 "priority": "high",
                 "automated": True,
             })
 
         return regression
+
+    def _demo_duration_min(
+        self,
+        mod: str,
+        idx: int,
+        low: int,
+        high: int,
+        rng: random.Random,
+        context: Optional[Dict[str, Any]] = None,
+        kind: str = "smoke",
+    ) -> int:
+        """Derive a deterministic integer duration in [low, high] for a module.
+
+        Backward-compat: if the legacy module-level random is being used
+        (no seed, no deterministic, demo_mode unset) we keep the previous
+        random behavior so existing callers see the same output distribution.
+        """
+        if rng is random and (context is None or (
+            "seed" not in context
+            and not context.get("deterministic")
+            and context.get("__demo_mode__") is not False
+        )):
+            return random.randint(low, high)
+        h = int(hashlib.md5(f"dur|{kind}|{mod}|{idx}".encode("utf-8")).hexdigest()[:8], 16)
+        return low + (h % (high - low + 1))

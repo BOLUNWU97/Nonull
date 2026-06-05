@@ -44,18 +44,34 @@ class HazardAnalysisSkill(BaseSkill):
     structure (S/E/C → ASIL) but is not "per ISO 26262" in a process
     compliance sense. It is NOT compliant or certified HARA.
 
+    **ADVISORY TEMPLATE ONLY**: This skill matches input keywords against
+    hardcoded hazard templates. The S/E/C values are NOT derived from your
+    specific system; they are defaults. A real HARA requires expert
+    elicitation. This skill is a scaffolding aid, not a HARA work product.
+
     执行步骤 / Steps:
         1. 功能危害识别 / Functional hazard identification
         2. 情境分析 / Situational analysis
         3. 危害等级评定 (S/E/C) / Severity/Exposure/Controllability rating
         4. ASIL 等级确定 / ASIL determination (advisory classification, not certified ASIL)
         5. 安全目标定义 / Safety goal definition
+
+    Class Attributes:
+        LEGACY_ALIASES: 旧名称（typo）作为已弃用别名保留 / Old typo name
+            kept as a deprecated alias for backward compatibility. The
+            registry will resolve ``haras_analysis`` to this skill but
+            log a deprecation warning.
     """
+
+    # 旧名称 "haras_analysis" 是 typo，保留为已弃用别名以兼容旧调用。
+    # "haras_analysis" was a typo — kept as a deprecated alias so older
+    # call sites still resolve to this skill via SkillRegistry.get_skill.
+    LEGACY_ALIASES = ("haras_analysis",)
 
     @property
     def metadata(self) -> SkillMetadata:
         return SkillMetadata(
-            name="haras_analysis",
+            name="hara_analysis",
             version="1.0.0",
             category=SkillCategory.SAFETY,
             description="HARA分析：危害识别、风险评估与ASIL等级确定",
@@ -67,6 +83,15 @@ class HazardAnalysisSkill(BaseSkill):
                     "system_description": {"type": "string"},
                     "functions": {"type": "array"},
                     "operating_scenarios": {"type": "array"},
+                    "sec_overrides": {
+                        "type": "object",
+                        "description": (
+                            "可选 S/E/C 覆盖映射 / Optional S/E/C overrides, "
+                            "keyed by hazard description. Use this to inject "
+                            "expert-elicited values; otherwise TEMPLATE defaults "
+                            "are used and the output is marked is_template=True."
+                        ),
+                    },
                 },
                 "required": ["system_description", "functions"],
             },
@@ -77,6 +102,12 @@ class HazardAnalysisSkill(BaseSkill):
         description: str = context.get("system_description", "")
         functions: List = context.get("functions", [])
         scenarios: List = context.get("operating_scenarios", [])
+        # sec_overrides: {hazard_description: {"S": int, "E": int, "C": int}}
+        # Optional S/E/C overrides keyed by hazard description. If absent
+        # for a given hazard, the DEMO/TEMPLATE defaults are used and the
+        # output is marked is_template=True. See ADVISORY TEMPLATE ONLY in
+        # the class docstring.
+        sec_overrides: Dict[str, Dict[str, int]] = context.get("sec_overrides", {}) or {}
 
         if not scenarios:
             scenarios = self._default_scenarios()
@@ -85,7 +116,11 @@ class HazardAnalysisSkill(BaseSkill):
         for func in functions:
             func_name = self._get_func_name(func)
             for scenario in scenarios:
-                hazard = self._analyze_hazard(func_name, scenario)
+                hazard = self._analyze_hazard(
+                    func_name,
+                    scenario,
+                    sec_overrides=sec_overrides,
+                )
                 hazards.append(hazard)
 
         safety_goals = self._derive_safety_goals(hazards)
@@ -98,6 +133,12 @@ class HazardAnalysisSkill(BaseSkill):
             "safety_goals": safety_goals,
             "summary": self._generate_hara_summary(hazards, safety_goals),
             "recommendations": self._generate_recommendations(hazards),
+            "is_template": True,
+            "warning": (
+                "ADVISORY TEMPLATE ONLY: S/E/C/ASIL values are hardcoded "
+                "demo defaults. This is NOT a real HARA work product. Real "
+                "HARA requires expert elicitation per ISO 26262-3:2018."
+            ),
         }
 
     def _get_func_name(self, func: Any) -> str:
@@ -117,31 +158,53 @@ class HazardAnalysisSkill(BaseSkill):
             "紧急制动 / Emergency braking",
         ]
 
-    def _analyze_hazard(self, function: str, scenario: str) -> Dict[str, Any]:
-        """分析危害 / Analyze hazard."""
-        # 随机生成危害参数以演示（实际应用中基于规则引擎）
-        # Random generation for demonstration (rule-based in production)
+    def _analyze_hazard(
+        self,
+        function: str,
+        scenario: str,
+        sec_overrides: Optional[Dict[str, Dict[str, int]]] = None,
+    ) -> Dict[str, Any]:
+        """分析危害 / Analyze hazard.
 
+        ADVISORY TEMPLATE ONLY — the S/E/C values in ``hazard_templates``
+        below are hardcoded DEMO defaults matched to keyword presence in
+        the function/scenario text. They are NOT derived from a real
+        hazard analysis and do NOT constitute expert-elicited HARA values
+        per ISO 26262-3:2018. Pass ``sec_overrides`` (keyed by hazard
+        description) to override the template values; values you supply
+        are kept as-is in the output (still marked ``is_template=True``
+        so consumers can distinguish expert inputs from defaults).
+        """
+        # 随机生成危害参数以演示（实际应用中基于规则引擎）
+        # NOTE: These are DEMO/TEMPLATE values, not real HARA inputs.
+        # In a real HARA, S/E/C must be elicited from domain experts
+        # and validated per ISO 26262-3:2018. The "template_id" lets
+        # downstream consumers trace a given hazard back to which
+        # keyword bucket produced it.
         hazard_templates = {
             "制动": {
+                "template_id": "brake_failure_v1",
                 "hazards": ["制动失效", "制动延迟", "非预期制动"],
                 "severity": [3, 3, 2],
                 "exposure": [3, 2, 3],
                 "controllability": [3, 2, 2],
             },
             "转向": {
+                "template_id": "steering_failure_v1",
                 "hazards": ["转向失效", "转向过度", "转向不足"],
                 "severity": [3, 2, 2],
                 "exposure": [2, 3, 3],
                 "controllability": [3, 2, 2],
             },
             "加速": {
+                "template_id": "acceleration_failure_v1",
                 "hazards": ["非预期加速", "加速无力"],
                 "severity": [3, 1],
                 "exposure": [2, 3],
                 "controllability": [3, 1],
             },
             "感知": {
+                "template_id": "perception_failure_v1",
                 "hazards": ["目标漏检", "目标误检", "测距误差过大"],
                 "severity": [3, 2, 2],
                 "exposure": [3, 3, 2],
@@ -149,35 +212,57 @@ class HazardAnalysisSkill(BaseSkill):
             },
         }
 
+        sec_overrides = sec_overrides or {}
+
         hazard_types = []
         for keyword, template in hazard_templates.items():
             if keyword in function.lower() or keyword in scenario.lower():
-                hazard_types.extend(zip(
+                template_id = template.get("template_id", "unknown_v1")
+                for h_desc, sev, exp, cont in zip(
                     template["hazards"],
                     template["severity"],
                     template["exposure"],
                     template["controllability"],
-                ))
+                ):
+                    # Apply per-hazard overrides if the caller supplied them.
+                    # Keys are S / E / C (matching severity_S / exposure_E
+                    # / controllability_C in the output schema).
+                    override = sec_overrides.get(h_desc, {}) or {}
+                    sev_eff = override.get("S", sev)
+                    exp_eff = override.get("E", exp)
+                    cont_eff = override.get("C", cont)
+                    hazard_types.append(
+                        (h_desc, sev_eff, exp_eff, cont_eff, template_id)
+                    )
 
         if not hazard_types:
-            hazard_types.append(("功能异常 / Function malfunction", 2, 2, 2))
+            hazard_types.append(
+                ("功能异常 / Function malfunction", 2, 2, 2, "default_unknown_v1")
+            )
 
         hazards = []
-        for h_desc, sev, exp, cont in hazard_types:
+        for h_desc, sev, exp, cont, template_id in hazard_types:
             asil = self._determine_asil(sev, exp, cont)
             hazards.append({
                 "hazard": h_desc,
                 "scenario": scenario,
-                "severity_S": sev,
-                "exposure_E": exp,
-                "controllability_C": cont,
-                "ASIL": asil,
+                "severity_S": sev,         # DEMO/template value
+                "exposure_E": exp,         # DEMO/template value
+                "controllability_C": cont, # DEMO/template value
+                "ASIL": asil,              # DEMO/template, not validated
+                "template_id": template_id,
+                "is_template": True,       # always True for this method
             })
 
         return {
             "function": function,
             "scenario": scenario,
             "hazards": hazards,
+            "is_template": True,
+            "warning": (
+                "These S/E/C/ASIL values are template defaults. "
+                "Real HARA requires expert elicitation per ISO 26262-3:2018."
+            ),
         }
 
     def _determine_asil(self, severity: int, exposure: int, controllability: int) -> str:

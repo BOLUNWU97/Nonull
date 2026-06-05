@@ -68,6 +68,12 @@ class SkillRegistry:
         # skill_name -> skill_class (延迟实例化用)
         self._skill_classes: Dict[str, Type[BaseSkill]] = {}
 
+        # legacy_alias -> canonical_skill_name
+        # 用于保留旧名称（typo、改名）以兼容旧调用方
+        # Used to preserve old names (typos, renames) for backward compat.
+        # Resolved in get_skill() with a deprecation warning.
+        self._legacy_aliases: Dict[str, str] = {}
+
         # 分类索引 / Category index
         self._category_index: Dict[SkillCategory, List[str]] = {
             cat: [] for cat in SkillCategory
@@ -137,6 +143,29 @@ class SkillRegistry:
         else:
             self._skill_classes[meta.name] = skill_class
 
+        # 向后兼容：注册时同时记录 LEGACY_ALIASES（如果技能类定义了）。
+        # Backward compat: record LEGACY_ALIASES if the skill class defines
+        # them. Aliases are resolved in get_skill() with a deprecation
+        # warning; they are NOT added to the canonical name map or to
+        # get_all_skills() output, so duplicate-name invariants still hold.
+        legacy_aliases = getattr(skill_class, "LEGACY_ALIASES", ()) or ()
+        for alias in legacy_aliases:
+            if not alias or alias == meta.name:
+                continue
+            if alias in self._skills or alias in self._skill_classes:
+                # An alias that collides with a real registered name is
+                # an error; the real registration wins.
+                self.logger.warning(
+                    f"Legacy alias '{alias}' for skill '{meta.name}' "
+                    f"is already registered as a real skill name; "
+                    f"alias will NOT override the real registration."
+                )
+                continue
+            self._legacy_aliases[alias] = meta.name
+            self.logger.info(
+                f"Registered legacy alias '{alias}' -> '{meta.name}'."
+            )
+
         # 更新索引 / Update indexes
         self._update_indexes(meta)
 
@@ -158,26 +187,42 @@ class SkillRegistry:
         Raises:
             KeyError: 如果技能不存在。
         """
-        if skill_name not in self._skills and skill_name not in self._skill_classes:
+        # 兼容：用别名注销时也能找到规范名。
+        # Resolve alias -> canonical so we can clean both sides.
+        canonical = self._legacy_aliases.get(skill_name, skill_name)
+
+        if (
+            canonical not in self._skills
+            and canonical not in self._skill_classes
+        ):
             raise KeyError(f"Skill '{skill_name}' is not registered.")
 
         # 停用并移除实例 / Deactivate and remove instance
-        if skill_name in self._skills:
-            skill = self._skills.pop(skill_name)
+        if canonical in self._skills:
+            skill = self._skills.pop(canonical)
             try:
                 skill.deactivate()
             except Exception as e:
                 self.logger.warning(
-                    f"Error during deactivation of '{skill_name}': {e}"
+                    f"Error during deactivation of '{canonical}': {e}"
                 )
 
         # 移除类引用 / Remove class reference
-        self._skill_classes.pop(skill_name, None)
+        self._skill_classes.pop(canonical, None)
+
+        # 清理指向该规范名的所有别名 / Drop any legacy aliases pointing here
+        stale_aliases = [
+            alias
+            for alias, target in self._legacy_aliases.items()
+            if target == canonical
+        ]
+        for alias in stale_aliases:
+            self._legacy_aliases.pop(alias, None)
 
         # 清理索引 / Clean up indexes
         self._rebuild_indexes()
 
-        self.logger.info(f"Unregistered skill '{skill_name}'.")
+        self.logger.info(f"Unregistered skill '{canonical}'.")
 
     def register_from_instance(self, skill: BaseSkill) -> BaseSkill:
         """
@@ -222,7 +267,28 @@ class SkillRegistry:
 
         Returns:
             BaseSkill 实例或 None / BaseSkill instance or None.
+
+        Notes:
+            如果 ``name`` 是一个已弃用的 LEGACY_ALIASES 别名（非已注册
+            的真实技能名），会记录 DeprecationWarning 并解析到规范名。
+            If ``name`` is a LEGACY_ALIASES alias (not a real registered
+            name), a deprecation warning is logged and the request is
+            transparently resolved to the canonical name.
         """
+        # 向后兼容别名：旧名称（typo / 重命名）解析为规范名。
+        # Backward compat: legacy aliases resolve to canonical name.
+        if (
+            name in self._legacy_aliases
+            and name not in self._skills
+            and name not in self._skill_classes
+        ):
+            canonical = self._legacy_aliases[name]
+            self.logger.warning(
+                f"Skill name '{name}' is a deprecated alias for "
+                f"'{canonical}'. Use '{canonical}' instead."
+            )
+            return self.get_skill(canonical)
+
         # 直接返回已缓存的实例 / Return cached instance
         if name in self._skills:
             return self._skills[name]
@@ -737,6 +803,7 @@ class SkillRegistry:
         self.deactivate_all()
         self._skills.clear()
         self._skill_classes.clear()
+        self._legacy_aliases.clear()
         self._category_index = {cat: [] for cat in SkillCategory}
         self._tag_index.clear()
         self.logger.info("Registry cleared.")
@@ -753,7 +820,11 @@ class SkillRegistry:
         return result
 
     def __contains__(self, name: str) -> bool:
-        return name in self._skills or name in self._skill_classes
+        return (
+            name in self._skills
+            or name in self._skill_classes
+            or name in self._legacy_aliases
+        )
 
     def __len__(self) -> int:
         return self.skill_count()

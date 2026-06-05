@@ -51,6 +51,14 @@ SAMPLE_INPUTS: Dict[str, Dict[str, Any]] = {
         "language": "python",
     },
     # ------------------ safety (4) ------------------
+    # Renamed from "haras_analysis" (typo) to "hara_analysis".
+    # The legacy "haras_analysis" key is kept for backward-compat alias
+    # verification — both keys point at the same input, and the legacy
+    # name is exercised by a dedicated test below.
+    "hara_analysis": {
+        "system_description": "ADAS perception + planning stack",
+        "functions": ["perception", "planning", "control"],
+    },
     "haras_analysis": {
         "system_description": "ADAS perception + planning stack",
         "functions": ["perception", "planning", "control"],
@@ -385,6 +393,244 @@ def test_skill_input_inventory_is_complete(registry):
     assert not missing_inputs, (
         f"Skills discovered that have no SAMPLE_INPUTS entry and are not skipped: "
         f"{missing_inputs}. Add a SAMPLE_INPUTS entry or a SKIP_SKILLS entry."
+    )
+
+
+class TestLegacySkillAliases:
+    """Backward-compat: old typo / renamed skill names must still resolve.
+
+    The "haras_analysis" -> "hara_analysis" rename is the first such alias;
+    this test pins the contract so future renames follow the same pattern
+    (SkillRegistry.LEGACY_ALIASES) rather than silently breaking old
+    call sites.
+    """
+
+    def test_canonical_name_resolves(self, registry):
+        """The new name is registered and returns a BaseSkill instance."""
+        skill = registry.get_skill("hara_analysis")
+        assert skill is not None
+        assert skill.metadata.name == "hara_analysis"
+
+    def test_legacy_alias_still_resolves(self, registry):
+        """The old typo name "haras_analysis" still resolves (with warning)."""
+        skill = registry.get_skill("haras_analysis")
+        assert skill is not None, (
+            "Legacy alias 'haras_analysis' should resolve to hara_analysis. "
+            "If you intentionally removed the alias, update this test."
+        )
+        # Same canonical name as the new entry.
+        assert skill.metadata.name == "hara_analysis"
+
+    def test_legacy_alias_emits_deprecation_warning(self, registry, caplog):
+        """Using the old name should log a DeprecationWarning via the registry."""
+        import logging
+        with caplog.at_level(logging.WARNING):
+            registry.get_skill("haras_analysis")
+        deprecation_msgs = [
+            r.getMessage() for r in caplog.records
+            if "deprecated alias" in r.getMessage()
+        ]
+        assert deprecation_msgs, (
+            "Expected a 'deprecated alias' warning when looking up the old "
+            "name. Got: " + repr([r.getMessage() for r in caplog.records])
+        )
+
+    def test_alias_and_canonical_share_instance(self, registry):
+        """Looking up either name returns the same skill instance."""
+        a = registry.get_skill("hara_analysis")
+        b = registry.get_skill("haras_analysis")
+        assert a is b
+
+    def test_canonical_name_has_no_duplicate(self, registry):
+        """The duplicate-name invariant must still hold (no alias double-count)."""
+        names = [s.metadata.name for s in registry.get_all_skills()]
+        assert "hara_analysis" in names
+        assert "haras_analysis" not in names, (
+            "Legacy alias must not appear in get_all_skills() — only the "
+            "canonical name should be enumerated."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Demo-mode determinism tests for testing + simulation skills
+# ---------------------------------------------------------------------------
+# These skills used to call ``random.*`` directly to fabricate test results
+# and simulation metrics. They now honor a ``__demo_mode__`` flag (or a
+# ``seed``) so the same input produces the same output. The following tests
+# pin down that contract.
+import copy
+
+
+_DETERMINISTIC_INPUTS: Dict[str, Dict[str, Any]] = {
+    "test_case_design": {
+        "module": "AEBController",
+        "requirements": [
+            {"id": "REQ-001", "description": "Activate AEB when TTC < 1.5s"},
+            {"id": "REQ-002", "description": "Limit decel to 0.6g on dry road"},
+        ],
+        "count": 4,
+    },
+    "sil_test": {
+        "test_type": "unit",
+        "module": "perception_fusion",
+        "test_vectors": [
+            {"name": "TV-1", "input": {"value": 1.0},
+             "expected": {"status": "ok"}, "actual": {"status": "ok"}},
+        ],
+    },
+    "hil_test": {
+        "ecu_type": "AEB_ECU",
+        "test_duration_s": 30.0,
+        "fault_injection": True,
+    },
+    "regression_test": {
+        "changed_modules": ["perception", "planning"],
+        "release_notes": "Refactored fusion pipeline.",
+    },
+    "scenario_generation": {
+        "scenario_type": "highway",
+        "parameters": {},
+        "count": 3,
+        "format": "openx",
+    },
+    "carla_runner": {
+        "action": "run_scenario",
+        "scenario": {
+            "name": "demo_scenario",
+            "duration_s": 30,
+            "weather": "clear",
+        },
+    },
+    "edge_case": {
+        "target_module": "perception",
+        "method": "adversarial",
+        "count": 5,
+    },
+}
+
+
+def _run_with_seed(skill, base_input: Dict[str, Any], seed: int) -> Any:
+    """Run a skill twice with the same seed and return the two result data dicts."""
+    skill.activate()
+    try:
+        ctx1 = copy.deepcopy(base_input)
+        ctx1["seed"] = seed
+        r1 = skill.execute(ctx1)
+        ctx2 = copy.deepcopy(base_input)
+        ctx2["seed"] = seed
+        r2 = skill.execute(ctx2)
+    finally:
+        skill.deactivate()
+    return r1.data, r2.data
+
+
+@pytest.mark.parametrize("skill_name", sorted(_DETERMINISTIC_INPUTS.keys()))
+def test_demo_skills_are_deterministic_with_seed(registry, skill_name):
+    """Running the same skill input with the same seed must produce equal output.
+
+    This guards the regression that previously allowed ``random.*`` to fabricate
+    test results, pass/fail rates, latencies, and driving scores. With a
+    fixed ``seed``, the output must now be byte-stable.
+    """
+    skill = registry.get_skill(skill_name)
+    assert skill is not None, f"get_skill({skill_name!r}) returned None"
+    base = copy.deepcopy(_DETERMINISTIC_INPUTS[skill_name])
+    data1, data2 = _run_with_seed(skill, base, seed=42)
+    assert data1 == data2, (
+        f"Skill {skill_name!r} produced different outputs for the same seed. "
+        f"data1 != data2 indicates non-determinism leaked through."
+    )
+
+
+def test_scenario_generation_marks_demo_data(registry):
+    """Scenario generation must flag its output as demo data."""
+    skill = registry.get_skill("scenario_generation")
+    assert skill is not None
+    skill.activate()
+    try:
+        result = skill.execute(
+            copy.deepcopy(_DETERMINISTIC_INPUTS["scenario_generation"])
+        )
+    finally:
+        skill.deactivate()
+    assert result.success
+    assert result.data.get("metadata", {}).get("is_demo_data") is True
+
+
+def test_carla_collect_metrics_marks_demo_data(registry):
+    """CARLA collect_metrics must flag driving/safety/comfort scores as DEMO."""
+    skill = registry.get_skill("carla_runner")
+    assert skill is not None
+    skill.activate()
+    try:
+        ctx = {"action": "collect_metrics", "seed": 1}
+        result = skill.execute(ctx)
+    finally:
+        skill.deactivate()
+    assert result.success
+    assert result.data.get("is_demo_data") is True
+    metrics = result.data["metrics"]
+    for score_key in ("driving_score", "comfort_score", "safety_score",
+                      "route_completion_pct"):
+        assert score_key in metrics, f"missing {score_key}"
+
+
+def test_hil_simulation_id_is_deterministic_counter(registry):
+    """CARLA launch should use a counter-based simulation id, not random."""
+    skill = registry.get_skill("carla_runner")
+    assert skill is not None
+    skill.activate()
+    try:
+        ctx = {"action": "launch", "simulation_params": {"version": "0.9.15"}}
+        result = skill.execute(ctx)
+    finally:
+        skill.deactivate()
+    assert result.success
+    sim_id = result.data["simulation_id"]
+    assert sim_id.startswith("carla_")
+    # Should be a stable integer, not a 5-digit random value
+    tail = sim_id.split("_", 1)[1]
+    assert tail.isdigit(), f"sim id tail should be an int counter, got {tail!r}"
+
+
+def test_test_case_design_uses_stable_req_ids(registry):
+    """REQ ids generated for missing requirements must be stable across calls."""
+    skill = registry.get_skill("test_case_design")
+    assert skill is not None
+    base = {
+        "module": "AEB",
+        "requirements": [{"description": "stabilize req id derivation"}],
+    }
+    data1, data2 = _run_with_seed(skill, base, seed=0)
+    name1 = data1["test_cases"][0]["name"]
+    name2 = data2["test_cases"][0]["name"]
+    assert name1 == name2, (
+        f"REQ id derivation should be stable; got {name1!r} vs {name2!r}"
+    )
+
+
+def test_simulation_skill_honors_deterministic_flag(registry):
+    """When deterministic=True, scenario generation must not call global random.
+
+    Two runs with the same input plus ``deterministic=True`` must produce
+    identical output.
+    """
+    skill = registry.get_skill("scenario_generation")
+    assert skill is not None
+    base = copy.deepcopy(_DETERMINISTIC_INPUTS["scenario_generation"])
+    skill.activate()
+    try:
+        ctx1 = copy.deepcopy(base)
+        ctx1["deterministic"] = True
+        r1 = skill.execute(ctx1)
+        ctx2 = copy.deepcopy(base)
+        ctx2["deterministic"] = True
+        r2 = skill.execute(ctx2)
+    finally:
+        skill.deactivate()
+    assert r1.success and r2.success
+    assert r1.data == r2.data, (
+        "Deterministic mode should produce identical output across runs"
     )
 
 
