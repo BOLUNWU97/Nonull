@@ -1,0 +1,49 @@
+# Nonull Default Profile Configuration 默认配置文件
+# This profile is always loadable and serves as the fallback profile.
+# 此配置文件始终可加载，作为回退配置文件。
+
+profile:
+  name: "default"
+  description: "默认工作配置 / Default workspace configuration"
+
+workspace:
+  path: "./workspace"
+  max_size: "10GB"
+
+model:
+  provider: "auto"
+  model_id: "auto"
+  temperature: 0.2
+  max_tokens: 8192
+
+tools:
+  allowed:
+    - "code-review"
+    - "safety-analysis"
+    - "architecture-design"
+    - "requirement-analysis"
+    - "test-generation"
+    - "perf-analysis"
+    - "regression-check"
+    - "document-generation"
+  blocked: []
+
+logging:
+  level: "INFO"
+  audit: true
+  format: "json"  # json | text
+  output: "console"  # console | file | both
+
+memory:
+  neocortex_namespace: "default"
+  subconscious_enabled: true
+
+channels:
+  - cli
+  - gateway
+
+safety:
+  strictness: 4
+  deny_first: true
+  iso26262: true
+  audit_log: true

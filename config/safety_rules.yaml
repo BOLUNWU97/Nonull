@@ -1,0 +1,742 @@
+# =============================================================================
+# Nonull Safety Rules Configuration
+# 智驾智能体安全规则配置
+# =============================================================================
+# Deny-First Rule Engine Configuration
+#
+# DENY-FIRST PRINCIPLE: Deny rules ALWAYS override allow rules.
+# If any deny rule matches an action, it is denied regardless of allow rules.
+# Allow rules only grant permission when no deny rules match.
+#
+# ISO 26262 ASIL INTEGRATION:
+#   Each rule carries an ASIL level (QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D).
+#   ASIL-D violations are automatically escalated.
+#
+# STRICTNESS LEVELS:
+#   1 (Permissive)  - Allow with warnings, only block ASIL-D
+#   2 (Moderate)    - Allow most, warn on ASIL-C+
+#   3 (Standard)    - Default: deny risky, allow safe (ASIL-B+)
+#   4 (Strict)      - Deny most non-essential (ASIL-A+)
+#   5 (Lockdown)    - Deny ALL except pre-approved safe list
+# =============================================================================
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  last_updated: "2026-06-05"
+  standard: "ISO 26262:2018 + ISO 21434:2021"
+  description: "Default safety rules for Nonull autonomous driving AI agent"
+
+# Global strictness level (1-5)
+strictness: 3
+
+# =============================================================================
+# CODE SAFETY RULES
+# Dangerous code patterns - eval, exec, OS commands, etc.
+# =============================================================================
+code_safety_rules:
+
+  - id: "code_eval_deny"
+    type: deny
+    pattern: "/\\beval\\s*\\(/i"
+    category: code_safety
+    scope: code
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Arbitrary code evaluation via eval() is a critical security risk"
+    enabled: true
+
+  - id: "code_exec_deny"
+    type: deny
+    pattern: "/\\bexec\\s*\\(/i"
+    category: code_safety
+    scope: code
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Arbitrary code execution via exec() is prohibited"
+    enabled: true
+
+  - id: "code_os_system_deny"
+    type: deny
+    pattern: "/os\\.system|os\\.popen|subprocess\\.call|subprocess\\.Popen/i"
+    category: code_safety
+    scope: code
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Direct OS command execution is prohibited"
+    enabled: true
+
+  - id: "code_shell_true_deny"
+    type: deny
+    pattern: "/shell\\s*=\\s*True/i"
+    category: code_safety
+    scope: code
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Shell-based subprocess execution is prohibited (shell injection risk)"
+    enabled: true
+
+  - id: "code_compile_deny"
+    type: deny
+    pattern: "/\\bcompile\\s*\\(/i"
+    category: code_safety
+    scope: code
+    asil_level: "ASIL_C"
+    priority: 80
+    reason: "Dynamic code compilation is restricted"
+    enabled: true
+
+  - id: "code_import_deny"
+    type: deny
+    pattern: "/__import__\\s*\\(/i"
+    category: code_safety
+    scope: code
+    asil_level: "ASIL_C"
+    priority: 80
+    reason: "Dynamic imports via __import__() are restricted"
+    enabled: true
+
+  - id: "code_pickle_deny"
+    type: deny
+    pattern: "/pickle\\.(loads|load)/i"
+    category: code_safety
+    scope: code
+    asil_level: "ASIL_C"
+    priority: 90
+    reason: "Unsafe deserialization via pickle is prohibited (RCE risk)"
+    enabled: true
+
+  - id: "code_ctypes_deny"
+    type: deny
+    pattern: "/\\bctypes\\./i"
+    category: code_safety
+    scope: code
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Direct C library access via ctypes is prohibited for safety"
+    enabled: true
+
+  - id: "code_sql_injection_deny"
+    type: deny
+    pattern: "/\\b(SELECT|INSERT|UPDATE|DELETE|DROP)\\b.*\\bFROM\\b.*[\\'\"]\\s*\\+/i"
+    category: code_safety
+    scope: code
+    asil_level: "ASIL_C"
+    priority: 90
+    reason: "SQL injection patterns in dynamically constructed queries"
+    enabled: true
+
+  - id: "code_tempfile_allow"
+    type: allow
+    pattern: "tempfile"
+    category: code_safety
+    scope: code
+    asil_level: "QM"
+    priority: 10
+    reason: "Temporary file operations are generally safe"
+    enabled: true
+
+  - id: "code_read_only_allow"
+    type: allow
+    pattern: "/^(read|get|fetch|query|list|find|search|verify|check|peek)/i"
+    category: code_safety
+    scope: code
+    asil_level: "QM"
+    priority: 10
+    reason: "Read-only code operations are generally safe"
+    enabled: true
+
+# =============================================================================
+# DATA SAFETY RULES
+# Data leakage prevention - PII, credentials, keys
+# =============================================================================
+data_safety_rules:
+
+  - id: "data_credential_deny"
+    type: deny
+    pattern: "/password|secret|credential|api[_-]?key|access[_-]?key|private[_-]?key|auth[_-]?token/i"
+    category: data_safety
+    scope: data
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Access to credentials, secrets, and API keys is prohibited"
+    enabled: true
+
+  - id: "data_pii_deny"
+    type: deny
+    pattern: "/ssn|social[_-]?security|credit[_-]?card|passport|driver[_-]?licen[cs]e|national[_-]?id/i"
+    category: data_safety
+    scope: data
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Access to personally identifiable information (PII) is prohibited"
+    enabled: true
+
+  - id: "data_medical_deny"
+    type: deny
+    pattern: "/hipaa|phi|patient[_-]?record|medical[_-]?history|diagnosis|treatment[_-]?record/i"
+    category: data_safety
+    scope: data
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Access to protected health information (PHI) is prohibited"
+    enabled: true
+
+  - id: "data_exfil_deny"
+    type: deny
+    pattern: "/exfiltrat|data[_-]?leak|unauthorized[_-]?transfe?r/i"
+    category: data_safety
+    scope: data
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Data exfiltration patterns are strictly prohibited"
+    enabled: true
+
+  - id: "data_env_file_deny"
+    type: deny
+    pattern: "*.env*"
+    category: data_safety
+    scope: global
+    asil_level: "ASIL_C"
+    priority: 80
+    reason: "Environment files may contain secrets and credentials"
+    enabled: true
+
+  - id: "data_keychain_deny"
+    type: deny
+    pattern: "/keychain|keyring|credential[_-]?store|secret[_-]?store/i"
+    category: data_safety
+    scope: data
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Direct access to credential/key storage is prohibited"
+    enabled: true
+
+  - id: "data_personal_location_deny"
+    type: deny
+    pattern: "/gps[_-]?location|home[_-]?address|current[_-]?position|precise[_-]?location/i"
+    category: data_safety
+    scope: data
+    asil_level: "ASIL_B"
+    priority: 70
+    reason: "Personal location data access requires user consent"
+    enabled: true
+
+  - id: "data_user_data_ask"
+    type: ask
+    pattern: "/\\.config|\\.local|\\.personal|user[_-]?data/i"
+    category: data_safety
+    scope: file
+    asil_level: "ASIL_B"
+    priority: 50
+    reason: "Access to user data directory requires confirmation"
+    enabled: true
+
+# =============================================================================
+# DEPLOY SAFETY RULES
+# Deployment guardrails - production, infrastructure changes
+# =============================================================================
+deploy_safety_rules:
+
+  - id: "deploy_production_deny"
+    type: deny
+    pattern: "/production[_-]?deploy|deploy[_-]?production|prod[_-]?release|push[_-]?prod/i"
+    category: deploy_safety
+    scope: deploy
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Production deployments require human approval chain"
+    enabled: true
+
+  - id: "deploy_infra_change_ask"
+    type: ask
+    pattern: "/terraform|ansible|cloudformation|pulumi|kubectl|helm|docker[_-]?compose/i"
+    category: deploy_safety
+    scope: deploy
+    asil_level: "ASIL_C"
+    priority: 70
+    reason: "Infrastructure-as-code changes require human confirmation"
+    enabled: true
+
+  - id: "deploy_privilege_escalation_deny"
+    type: deny
+    pattern: "/chmod.*777|chown.*root|sudo.*-u\\s+root|setuid|setgid|setcap/i"
+    category: deploy_safety
+    scope: deploy
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Privilege escalation patterns are prohibited"
+    enabled: true
+
+  - id: "deploy_kube_delete_deny"
+    type: deny
+    pattern: "kubectl.*delete"
+    category: deploy_safety
+    scope: deploy
+    asil_level: "ASIL_C"
+    priority: 90
+    reason: "Kubernetes resource deletion requires human approval"
+    enabled: true
+
+  - id: "deploy_database_migration_ask"
+    type: ask
+    pattern: "/migrate|database[_-]?schema|alter[_-]?table|drop[_-]?table|db[_-]?migrate/i"
+    category: deploy_safety
+    scope: deploy
+    asil_level: "ASIL_C"
+    priority: 80
+    reason: "Database schema changes require human confirmation"
+    enabled: true
+
+  - id: "deploy_kubernetes_apply_allow"
+    type: allow
+    pattern: "kubectl.*apply"
+    category: deploy_safety
+    scope: deploy
+    asil_level: "ASIL_B"
+    priority: 20
+    reason: "Kubernetes apply operations are allowed with monitoring"
+    enabled: true
+
+# =============================================================================
+# COMMUNICATION SAFETY RULES
+# Output filtering - sensitive content, hallucination prevention
+# =============================================================================
+communication_safety_rules:
+
+  - id: "comm_sensitive_send_deny"
+    type: deny
+    pattern: "/send.*(password|credential|token|secret|private[_-]?key)/i"
+    category: communication_safety
+    scope: comm
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Sending sensitive credentials externally is prohibited"
+    enabled: true
+
+  - id: "comm_overconfidence_deny"
+    type: deny
+    pattern: "/guarantee|100%.*safe|perfectly.*safe|no.*risk|always.*(works|safe)|never.*fails/i"
+    category: communication_safety
+    scope: comm
+    asil_level: "ASIL_B"
+    priority: 60
+    reason: "Overconfidence and false guarantees in safety-critical communication"
+    enabled: true
+
+  - id: "comm_safety_dismissal_deny"
+    type: deny
+    pattern: "/don[ ']*t.*worry|nothing.*happen|it[ ']*s.*fine|trust.*me|just.*do.*it/i"
+    category: communication_safety
+    scope: comm
+    asil_level: "ASIL_B"
+    priority: 60
+    reason: "Dismissive language that could lead to unsafe decisions"
+    enabled: true
+
+  - id: "comm_blame_deny"
+    type: deny
+    pattern: "/not.*my.*fault|their.*mistake|someone.*else.*error/i"
+    category: communication_safety
+    scope: comm
+    asil_level: "ASIL_A"
+    priority: 40
+    reason: "Blame-shifting language is inappropriate for safety-critical logs"
+    enabled: true
+
+  - id: "comm_safety_report_allow"
+    type: allow
+    pattern: "safety_report"
+    category: communication_safety
+    scope: comm
+    asil_level: "QM"
+    priority: 10
+    reason: "Safety reports are explicitly allowed communications"
+    enabled: true
+
+# =============================================================================
+# EXECUTION SAFETY RULES
+# Resource limits - memory, CPU, disk, network
+# =============================================================================
+execution_safety_rules:
+
+  - id: "exec_excessive_memory_deny"
+    type: deny
+    pattern: "/mmap.*1024.*1024|allocate.*[GMT]B|shmget.*4096/i"
+    category: execution_safety
+    scope: exec
+    asil_level: "ASIL_B"
+    priority: 60
+    reason: "Excessive memory allocation (>1GB) is restricted on embedded platforms"
+    enabled: true
+
+  - id: "exec_fork_bomb_deny"
+    type: deny
+    pattern: "/fork.*while|while.*fork|os\\.fork|multiprocessing.*Pool.*(inf|10000)/i"
+    category: execution_safety
+    scope: exec
+    asil_level: "ASIL_C"
+    priority: 100
+    reason: "Fork bombs and uncontrolled process creation are prohibited"
+    enabled: true
+
+  - id: "exec_infinite_loop_deny"
+    type: deny
+    pattern: "/while\\s*(True|1|:)/i"
+    category: execution_safety
+    scope: code
+    asil_level: "ASIL_B"
+    priority: 60
+    reason: "Infinite loops without safety break condition are restricted"
+    enabled: true
+
+  - id: "exec_network_flood_deny"
+    type: deny
+    pattern: "/socket.*send.*loop|udp.*flood|tcp.*flood|syn.*flood|ddos/i"
+    category: execution_safety
+    scope: exec
+    asil_level: "ASIL_C"
+    priority: 100
+    reason: "Network flooding and DoS attacks are prohibited"
+    enabled: true
+
+  - id: "exec_disk_fill_deny"
+    type: deny
+    pattern: "/dd.*if=\\/dev\\/zero|fallocate.*[GT]B|write.*[0-9]{7,}.*byte/i"
+    category: execution_safety
+    scope: exec
+    asil_level: "ASIL_B"
+    priority: 80
+    reason: "Disk-filling operations are restricted"
+    enabled: true
+
+# =============================================================================
+# VEHICLE SAFETY RULES
+# Vehicle control operations - THE MOST CRITICAL CATEGORY
+# =============================================================================
+vehicle_safety_rules:
+
+  # ---- Brake System (ASIL-D) ----
+  - id: "veh_brake_disable_deny"
+    type: deny
+    pattern: "/brake.*(disable|off|override|bypass|disconnect|remove)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Disabling or overriding brake system is ALWAYS unsafe - ASIL-D violation"
+    enabled: true
+
+  - id: "veh_brake_abrupt_deny"
+    type: deny
+    pattern: "/brake.*(full|100%|maximum|emergency.*hard)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Full emergency braking without collision assessment is unsafe"
+    enabled: true
+
+  # ---- Steering System (ASIL-D) ----
+  - id: "veh_steering_override_deny"
+    type: deny
+    pattern: "/steering.*(override|disable|bypass|disconnect|lock|unlock|free)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Steering system override is ALWAYS unsafe - ASIL-D violation"
+    enabled: true
+
+  - id: "veh_steering_abrupt_deny"
+    type: deny
+    pattern: "/steering.*(max|full|100%|sudden|instant)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Abrupt full steering at speed causes loss of control - ASIL-D violation"
+    enabled: true
+
+  # ---- Throttle System (ASIL-D) ----
+  - id: "veh_throttle_unsafe_deny"
+    type: deny
+    pattern: "/throttle.*(max|full|unlimited|override|disable.*limit|100%)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Unrestricted throttle control without context assessment is unsafe"
+    enabled: true
+
+  # ---- Airbag / SRS (ASIL-D) ----
+  - id: "veh_airbag_disable_deny"
+    type: deny
+    pattern: "/airbag|srs|supplemental.*(restraint|inflat)|safety.*(airbag|cushion|curtain)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Disabling or tampering with airbag/safety restraint systems is ALWAYS fatal - ASIL-D"
+    enabled: true
+
+  # ---- Speed Controls (ASIL-C) ----
+  - id: "veh_speed_limit_override_deny"
+    type: deny
+    pattern: "/speed.*(limit|governor|restrict).*(override|disable|bypass|remove|increase)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_C"
+    priority: 90
+    reason: "Speed limit/governor override is a critical safety violation"
+    enabled: true
+
+  - id: "veh_speed_excessive_deny"
+    type: deny
+    pattern: "/set_speed.*(200|250|300|max|unlimited)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_C"
+    priority: 90
+    reason: "Setting speed above 200 km/h is unsafe without highway verification"
+    enabled: true
+
+  # ---- Lane Keeping (ASIL-B) ----
+  - id: "veh_lane_departure_disable_deny"
+    type: deny
+    pattern: "/lane.*(departure|keep|assist|centering).*(disable|off|deactivate|stop)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_B"
+    priority: 70
+    reason: "Lane keeping assist should not be disabled without driver confirmation"
+    enabled: true
+
+  # ---- Emergency Systems (ASIL-D) ----
+  - id: "veh_emergency_maneuver_ask"
+    type: ask
+    pattern: "/emergency.*(brake|steer|stop|maneuver|avoid|evade|swerve)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Emergency maneuvers require human confirmation and collision assessment"
+    enabled: true
+
+  - id: "veh_automatic_emergency_brake_deny"
+    type: deny
+    pattern: "/aeb|automatic.*emergency.*brake.*(disable|off|override)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Disabling Automatic Emergency Braking (AEB) is ALWAYS prohibited - ASIL-D"
+    enabled: true
+
+  # ---- Gear / Transmission (ASIL-C) ----
+  - id: "veh_gear_unsafe_deny"
+    type: deny
+    pattern: "/gear.*(reverse|park).*(while|during).*(moving|drive|speed)/i"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_C"
+    priority: 90
+    reason: "Engaging reverse/park gear while vehicle is moving is unsafe"
+    enabled: true
+
+  - id: "veh_gear_shift_safe_allow"
+    type: allow
+    pattern: "set_gear"
+    category: vehicle_safety
+    scope: vehicle
+    asil_level: "ASIL_C"
+    priority: 20
+    reason: "Gear shifting is allowed when vehicle is stationary and context verified"
+    enabled: true
+
+# =============================================================================
+# SENSOR SAFETY RULES
+# Sensor data access - camera, LiDAR, radar, ultrasonic
+# =============================================================================
+sensor_safety_rules:
+
+  - id: "sen_camera_disable_deny"
+    type: deny
+    pattern: "/camera.*(disable|off|blind|block|cover|obscure)/i"
+    category: sensor_safety
+    scope: sensor
+    asil_level: "ASIL_C"
+    priority: 90
+    reason: "Disabling camera sensors creates blind spots - safety risk"
+    enabled: true
+
+  - id: "sen_lidar_disable_deny"
+    type: deny
+    pattern: "/lidar.*(disable|off|blind|block|cover|obscure)/i"
+    category: sensor_safety
+    scope: sensor
+    asil_level: "ASIL_C"
+    priority: 90
+    reason: "Disabling LiDAR sensors degrades perception - safety risk"
+    enabled: true
+
+  - id: "sen_radar_disable_deny"
+    type: deny
+    pattern: "/radar.*(disable|off|blind|block|cover|obscure)/i"
+    category: sensor_safety
+    scope: sensor
+    asil_level: "ASIL_C"
+    priority: 90
+    reason: "Disabling radar sensors degrades object detection - safety risk"
+    enabled: true
+
+  - id: "sen_ultrasonic_disable_deny"
+    type: deny
+    pattern: "/ultrasonic.*(disable|off|blind|block|cover)/i"
+    category: sensor_safety
+    scope: sensor
+    asil_level: "ASIL_B"
+    priority: 70
+    reason: "Disabling ultrasonic sensors degrades proximity detection - parking risk"
+    enabled: true
+
+  - id: "sen_calibration_change_deny"
+    type: deny
+    pattern: "/sensor.*(calibrat|offset|bias|alignment).*(change|modify|write|update)/i"
+    category: sensor_safety
+    scope: sensor
+    asil_level: "ASIL_C"
+    priority: 80
+    reason: "Modifying sensor calibration without validation is unsafe (perception degradation)"
+    enabled: true
+
+  - id: "sen_all_camera_read_allow"
+    type: allow
+    pattern: "/camera.*(read|get|frame|image|stream|data)/i"
+    category: sensor_safety
+    scope: sensor
+    asil_level: "ASIL_B"
+    priority: 20
+    reason: "Reading camera data for perception is a core driving function"
+    enabled: true
+
+  - id: "sen_lidar_read_allow"
+    type: allow
+    pattern: "/lidar.*(read|get|point_cloud|scan|data|pcl)/i"
+    category: sensor_safety
+    scope: sensor
+    asil_level: "ASIL_B"
+    priority: 20
+    reason: "Reading LiDAR data for perception is a core driving function"
+    enabled: true
+
+# =============================================================================
+# EMERGENCY SAFETY RULES
+# Emergency override patterns - THE HIGHEST PRIORITY
+# =============================================================================
+emergency_safety_rules:
+
+  - id: "emerg_override_safety_deny"
+    type: deny
+    pattern: "/override.*(safety|critical|protect|guard|monitor|watchdog)/i"
+    category: emergency_safety
+    scope: global
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Overriding any safety-critical system is ALWAYS prohibited - ASIL-D"
+    enabled: true
+
+  - id: "emerg_monitor_disable_deny"
+    type: deny
+    pattern: "/safety.*(monitor|watchdog|guard|supervisor).*(disable|stop|kill|off|deactivat)/i"
+    category: emergency_safety
+    scope: global
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Disabling safety monitors/watchdogs is ALWAYS fatal - ASIL-D violation"
+    enabled: true
+
+  - id: "emerg_safe_state_exit_deny"
+    type: deny
+    pattern: "/safe.*(state|mode|stop).*(exit|leave|resume|override)/i"
+    category: emergency_safety
+    scope: global
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Exiting safe state without root cause resolution is prohibited"
+    enabled: true
+
+  - id: "emerg_log_clear_deny"
+    type: deny
+    pattern: "/safety.*log.*(clear|delete|remove|erase|truncat)/i"
+    category: emergency_safety
+    scope: global
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Tampering with safety audit logs is ALWAYS prohibited - ASIL-D"
+    enabled: true
+
+  - id: "emerg_human_override_ask"
+    type: ask
+    pattern: "/human.*(override|takeover|intervene|manual)/i"
+    category: emergency_safety
+    scope: global
+    asil_level: "ASIL_D"
+    priority: 100
+    reason: "Human override/takeover requests must be clearly communicated and confirmed"
+    enabled: true
+
+# =============================================================================
+# GLOBAL ALLOW RULES (low priority - only apply when no deny matches)
+# =============================================================================
+global_allow_rules:
+
+  - id: "allow_python_source_read"
+    type: allow
+    pattern: "*.py"
+    category: code_safety
+    scope: global
+    asil_level: "QM"
+    priority: 5
+    reason: "Reading Python source files is generally safe"
+    enabled: true
+
+  - id: "allow_yaml_config_read"
+    type: allow
+    pattern: "*.yaml"
+    category: code_safety
+    scope: global
+    asil_level: "QM"
+    priority: 5
+    reason: "Reading YAML configuration files is generally safe"
+    enabled: true
+
+  - id: "allow_json_config_read"
+    type: allow
+    pattern: "*.json"
+    category: code_safety
+    scope: global
+    asil_level: "QM"
+    priority: 5
+    reason: "Reading JSON configuration files is generally safe"
+    enabled: true
+
+  - id: "allow_log_read"
+    type: allow
+    pattern: "*.log"
+    category: code_safety
+    scope: global
+    asil_level: "QM"
+    priority: 5
+    reason: "Reading log files is generally safe"
+    enabled: true
+
+  - id: "allow_txt_read"
+    type: allow
+    pattern: "*.txt"
+    category: code_safety
+    scope: global
+    asil_level: "QM"
+    priority: 5
+    reason: "Reading plain text files is generally safe"
+    enabled: true

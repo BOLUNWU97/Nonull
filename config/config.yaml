@@ -1,0 +1,43 @@
+# Nonull Default Configuration 默认配置
+
+agent:
+  name: Nonull
+  version: 1.0.0
+  mode: interactive  # interactive | autonomous | plan
+  model:
+    provider: auto
+    temperature: 0.2
+    max_tokens: 4096
+
+memory:
+  neocortex:
+    enabled: true
+    capacity: 1e9  # 1B tokens
+    index_speed: fast
+  subconscious:
+    enabled: true
+    cycles_per_day: 10000
+
+safety:
+  strictness: 4  # 1-5, 5=max strict
+  deny_first: true
+  iso26262: true
+  audit_log: true
+
+orchestration:
+  max_concurrent_agents: 8
+  default_pattern: nexus_tendrils
+  workflow_persistence: true
+
+skills:
+  auto_discover: true
+  marketplace_enabled: true
+
+channels:
+  - cli
+  - gateway
+
+profiles:
+  default:
+    workspace: ./workspace
+    log_level: INFO

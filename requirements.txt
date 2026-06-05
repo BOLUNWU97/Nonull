@@ -1,0 +1,33 @@
+# Nonull Dependencies 依赖
+
+# Core
+pyyaml>=6.0
+pydantic>=2.0
+numpy>=1.24
+
+# CLI & UI
+rich>=13.0
+
+# Networking
+httpx>=0.24
+
+# Async
+# asyncio is part of Python stdlib
+
+# Storage
+# sqlite3 is part of Python stdlib
+
+# Optional: Vector search for Neocortex memory
+# faiss-cpu>=1.7
+
+# Optional: Text embeddings for memory indexing
+# sentence-transformers>=2.2
+
+# Development
+pytest>=7.0
+pytest-asyncio>=0.21
+pytest-cov>=4.0
+
+# Code quality
+# mypy>=1.0
+# ruff>=0.1
