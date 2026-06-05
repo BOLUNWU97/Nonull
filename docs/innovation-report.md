@@ -5,6 +5,12 @@
 > **作者:** Innovation Exploration Agent
 > **状态:** Comprehensive Research Report
 
+> **⚠️ Disclaimer / 免责声明**
+>
+> All numerical claims and timeline predictions in this document are **illustrative research targets and design aspirations**. Nonull is an **internal development assistant** and does **not** implement certified safety mechanisms, formal verification, or any production-ready autonomous driving capability. Numbers such as latency bounds (e.g. "10ms"), collision rates, or roadmap dates are drawn from third-party research papers and prototypes, not from Nonull's own validated, certified, or deployed systems. Nothing in this report constitutes an ISO 26262 / ASIL / SOTIF / ASPICE claim.
+>
+> 本文件中的所有数值声明与时间线预测均为**示例性的研究目标与设计愿景**。Nonull 是**内部开发助手**，**不**实现任何经过认证的安全机制、形式化验证或可上车的自动驾驶能力。"10ms"延迟、碰撞率、路线图日期等数字均引自第三方研究论文与原型，**非** Nonull 自身经过验证、认证或部署的系统。本文件不构成 ISO 26262 / ASIL / SOTIF / ASPICE 声明。
+
 ---
 
 ## 目录 / Table of Contents
@@ -74,9 +80,11 @@ These agents communicate via structured reasoning traces (not free-form text), u
 ├─────────────────────────────────────────┤
 │   Consensus Engine (Weighted Voting)     │
 ├─────────────────────────────────────────┤
-│         Safety Override Layer            │
+│   Advisory Safety Hints Layer (research) │
 └─────────────────────────────────────────┘
 ```
+
+> *The "Advisory Safety Hints Layer" is a research concept. In a real implementation it would emit warnings or fallback suggestions, not certified safety overrides.*
 
 **How it builds on existing Nonull architecture:**
 - Extends any existing single-agent VLA pipeline by wrapping it in a multi-agent deliberation layer
@@ -245,7 +253,7 @@ A training framework that synergistically integrates human feedback with physics
 
 Key components:
 - **Human Feedback Channel:** Learns driving style preferences from human demonstrations and interventions (TrajHF showed 83.2% human preference for RLHF-tuned models)
-- **Physics Knowledge Channel:** Embeds traffic flow models, vehicle dynamics constraints, and kinematic feasibility as hard safety bounds
+- **Physics Knowledge Channel:** Embeds traffic flow models, vehicle dynamics constraints, and kinematic feasibility as heuristic penalty terms (not certified safety bounds)
 - **Dynamic Action Selection:** Switches between human-preferred actions and physics-safe actions when they diverge — guarantees a safety performance lower bound even with poor-quality human feedback
 - **Fast-Slow Updates:** Dual-timescale learning (aPVP from 2025) — fast updates from real-time human takeovers, slow updates from expert network
 - **Neuro-Cognitive Extension (CVPR 2026):** Optional EEG-based reward signals from human drivers for implicit preference learning
@@ -327,10 +335,10 @@ Constitutional rules include:
 - **Responsibility attribution** (CARS framework): Distinguish system failures from unavoidable conflicts
 
 Runtime Monitor architecture (based on NEURAL-QWEN's Constitutional AI and the Leaning Robust Runtime Monitor research):
-- **Pre-execution check:** Analyzes proposed action before execution
-- **Real-time interception:** Can override unsafe actions within 10ms
+- **Pre-execution check (advisory):** Analyzes proposed action before execution and emits a hint/verdict (does not block execution in any certified sense)
+- **Real-time interception (research target):** Demonstrated in research prototypes; intercept latency in the 10ms range under lab conditions (research target, not a production safety guarantee)
 - **Post-execution audit:** Logs all safety violations for offline analysis
-- **Budget-based circuit breakers:** Kill workflows exceeding configurable risk thresholds
+- **Budget-based circuit breakers (advisory):** Triggers warnings or escalation when configurable risk thresholds are exceeded (advisory, not a certified safety element)
 
 **How it benefits autonomous driving:**
 - **Best-effort safety constraints:** Heuristic checks against a configurable rule set (advisory, not formally verified)
@@ -345,27 +353,30 @@ Runtime Monitor architecture (based on NEURAL-QWEN's Constitutional AI and the L
 **Suggested architecture/approach:**
 ```python
 class SafetyMonitor:
+    """Advisory safety monitor (research prototype — not a certified safety element)."""
     constitution = DrivingConstitution(
         hard_rules=[...],
         soft_rules=[...],
         ethical_priorities={...}
     )
-    
+
     def pre_check(self, proposed_action, scene_state) -> ActionVerdict:
         violations = self.constitution.evaluate(proposed_action, scene_state)
         if violations.contains_hard():
-            return ActionVerdict.OVERRIDE
+            return ActionVerdict.EMIT_HARD_VIOLATION_HINT  # advisory hint, not a certified override
         elif violations.risk_score() > threshold:
             return ActionVerdict.ESCALATE
         else:
             return ActionVerdict.ALLOW
-    
+
     def runtime_intercept(self, action, scene_state, latency_budget_ms=10):
-        # Lightweight check that runs every 10ms
+        # Best-effort heuristic check; the 10ms budget is an aspirational research target,
+        # not a production safety guarantee. Behaviour: emit an advisory hint and let the
+        # driving policy decide.
         safety_score = self.constitution.fast_evaluate(action, scene_state)
         if safety_score < SAFE_THRESHOLD:
-            self.override_with_safe_action(scene_state)
-    
+            self.emit_safety_hint(scene_state)  # replaces override_with_safe_action
+
     def post_audit(self, episode_trace):
         # Offline analysis of all decisions
         report = self.constitution.full_audit(episode_trace)
@@ -466,10 +477,10 @@ Key capability: **Responsibility attribution** (from CARS framework) automatical
 **What it is:**
 Integration of the **Reason-Imagine-Act** framework (IEEE ITSC 2026) where Nonull couples an LLM-based reasoner with an action-conditioned world model. The LLM proposes candidate actions, the world model runs short-horizon rollouts to predict outcomes, and a safety scorer selects the safest option.
 
-Results from the original paper (CARLA, 1,000 episodes):
+Results from the original paper (CARLA, 1,000 episodes — research result, not a real-world safety claim):
 - 80.05% route completion
 - 51.10% arrival rate
-- 0.20% collision rate (near-perfect safety)
+- 0.20% collision rate in closed-loop CARLA simulation (research result, not a real-world safety claim)
 
 Extended with:
 - **C-CoT** counterfactual reasoning for "what if" trajectory evaluation
@@ -479,7 +490,7 @@ Extended with:
 
 **How it benefits autonomous driving:**
 - **Imagination before action:** Evaluates multiple futures before committing
-- **Near-zero collision rate:** World model predictions filter out dangerous actions
+- **Reduced collision rate in simulation (research target):** World model predictions are used to down-rank dangerous candidate actions in research prototypes; this is a research-direction aspiration, not a real-world safety guarantee
 - **Composable:** Works with any driving policy as the action proposer
 - **Explainable:** Can show why selected action was safer than alternatives
 
@@ -507,7 +518,7 @@ Extended with:
 |----------|------------|------------|
 | P1 | **Digital Twin Sandbox** (Innovation 2) | Enables safe iteration and long-tail coverage |
 | P2 | **PE-RLHF** (Innovation 5) | Learns human preferences within physics constraints |
-| P2 | **RIA Loop with World Models** (Bonus) | Imagine-before-act paradigm for near-zero collision |
+| P2 | **RIA Loop with World Models** (Bonus) | Imagine-before-act paradigm (research target — reduced-collision aspirations in simulation, not a real-world safety claim) |
 
 **Milestone:** Nonull trains in simulation, learns from human feedback, and shows improving safety metrics in closed-loop testing (research target — does not imply certified safety or production readiness).
 
@@ -617,12 +628,12 @@ Extended with:
 - **Improving reasoning quality** across an expanding share of driving scenarios (research target)
 - **Open-source contributions** to AD agent community (VLM models, safety frameworks, simulation tools)
 
-### 5 Year Horizon: "Beyond Driving"
-The Nonull agent architecture becomes a platform for **physical AI safety**:
-- Applied to robotics, drone fleets, industrial automation
-- Safety case generation as a service for all autonomous systems
-- V2X agent network expanded to smart city infrastructure
-- Human-level embodied reasoning becomes the standard for safety-critical AI
+### 5 Year Horizon: "Beyond Driving" (research-direction aspirations, not commitments)
+The Nonull agent architecture could become a research platform for **physical AI safety**, if underlying research matures:
+- Potential research extensions into robotics, drone fleets, industrial automation
+- Safety case generation as an experimental tool for research prototypes of autonomous systems
+- V2X agent network research expanded to smart city infrastructure scenarios
+- Improving reasoning quality across an expanding share of driving scenarios (research target)
 
 ---
 

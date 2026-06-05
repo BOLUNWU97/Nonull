@@ -51,6 +51,10 @@ jobs:
         run: |
           python -m pytest tests/test_no_experimental_imports.py -v
 
+      - name: Run quickstart smoke test
+        run: |
+          python -m pytest tests/test_quickstart_runs.py -v
+
       - name: Run full test suite
         run: |
           python -m pytest tests/ -v --tb=short

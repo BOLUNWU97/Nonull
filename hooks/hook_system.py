@@ -10,10 +10,10 @@ Nonull — Hook System
 ==============================
 钩子系统 | Lifecycle Hook System
 
-A comprehensive hook system inspired by Claude Code's 38+ hook events,
+A comprehensive hook system inspired by Claude Code's 40+ hook events,
 providing lifecycle hooks for every major agent operation.
 
-受 Claude Code 38+ 钩子事件启发的全面钩子系统。
+受 Claude Code 40+ 钩子事件启发的全面钩子系统。
 
 DESIGN PHILOSOPHY (设计理念):
     Every significant lifecycle event in the agent has a pre-hook and a
@@ -24,7 +24,7 @@ DESIGN PHILOSOPHY (设计理念):
     智能体中的每个重要生命周期事件都有 pre-hook 和 post-hook。
     钩子可以是 Shell 命令、HTTP 调用、LLM 提示词或智能体子任务。
 
-Hook Events (38+ lifecycle events):
+Hook Events (40+ lifecycle events):
     PreAction / PostAction          动作执行前后
     PreToolUse / PostToolUse        工具使用前后
     SessionStart / SessionEnd       会话开始/结束
@@ -49,7 +49,7 @@ Hook Types (4 types):
     AGENT  - Run agent sub-tasks with their own lifecycle
 
 Key features:
-    - 38+ hook events for complete lifecycle coverage
+    - 40+ hook events for complete lifecycle coverage
     - 4 hook types: SHELL, HTTP, LLM, AGENT
     - Priority-based execution ordering
     - Hook chaining with pipeline pattern (output feeds next input)
@@ -80,7 +80,7 @@ logger = logging.getLogger(__name__)
 # Enums and Constants
 # ===================================================================
 
-# Define ALL 38+ hook event names
+# Define ALL 40+ hook event names
 HOOK_EVENTS: List[str] = [
     # Action lifecycle
     "PreAction",

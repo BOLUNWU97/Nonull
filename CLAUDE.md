@@ -42,23 +42,123 @@ If a user asks for safety/ISO 26262 features, always state clearly that the proj
 ```
 Nonull/
 ├── README.md               # Project overview (Chinese + English)
-├── CLAUDE.md                # This file — Claude Code instructions
-├── requirements.txt         # Python dependencies
-├── config/
-│   ├── config.yaml          # Main configuration
-│   └── profiles/            # Profile isolation (Hermes-style)
+├── CLAUDE.md               # This file — Claude Code instructions
+├── AGENT.md                # Agent entrypoint notes
+├── setup.py                # Package setup / install metadata
+├── requirements.txt        # Python dependencies
+├── .gitignore              # Git ignore rules
+├── nonull/                 # Top-level package (lowercase) — CLI entrypoint
+│   ├── __init__.py
+│   └── __main__.py
+├── core/                   # Core engine
+│   ├── __init__.py
+│   ├── agent_core.py
+│   └── config.py
+├── memory/                 # Memory system (openHuman-style)
+│   ├── __init__.py
+│   ├── working_memory.py
+│   ├── episodic.py
+│   ├── semantic.py
+│   ├── procedural.py
+│   ├── neocortex.py
+│   └── subconscious_loop.py
+├── safety/                 # Safety guardian (advisory only)
+│   ├── __init__.py
+│   ├── guardian.py
+│   ├── deny_first.py
+│   └── compliance.py
+├── skills/                 # Domain skills (12 files)
+│   ├── __init__.py
+│   ├── base.py
+│   ├── registry.py
+│   ├── code_skills.py
+│   ├── data_skills.py
+│   ├── devops_skills.py
+│   ├── perception_skills.py
+│   ├── planning_skills.py
+│   ├── research_skills.py
+│   ├── safety_skills.py
+│   ├── simulation_skills.py
+│   └── testing_skills.py
+├── orchestration/          # Multi-agent orchestration
+│   ├── __init__.py
+│   ├── orchestrator.py
+│   ├── agent_pool.py
+│   ├── communication.py
+│   └── workflows.py
+├── persona/                # Unique driving-persona features
+│   ├── __init__.py
+│   ├── driving_persona.py
+│   ├── scenario_engine.py
+│   ├── safety_badge.py
+│   ├── co_pilot.py
+│   └── persona_orchestrator.py
+├── channels/               # Communication channels (CLI / MCP / gateways)
+│   ├── __init__.py
+│   ├── base.py
+│   ├── cli.py
+│   ├── gateway.py
+│   ├── mcp_adapter.py
+│   └── platform_adapters.py
+├── hooks/                  # Lifecycle hooks
+│   ├── __init__.py
+│   └── hook_system.py
+├── config/                 # Configuration files
+│   ├── config.yaml         # Main configuration
+│   ├── safety_rules.yaml   # Safety policy rules
+│   └── profiles/           # Profile isolation (Hermes-style)
 │       └── default.yaml
-├── docs/
-│   ├── architecture.md      # Architecture documentation
-│   └── skills-catalog.md    # Skills catalog
-├── examples/                # Usage examples
+├── experimental/           # DO NOT USE — research only
+│   ├── README.md
+│   ├── consciousness/      # Self-evolving memory (experimental)
+│   └── evolution/          # Self-evolution (experimental)
+├── docs/                   # Documentation (see Documentation section below)
+├── examples/               # Usage examples
 │   ├── quickstart.py
 │   ├── code_review.py
 │   ├── safety_analysis.py
 │   └── multi_agent_workflow.py
-└── tests/                   # Test suite
-    ├── test_core.py
-    └── test_memory.py
+├── tests/                  # Test suite (see Tests section below)
+└── .github/
+    ├── CODEOWNERS
+    └── workflows/
+        └── test.yml
+```
+
+---
+
+## / 文档 / Documentation
+
+All user-facing documentation lives in `docs/` and is bilingual where required:
+
+- `docs/architecture.md` — System architecture, layer boundaries, memory model
+- `docs/skills-catalog.md` — Catalog of all available skills
+- `docs/user-guide.md` — End-user guide (English)
+- `docs/innovation-report.md` — Innovation highlights and design rationale
+- `docs/说明书-完整版.md` — 完整中文说明书
+- `docs/快速上手指南.md` — 中文快速上手指南
+- `docs/一页纸速览.md` — 一页纸速览 (one-page cheat sheet)
+- `experimental/README.md` — Experimental module warnings
+- `README.md` — Top-level project overview (Chinese + English)
+- `AGENT.md` — Agent entrypoint / operating notes
+
+---
+
+## / 测试 / Tests
+
+Test suite lives in `tests/` (6 files, all run by CI via `.github/workflows/test.yml`):
+
+- `tests/test_core.py` — Core engine / agent_core / config tests
+- `tests/test_memory.py` — Memory layer (Neocortex, Subconscious, etc.)
+- `tests/test_no_experimental_imports.py` — **Guard test** — enforces no production code imports from `experimental/`
+- `tests/test_safety_badge_api.py` — Persona safety_badge public API contract
+- `tests/test_persona_exports.py` — Persona module exports / surface checks
+- `tests/test_no_marketing_claims.py` — Guard test — enforces no forbidden ISO 26262 / ASIL-D / "production-ready" marketing claims in user-facing copy
+
+Run all tests:
+
+```bash
+pytest tests/ -v
 ```
 
 ---

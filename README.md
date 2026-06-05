@@ -132,7 +132,7 @@
 | 🦞 **OpenClaw** | 三层架构 | Gateway / Agent / Channels 三层分离 + Nexus+Tendrils 编排 |
 | 🏛️ **Hermes Agent** | 配置隔离 | Profile 隔离（dev/test/prod/simulation）+ 工具注册表 |
 | 🧠 **openHuman** | 记忆系统 | Neocortex 多层记忆 + 潜意识循环 + 遗忘曲线（默认内存实现，可插拔后端） |
-| 🔐 **Claude Code** | 安全体系 | Deny-First 安全 + 38 个钩子事件 + SubAgent 隔离 |
+| 🔐 **Claude Code** | 安全体系 | Deny-First 安全 + 40 个钩子事件 + SubAgent 隔离 |
 
 <br>
 
@@ -340,7 +340,7 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 │   └── platform_adapters.py  #    飞书/钉钉/Telegram/WebSocket/HTTP 5 个适配器
 │
 ├── 📁 hooks/                 # 🪝 钩子系统
-│   └── hook_system.py        #    38 钩子事件 × 4 类型
+│   └── hook_system.py        #    40 钩子事件 × 4 类型
 │
 ├── 📁 docs/                  # 📚 文档
 │   ├── 说明书-完整版.md       #    完整使用说明书

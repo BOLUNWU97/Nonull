@@ -5,18 +5,18 @@ Nonull — Package Setup
 
 Nonull (智驾智能体) is a next-generation multi-channel agent framework
 featuring a multi-channel gateway system, 5 built-in platform adapters
-(Telegram / Feishu / DingTalk / WebSocket / HTTP), and a 38-hook lifecycle
+(Telegram / Feishu / DingTalk / WebSocket / HTTP), and a 40-hook lifecycle
 system. Inspired by OpenClaw's gateway architecture, Hermes Agent's
 platform adapters, and Claude Code's hook lifecycle.
 
 Nonull (智驾智能体) 是新一代多通道智能体框架，具有多通道网关系统、
 5 个内置平台适配器（Telegram / 飞书 / 钉钉 / WebSocket / HTTP）和
-38 钩子生命周期系统。受 OpenClaw 的网关架构、Hermes Agent 的平台
+40 钩子生命周期系统。受 OpenClaw 的网关架构、Hermes Agent 的平台
 适配器和 Claude Code 的钩子生命周期启发。
 
 Core modules:
     channels      — Multi-channel communication gateway with 5 built-in platform adapters
-    hooks         — Lifecycle hook system with 38 events and 4 execution types
+    hooks         — Lifecycle hook system with 40 events and 4 execution types
 """
 
 from __future__ import annotations
@@ -138,7 +138,7 @@ setup(
     author_email="dev@nonull.ai",
     description=(
         "Nonull - Multi-Channel Agent Framework / 多通道智能体框架. "
-        "Multi-channel gateway + 5 built-in platform adapters + 38 lifecycle hooks."
+        "Multi-channel gateway + 5 built-in platform adapters + 40 lifecycle hooks."
     ),
     long_description=_get_long_description(),
     long_description_content_type="text/markdown",

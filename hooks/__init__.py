@@ -3,11 +3,11 @@ Nonull — Hooks Package
 ===============================
 钩子系统 | Lifecycle Hook System
 
-A comprehensive hook system inspired by Claude Code's 38+ hook events,
+A comprehensive hook system inspired by Claude Code's 40+ hook events,
 providing lifecycle hooks for every major agent operation. Supports four
 hook types: Shell commands, HTTP endpoints, LLM prompts, and Agent hooks.
 
-受 Claude Code 38+ 钩子事件启发的全面钩子系统，为每个重要的智能体操作
+受 Claude Code 40+ 钩子事件启发的全面钩子系统，为每个重要的智能体操作
 提供生命周期钩子。支持四种钩子类型：Shell 命令、HTTP 端点、LLM 提示词和
 智能体钩子。
 
