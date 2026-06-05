@@ -100,9 +100,9 @@
     <td align="center"><b>三种驾驶人格</b>：保守派 🛡️ / 运动派 🚀 / 老司机 🧓</td>
   </tr>
   <tr>
-    <td align="center">🏅 <b>反馈</b></td>
+    <td align="center">📊 <b>反馈</b></td>
     <td align="center">没有反馈机制</td>
-    <td align="center"><b>安全徽章系统</b>（基础反馈统计，非游戏化进度）</td>
+    <td align="center"><b>安全指标记录</b>（基础反馈统计，建议性，非游戏化进度）</td>
   </tr>
 </table>
 
@@ -190,7 +190,7 @@ print(result["output"])
 | 🔄 **多Agent** | DAG 任务分解 + 8 个 Agent 并行 + 冲突解决 | ✅ |
 | 👤 **驾驶人格** | 🛡️ 保守派 / 🚀 运动派 / 🧓 老司机 | ✅ 🆕 |
 | 🧠 **场景思维** | 36 个标准场景自动关联 + 覆盖率分析 | ✅ 🆕 |
-| 🏅 **安全徽章** | 游戏化成就系统 + 安全评分卡 | ✅ 🆕 |
+| 📊 **安全指标** | 安全指标记录与统计（建议性，非游戏化） | ✅ 🆕 |
 | 👋 **副驾模式** | 主动风险提醒 + 每日简报 | ✅ 🆕 |
 | 🔌 **多通道** | CLI / API / MCP / 飞书 / 钉钉 / Telegram | ✅ |
 
@@ -318,7 +318,7 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 ├── 📁 persona/               # 👤 独有：人格系统
 │   ├── driving_persona.py    #    三种驾驶人格
 │   ├── scenario_engine.py    #    场景思维引擎（36 场景）
-│   ├── safety_badge.py       #    安全徽章系统
+│   ├── safety_badge.py       #    安全指标记录系统
 │   ├── co_pilot.py           #    副驾主动提醒
 │   └── persona_orchestrator.py #  人格编排器
 │
@@ -355,8 +355,10 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 │   └── multi_agent_workflow.py #  多 Agent 工作流
 │
 ├── 📁 tests/                 # 🧪 测试
-│   ├── test_core.py
-│   └── test_memory.py
+│   ├── test_core.py                      # 核心测试
+│   ├── test_memory.py                    # 记忆系统测试
+│   ├── test_safety_badge_api.py          # SafetyBadge API + 弃用包装器
+│   └── test_persona_exports.py           # persona 包对外导出契约
 │
 └── 📁 config/                # ⚙️ 配置
     ├── config.yaml
@@ -433,7 +435,7 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
   <tr><td>🔧 31 Skills</td><td>9 categories: Code/Safety/Perception/Planning/Testing/Simulation/Data/Research/DevOps</td></tr>
   <tr><td>👤 Driving Persona</td><td>Conservative 🛡️ / Sporty 🚀 / Veteran 🧓 — three characters</td></tr>
   <tr><td>🧠 Scenario Engine</td><td>36 built-in driving scenarios + coverage analysis</td></tr>
-  <tr><td>🏅 Safety Badges</td><td>Safety metrics tracking (advisory, not gamified)</td></tr>
+  <tr><td>📊 Safety Metrics</td><td>Safety metrics tracking (advisory, not gamified)</td></tr>
   <tr><td>🔌 Multi-Channel</td><td>CLI / API / MCP / Telegram / Feishu / DingTalk</td></tr>
 </table>
 

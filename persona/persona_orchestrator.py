@@ -1,6 +1,6 @@
 """
-人格编排器 — 统合 Nonull 的独特人格、场景思维、安全徽章、副驾提醒
-Persona Orchestrator — Unifies Nonull's unique persona, scenario thinking, safety badges, and co-pilot features
+人格编排器 — 统合 Nonull 的独特人格、场景思维、安全指标记录、副驾提醒
+Persona Orchestrator — Unifies Nonull's unique persona, scenario thinking, safety metrics tracking, and co-pilot features
 """
 
 from enum import Enum
@@ -17,7 +17,7 @@ class PersonaOrchestrator:
     把所有特色功能统合在一起：
     - 驾驶人格：三种性格切换
     - 场景思维：自动关联驾驶场景
-    - 安全徽章：游戏化安全评分
+    - 安全指标记录：安全操作指标
     - 副驾模式：主动提醒风险
     """
 
@@ -74,15 +74,15 @@ class PersonaOrchestrator:
         """检查场景测试覆盖率"""
         return self.scenarios.analyze_scenario_coverage(test_cases)
 
-    # ═══ 安全徽章 ═══
+    # ═══ 安全指标 ═══
 
     def record_interaction(self, context: dict) -> dict:
-        """记录一次交互，评估安全评分"""
-        score = self.badges.evaluate_interaction(context)
+        """记录一次交互，统计安全指标"""
+        metric = self.badges.evaluate_interaction(context)
         new_level = self.badges.check_and_record()
         return {
-            "score": score,
-            "new_level": new_level,
+            "metric": metric,
+            "level": new_level,
             "total_levels": len(self.badges.get_achieved_levels()),
         }
 
@@ -106,9 +106,9 @@ class PersonaOrchestrator:
         """获取完整状态"""
         return {
             "persona": self.get_current_persona(),
-            "badges": self.get_scorecard(),
+            "metrics": self.get_scorecard(),
             "stats": {
                 "total_interactions": self.badges.total_interactions,
-                "safety_score_avg": self.badges.average_score,
+                "safety_metric_avg": self.badges.average_score,
             },
         }

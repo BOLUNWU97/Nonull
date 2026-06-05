@@ -528,7 +528,7 @@ Extended with:
 | P3 | **AD-RAG Pipeline** (Innovation 9) | Always-current knowledge without retraining |
 | P3 | **Automated Safety Case Generator** (Innovation 10) | Continuous regulatory compliance |
 
-**Milestone:** Nonull is production-ready, regulation-compliant, and continuously validated.
+**Milestone:** Nonull reaches internal-assistant maturity, integrates advisory regulatory references, and is continuously validated by its test suite.
 
 ### Phase 5: Frontier (Year 2)
 

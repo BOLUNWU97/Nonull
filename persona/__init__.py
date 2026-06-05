@@ -2,8 +2,8 @@
 Nonull (智驾智能体) - Persona Orchestrator Package
 ====================================================
 
-人格编排系统 — 将角色、场景、徽章与 Copilot 融为一体。
-Persona Orchestration System — unifies persona, scenario, badges, and copilot.
+人格编排系统 — 将角色、场景、安全指标与 Copilot 融为一体。
+Persona Orchestration System — unifies persona, scenario, safety metrics, and copilot.
 
 @package: persona
 @version: 0.1.0
