@@ -327,7 +327,7 @@ class SemanticMemory:
             version=version,
             metadata=metadata or {},
             relations=relations or [],
-            embedding=self.embedder.encode(f"{title}\\n{content}"),
+            embedding=self.embedder.encode(f"{title}\n{content}"),
         )
 
         self.nodes[node.node_id] = node
@@ -366,7 +366,7 @@ class SemanticMemory:
 
         node.updated_at = time.time()
         if "title" in updates or "content" in updates:
-            node.embedding = self.embedder.encode(f"{node.title}\\n{node.content}")
+            node.embedding = self.embedder.encode(f"{node.title}\n{node.content}")
 
         logger.info("Updated knowledge node %s", node_id[:8])
         return True
@@ -443,7 +443,7 @@ class SemanticMemory:
             if node is None:
                 continue
             if node.embedding is None:
-                node.embedding = self.embedder.encode(f"{node.title}\\n{node.content}")
+                node.embedding = self.embedder.encode(f"{node.title}\n{node.content}")
 
             sim = float(np.dot(query_vec, node.embedding))
             combined = sim * node.confidence
@@ -637,7 +637,7 @@ class SemanticMemory:
                 metadata=node_data.get("metadata", {}),
                 relations=relations,
             )
-            node.embedding = sm.embedder.encode(f"{node.title}\\n{node.content}")
+            node.embedding = sm.embedder.encode(f"{node.title}\n{node.content}")
             sm.nodes[nid] = node
             sm._node_count += 1
 

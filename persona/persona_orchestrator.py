@@ -22,7 +22,8 @@ class PersonaOrchestrator:
     """
 
     def __init__(self, persona_type: PersonaType = PersonaType.VETERAN):
-        self.persona = DrivingPersona(persona_type)
+        self.persona_type = persona_type
+        self.persona = DrivingPersona.for_type(persona_type)
         self.scenarios = ScenarioEngine()
         self.badges = SafetyBadgeSystem()
         self.copilot = CoPilot(persona_type)
@@ -31,7 +32,9 @@ class PersonaOrchestrator:
 
     def switch_persona(self, persona_type: PersonaType) -> str:
         """切换驾驶人格"""
-        self.persona = DrivingPersona(persona_type)
+        self.persona_type = persona_type
+        self.persona = DrivingPersona.for_type(persona_type)
+        # Rebuild co-pilot so its default rules match the new persona
         self.copilot = CoPilot(persona_type)
         return f"已切换到「{self.persona.get_name()}」模式"
 
@@ -47,7 +50,11 @@ class PersonaOrchestrator:
     def list_personas(self) -> list:
         """列出所有可用人格"""
         return [
-            {"type": p.value, "name": DrivingPersona(p).get_name(), "desc": DrivingPersona(p).get_description()}
+            {
+                "type": p.value,
+                "name": DrivingPersona.for_type(p).get_name(),
+                "desc": DrivingPersona.for_type(p).get_description(),
+            }
             for p in PersonaType
         ]
 

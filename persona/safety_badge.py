@@ -146,10 +146,146 @@ class SafetyBadgeSystem:
         self.agent_name = agent_name
         self._scores: Dict[BadgeCategory, BadgeScore] = {}
         self._history: List[Dict[str, Any]] = []
+        self._interactions: List[Dict[str, Any]] = []
+        self._total_interactions: int = 0
+        self._total_score: float = 0.0
         self._metadata: Dict[str, Any] = {
             "created_at": datetime.now(timezone.utc).isoformat(),
             "version": "1.0.0",
         }
+
+    # ── Interaction evaluation (used by PersonaOrchestrator) ──
+
+    def evaluate_interaction(self, context: Dict[str, Any]) -> float:
+        """
+        Record an interaction and return a 0-1 safety score.
+
+        Args:
+            context: Dict describing the interaction. Recognized keys:
+                - ``score`` (float): explicit score 0-1, optional.
+                - ``safety_score`` (float): alternative explicit score.
+                - ``risk`` (float): risk level 0-1 (inverted to score).
+                - ``outcome`` (str): "success" | "warning" | "violation".
+                - ``category`` (BadgeCategory | str): which badge to bump.
+
+        Returns:
+            The resulting safety score (0.0 - 1.0).
+        """
+        # Derive a score from context
+        if "score" in context:
+            score = float(context["score"])
+        elif "safety_score" in context:
+            score = float(context["safety_score"])
+        elif "risk" in context:
+            score = max(0.0, min(1.0, 1.0 - float(context["risk"])))
+        else:
+            outcome = str(context.get("outcome", "success")).lower()
+            if outcome in ("violation", "fail", "failed"):
+                score = 0.2
+            elif outcome in ("warning", "warn", "near_miss"):
+                score = 0.5
+            else:
+                score = 0.85
+
+        score = max(0.0, min(1.0, score))
+        self._interactions.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "context": context,
+            "score": score,
+        })
+        self._total_interactions += 1
+        self._total_score += score
+
+        # Update the safety champion badge so the scorecard reflects activity
+        cat_raw = context.get("category", BadgeCategory.SAFETY_CHAMPION)
+        if isinstance(cat_raw, str):
+            try:
+                cat = BadgeCategory(cat_raw)
+            except ValueError:
+                cat = BadgeCategory.SAFETY_CHAMPION
+        else:
+            cat = cat_raw or BadgeCategory.SAFETY_CHAMPION
+
+        previous = self.get_score(cat)
+        if previous is None:
+            self.update_score(
+                category=cat,
+                score=score,
+                raw_value=self._total_interactions,
+                unit="interactions",
+            )
+        else:
+            # Running average
+            new_score = (previous.score * 0.7) + (score * 0.3)
+            self.update_score(
+                category=cat,
+                score=new_score,
+                raw_value=self._total_interactions,
+                unit="interactions",
+            )
+
+        return score
+
+    def check_and_award(self) -> Optional[Dict[str, Any]]:
+        """
+        Check whether the current scores unlock a new badge level and record it.
+
+        Returns:
+            Dict describing the newly awarded badge, or None if no new award.
+        """
+        # Find the highest-progress category that's just crossed a threshold
+        awarded: Optional[Dict[str, Any]] = None
+        for cat, bs in self._scores.items():
+            level = bs.level
+            if level == BadgeLevel.NONE:
+                continue
+            already = self._metadata.get("awarded_levels", {}).get(cat.value, 0)
+            if level.value > already:
+                self._metadata.setdefault("awarded_levels", {})[cat.value] = level.value
+                awarded = {
+                    "category": cat.value,
+                    "label": BADGE_META[cat]["label"],
+                    "emoji": BADGE_META[cat]["emoji"],
+                    "level": level.value,
+                    "level_label": LEVEL_META[level]["label"],
+                    "score": round(bs.score, 4),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+                self.log_event("badge_awarded", awarded)
+                break
+        return awarded
+
+    def get_earned_badges(self) -> List[Dict[str, Any]]:
+        """Return a list of badge dicts for all non-NONE badges."""
+        result: List[Dict[str, Any]] = []
+        for cat, bs in self._scores.items():
+            if bs.level == BadgeLevel.NONE:
+                continue
+            result.append({
+                "category": cat.value,
+                "label": BADGE_META[cat]["label"],
+                "emoji": BADGE_META[cat]["emoji"],
+                "level": bs.level.value,
+                "level_label": LEVEL_META[bs.level]["label"],
+                "score": round(bs.score, 4),
+            })
+        return result
+
+    def get_scorecard(self) -> Dict[str, Any]:
+        """Alias for :meth:`generate_scorecard` (used by PersonaOrchestrator)."""
+        return self.generate_scorecard()
+
+    @property
+    def total_interactions(self) -> int:
+        """Total interactions recorded via :meth:`evaluate_interaction`."""
+        return self._total_interactions
+
+    @property
+    def average_score(self) -> float:
+        """Average score across all recorded interactions (0.0 if none)."""
+        if self._total_interactions == 0:
+            return 0.0
+        return self._total_score / self._total_interactions
 
     # ── Score assignment ─────────────────────────────────────
 

@@ -271,6 +271,53 @@ class DrivingPersona:
         pool = self.positive_phrases if sentiment == "positive" else self.critical_phrases
         return random.choice(pool)
 
+    # ------------------------------------------------------------------
+    # Convenience accessors (used by PersonaOrchestrator)
+    # ------------------------------------------------------------------
+
+    def get_name(self) -> str:
+        """Return the human-readable display name."""
+        return self.display_name
+
+    def get_description(self) -> str:
+        """Return the persona description."""
+        return self.description
+
+    def get_style(self) -> str:
+        """Return the analysis style descriptor."""
+        return self.analysis_style
+
+    def get_signature_phrase(self) -> str:
+        """Return a representative phrase for this persona."""
+        if self.positive_phrases:
+            return self.positive_phrases[0]
+        return self.display_name
+
+    def apply_to_analysis(self, scenario_analysis: Any) -> Dict[str, Any]:
+        """
+        Apply this persona's lens to a scenario analysis result.
+
+        Args:
+            scenario_analysis: Output of ScenarioEngine.map_task / analyze_task_scenarios
+
+        Returns:
+            Dict with persona-shaped perspective on the analysis.
+        """
+        focus_names = [fa.name for fa in self.focus_areas]
+        return {
+            "persona_type": self.persona_type.value,
+            "display_name": self.display_name,
+            "analysis_style": self.analysis_style,
+            "focus_areas": focus_names,
+            "harshness": self.config.get("harshness", 0.5),
+            "tip": self.generate_phrase("positive"),
+            "scenario_count": (
+                len(scenario_analysis)
+                if isinstance(scenario_analysis, list)
+                else 0
+            ),
+        }
+
     def score_focus_area(self, focus: AnalysisFocus, metric_value: float) -> float:
         """
         Map a raw metric value (0.0 – 1.0 normalised) to a score

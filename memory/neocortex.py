@@ -1087,7 +1087,7 @@ class Neocortex:
         # 当前上下文 / Current context
         current_context = self.working.recall(max_tokens=max_tokens // 2)
         if current_context:
-            sections.append(f"<当前上下文 / Current Context>\\n{current_context}\\n</当前上下文>")
+            sections.append(f"<当前上下文 / Current Context>\n{current_context}\n</当前上下文>")
 
         # 相关记忆 / Relevant memories
         if results:
@@ -1102,7 +1102,7 @@ class Neocortex:
                 memory_lines.append(
                     f"{source_icon} (相关性={r.score.combined:.3f}) {r.content[:200]}"
                 )
-            sections.append(f"<相关记忆 / Relevant Memories>\\n" + "\\n".join(memory_lines) + "\\n</相关记忆>")
+            sections.append(f"<相关记忆 / Relevant Memories>\n" + "\n".join(memory_lines) + "\n</相关记忆>")
 
         # 建议技能 / Recommended skills
         if not query_config or query_config.get("include_skills", True):
@@ -1113,10 +1113,10 @@ class Neocortex:
                     for s in recommended_skills
                 ]
                 sections.append(
-                    f"<推荐技能 / Recommended Skills>\\n" + "\\n".join(skill_lines) + "\\n</推荐技能>"
+                    f"<推荐技能 / Recommended Skills>\n" + "\n".join(skill_lines) + "\n</推荐技能>"
                 )
 
-        return "\\n\\n".join(sections)
+        return "\n\n".join(sections)
 
     # ------------------------------------------------------------------
     # 统计与序列化 / Stats & Serialization

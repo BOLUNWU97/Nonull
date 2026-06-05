@@ -179,12 +179,19 @@ class CoPilot:
 
     def __init__(
         self,
-        persona: DrivingPersona,
+        persona: Any = None,
         *,
         rules: Optional[List[AlertRule]] = None,
         enable_default_rules: bool = True,
         alert_history_max: int = 200,
     ) -> None:
+        # Allow passing a PersonaType (or a name string) for convenience.
+        if persona is None or isinstance(persona, PersonaType):
+            pt = persona or PersonaType.VETERAN
+            persona = DrivingPersona.for_type(pt)
+        elif isinstance(persona, str):
+            persona = DrivingPersona.for_type(PersonaType(persona.lower()))
+
         self.persona = persona
         self._rules: List[AlertRule] = []
         self._alerts: List[Alert] = []
@@ -195,6 +202,43 @@ class CoPilot:
             self._add_default_rules()
         if rules:
             self._rules.extend(rules)
+
+    # ------------------------------------------------------------------
+    # Compatibility helpers (used by PersonaOrchestrator)
+    # ------------------------------------------------------------------
+
+    def scan_context(self, context: Dict[str, Any]) -> List[Alert]:
+        """
+        Scan a context dict for issues and return any alerts raised.
+
+        Wraps :meth:`evaluate_all` with a TelemetryContext built from the dict.
+        Unknown keys are ignored.
+        """
+        ctx = TelemetryContext()
+        for key, value in (context or {}).items():
+            if hasattr(ctx, key) and isinstance(value, (int, float)):
+                setattr(ctx, key, max(0.0, min(1.0, float(value))))
+        return self.evaluate_all(ctx)
+
+    def get_daily_brief(self) -> str:
+        """Generate a brief daily status string in the active persona's voice."""
+        stats = {
+            "persona": self.persona.persona_type.value,
+            "active_alerts": self.active_count,
+            "total_raised": self.total_raised,
+        }
+        if stats["total_raised"] == 0:
+            tip = "All clear. Drive safe."
+        elif stats["active_alerts"] > 0:
+            tip = self.persona.generate_phrase("critical")
+        else:
+            tip = self.persona.generate_phrase("positive")
+        return (
+            f"[{stats['persona'].upper()}] "
+            f"Active alerts: {stats['active_alerts']} | "
+            f"Total raised: {stats['total_raised']} | "
+            f"{tip}"
+        )
 
     # ------------------------------------------------------------------
     # Rule registration

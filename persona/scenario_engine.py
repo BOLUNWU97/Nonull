@@ -575,6 +575,33 @@ class ScenarioEngine:
 
     # ── Task-to-scenario mapping ─────────────────────────────
 
+    # ── Convenience aliases for orchestrator / external callers ──
+
+    def analyze_task_scenarios(self, task_description: str) -> List[ADASScenario]:
+        """Alias for :meth:`map_task` (used by PersonaOrchestrator)."""
+        return self.map_task(task_description)
+
+    def analyze_scenario_coverage(
+        self, test_cases: list
+    ) -> Dict[str, Any]:
+        """
+        Alias for :meth:`coverage_analysis` accepting a list of test cases.
+
+        Test cases can be either:
+          - scenario IDs (str)
+          - dicts with an ``id`` key
+          - ADASScenario instances
+        """
+        covered_ids: List[str] = []
+        for tc in test_cases or []:
+            if isinstance(tc, str):
+                covered_ids.append(tc)
+            elif isinstance(tc, ADASScenario):
+                covered_ids.append(tc.id)
+            elif isinstance(tc, dict) and "id" in tc:
+                covered_ids.append(tc["id"])
+        return self.coverage_analysis(covered_ids)
+
     def map_task(self, task_description: str) -> List[ADASScenario]:
         """Map a free-text driving task to the most relevant scenarios.
 

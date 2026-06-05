@@ -323,9 +323,9 @@ class ContextWindow:
 
             # 附加摘要缓冲区 / Prepend summary buffer
             if include_summary and self.summary_buf.summaries:
-                summary_text = "<历史摘要>\\n" + "\\n".join(
+                summary_text = "<历史摘要>\n" + "\n".join(
                     self.summary_buf.get_recent(3)
-                ) + "\\n</历史摘要>\\n"
+                ) + "\n</历史摘要>\n"
                 parts.append(summary_text)
 
             budget = max_tokens or self.budget.hard_limit
@@ -340,7 +340,7 @@ class ContextWindow:
                 parts.append(f"[{item.source}] {item.content}")
                 accumulated += item_tokens
 
-            return "\\n".join(parts)
+            return "\n".join(parts)
 
     def get_item_count(self) -> int:
         """获取当前条目数 / Get current item count."""
