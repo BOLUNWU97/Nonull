@@ -575,7 +575,7 @@ class BaseChannel(ABC):
                     await self._dispatch(message)
             except asyncio.CancelledError:
                 break
- except ChannelError:
+            except ChannelError:
                 # Channel-level error (recoverable)
                 self._metrics["errors"] += 1
                 continue
