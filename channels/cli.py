@@ -366,7 +366,7 @@ class CLIChannel(BaseChannel):
         Read multi-line input until the closing delimiter.
         读取多行输入直到结束定界符。
 
-        Supports """ ... """, ''' ... ''', and ~~ ... ~~ delimiters.
+        Supports triple-double-quote, triple-single-quote, and tilde delimiters.
         """
         lines = []
         delimiter = '"""'

@@ -20,7 +20,7 @@ import json
 import logging
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from datetime import datetime
 
 import yaml
@@ -711,7 +711,7 @@ class NonullConfig:
         return self
 
     @classmethod
-    def available_profiles(cls) -> Tuple[str, ...]:
+    def available_profiles(cls) -> tuple:
         """可用的 Profile 列表 / List available profiles."""
         return _PROFILES
 

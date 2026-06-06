@@ -10,7 +10,7 @@ from __future__ import annotations
 import enum
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import ClassVar, Dict, List, Optional, Protocol, Tuple
 
 
 # ---------------------------------------------------------------------------
@@ -246,7 +246,7 @@ class DrivingPersona:
     # Factory dispatch
     # ------------------------------------------------------------------
 
-    _REGISTRY: Dict[PersonaType, "DrivingPersona"] = {}
+    _REGISTRY: ClassVar[Dict[PersonaType, "DrivingPersona"]] = {}
 
     @classmethod
     def for_type(cls, persona_type: PersonaType) -> "DrivingPersona":
@@ -378,18 +378,49 @@ class DrivingPersona:
 
 
 # ---------------------------------------------------------------------------
-# Shortcut aliases
+# Shortcut aliases (lazy - resolved on first access)
 # ---------------------------------------------------------------------------
 
-ConservativePersona = DrivingPersona.for_type(PersonaType.CONSERVATIVE)
-SportyPersona = DrivingPersona.for_type(PersonaType.SPORTY)
-VeteranPersona = DrivingPersona.for_type(PersonaType.VETERAN)
+def _get_conservative():
+    return DrivingPersona.for_type(PersonaType.CONSERVATIVE)
 
-_ALL_PERSONAS: List[DrivingPersona] = [
-    ConservativePersona,
-    SportyPersona,
-    VeteranPersona,
-]
+def _get_sporty():
+    return DrivingPersona.for_type(PersonaType.SPORTY)
+
+def _get_veteran():
+    return DrivingPersona.for_type(PersonaType.VETERAN)
+
+
+# Real classes so `from .personas import ConservativePersona` works.
+# These are thin subclasses that pre-bind the persona type.
+class ConservativePersona(DrivingPersona):
+    """Singleton alias for the conservative driving persona."""
+
+    def __init__(self):
+        super().__init__(persona_type=PersonaType.CONSERVATIVE)
+
+    def __new__(cls):
+        return DrivingPersona.for_type(PersonaType.CONSERVATIVE)
+
+
+class SportyPersona(DrivingPersona):
+    """Singleton alias for the sporty driving persona."""
+
+    def __init__(self):
+        super().__init__(persona_type=PersonaType.SPORTY)
+
+    def __new__(cls):
+        return DrivingPersona.for_type(PersonaType.SPORTY)
+
+
+class VeteranPersona(DrivingPersona):
+    """Singleton alias for the veteran driving persona."""
+
+    def __init__(self):
+        super().__init__(persona_type=PersonaType.VETERAN)
+
+    def __new__(cls):
+        return DrivingPersona.for_type(PersonaType.VETERAN)
 
 
 def get_persona(name_or_type: str | PersonaType) -> DrivingPersona:
