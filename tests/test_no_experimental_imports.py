@@ -14,7 +14,8 @@ EXPERIMENTAL_DIR = PROJECT_ROOT / "experimental"
 
 # Directories that should never import from experimental
 PRODUCTION_DIRS = ["core", "memory", "safety", "skills", "orchestration",
-                   "persona", "channels", "hooks", "config", "examples", "nonull"]
+                   "persona", "channels", "hooks", "config", "examples",
+                   "nonull", "domains"]
 
 
 def test_no_experimental_imports():

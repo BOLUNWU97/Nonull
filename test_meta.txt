@@ -1,0 +1,12 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\EDY\.lmstudio\extensions\backends\vendor\_amphibian\cpython3.11-win-x86@6\python.exe
+rootdir: C:\Users\EDY\Desktop\������
+plugins: anyio-4.13.0
+collecting ... collected 4 items
+
+tests/test_all_skills_smoke.py::test_auto_discover_loads_at_least_30_skills PASSED [ 25%]
+tests/test_all_skills_smoke.py::test_all_skills_have_required_metadata PASSED [ 50%]
+tests/test_all_skills_smoke.py::test_no_duplicate_skill_names PASSED     [ 75%]
+tests/test_all_skills_smoke.py::test_skill_input_inventory_is_complete PASSED [100%]
+
+============================== 4 passed in 0.07s ==============================

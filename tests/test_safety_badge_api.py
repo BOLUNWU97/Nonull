@@ -1,12 +1,19 @@
-"""Tests for persona.safety_badge — the deprecation wrappers and the new API.
+"""Tests for core.safety_metrics (P15 refactor) — the deprecation wrappers
+and the new API.
 
 These tests pin the contract of the v0.1 metrics refactor so future changes
 can't silently break the orchestrator or call sites again.
+
+P15 NOTE: ``persona.safety_badge`` was moved to ``core.safety_metrics``
+because safety metrics are domain-agnostic (not ADAS-specific). The old
+``persona`` re-exports still work, but the canonical location is now
+``core.safety_metrics``. This test was updated to import from the
+canonical location while still testing the same contract.
 """
 import warnings
 import pytest
 
-from persona.safety_badge import (
+from core.safety_metrics import (
     SafetyBadgeSystem,
     BadgeCategory,
     BadgeLevel,
@@ -74,8 +81,8 @@ class TestOrchestratorContract:
     """Verify persona_orchestrator can still use the system end-to-end."""
 
     def test_orchestrator_record_interaction(self):
-        from persona.persona_orchestrator import PersonaOrchestrator
-        from persona.driving_persona import PersonaType
+        from core.persona_orchestrator import PersonaOrchestrator
+        from domains.adas.personas import PersonaType
 
         orch = PersonaOrchestrator(PersonaType.VETERAN)
         result = orch.record_interaction({"outcome": "success"})

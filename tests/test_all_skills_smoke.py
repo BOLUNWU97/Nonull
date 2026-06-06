@@ -1,6 +1,7 @@
 """Smoke test: every registered skill can be activated and executed with a sample input.
 
-This is the P11 final smoke test. For each of the 31 skills, this test:
+This is the P11 final smoke test. For each of the 50+ skills (31 ADAS-specific
++ 19 general-purpose), this test:
 1. Activates the skill
 2. Calls execute() with a representative sample input (a sensible default per skill category)
 3. Verifies the result is a SkillResult with success=True or success=False (some skills are designed to fail on bad input)
@@ -276,6 +277,139 @@ SAMPLE_INPUTS: Dict[str, Dict[str, Any]] = {
         "time_range": "1h",
         "alert_rules": [],
     },
+    # ------------------ multimodal (7) — P18 ------------------
+    # Sample inputs use non-existent file paths; the skills are designed to
+    # return success=True with an "error" key in the data dict when the file
+    # is missing, so the smoke test only checks that they return a
+    # SkillResult without raising.
+    "image_info":      {"path": "/tmp/nonexistent.png"},
+    "image_resize":    {"path": "/tmp/nonexistent.png", "width": 100},
+    "image_base64":    {"path": "/tmp/nonexistent.png"},
+    "pdf_info":        {"path": "/tmp/nonexistent.pdf"},
+    "pdf_extract_text": {"path": "/tmp/nonexistent.pdf"},
+    "audio_info":      {"path": "/tmp/nonexistent.wav"},
+    "audio_transcribe": {"path": "/tmp/nonexistent.wav"},
+    # ------------------ general / web (3) ------------------
+    "web_fetch": {
+        # Use a URL that doesn't require network — the skill will attempt and
+        # either succeed or fail cleanly; the smoke test only checks no crash.
+        "url": "http://example.com/",
+        "timeout": 5.0,
+    },
+    "web_search": {
+        "query": "nonull skills",
+    },
+    "link_extractor": {
+        "content": '<a href="https://a.com">A</a><a href="/b">B</a>',
+    },
+    # ------------------ general / data (4) ------------------
+    "json_formatter": {
+        "json_str": '{"a":1,"b":2}',
+        "operation": "pretty",
+    },
+    "csv_parser": {
+        "csv_str": "name,age\nAlice,30\nBob,25\n",
+    },
+    "text_statistics": {
+        "text": "Hello world.\nThis is a test.",
+    },
+    "diff": {
+        "a": "line1\nline2\n",
+        "b": "line1\nline2-changed\n",
+    },
+    # ------------------ general / code (3) ------------------
+    "regex_tester": {
+        "pattern": r"\d+",
+        "text": "abc 123 def 456",
+    },
+    "json_schema_generator": {
+        "schema": {
+            "title": "User",
+            "properties": {
+                "id": {"type": "integer"},
+                "name": {"type": "string"},
+            },
+            "required": ["id"],
+        },
+    },
+    "code_counter": {
+        "code": "# comment\n\ndef f():\n    pass\n",
+        "language": "python",
+    },
+    # ------------------ general / documentation (3) ------------------
+    "markdown_to_html": {
+        "markdown": "# Title\n\nSome **bold** text.",
+    },
+    "readme_skeleton": {
+        "project_name": "DemoProject",
+        "description": "A demo project.",
+    },
+    "docstring_generator": {
+        "signature": "def add(a: int, b: int) -> int:",
+    },
+    # ------------------ general / translation (2) ------------------
+    "language_detector": {
+        "text": "The quick brown fox jumps over the lazy dog",
+    },
+    "translation_prompt": {
+        "text": "Hello world",
+        "target_lang": "zh",
+    },
+    # ------------------ general / utilities (4) ------------------
+    "uuid_generator": {
+        "count": 1,
+    },
+    "hash": {
+        "text": "hello",
+        "algorithm": "sha256",
+    },
+    "timestamp": {},
+    "base64": {
+        "text": "hello world",
+        "operation": "encode",
+    },
+    # ------------------ creative / moonshot (8) — P20 ------------------
+    "brainstorm": {
+        "topic": "smart home for elderly",
+        "count": 3,
+    },
+    "metaphor_generator": {
+        "concept": "neural network",
+        "domain": "biology",
+    },
+    "story_plot": {
+        "premise": "A robot becomes sentient",
+        "structure": "three_act",
+    },
+    "pomodoro_schedule": {
+        "tasks": ["Write report", "Review code"],
+        "estimate_minutes": 50,
+    },
+    "eisenhower_matrix": {
+        "tasks": [
+            {"name": "Fix production bug", "urgent": True, "important": True},
+            {"name": "Plan next quarter", "urgent": False, "important": True},
+        ],
+    },
+    "flashcard_generator": {
+        "text": "Photosynthesis converts CO2 and H2O into glucose using sunlight.",
+        "count": 5,
+    },
+    "quiz_generator": {
+        "text": "The mitochondria is the powerhouse of the cell.",
+        "num_questions": 5,
+    },
+    "spaced_repetition": {
+        "items": ["item1", "item2", "item3"],
+    },
+    # ------------------ execution / sandboxed code runner (1) — P16 ------------------
+    # Trivial arithmetic; the inline backend runs the snippet in-process and
+    # returns ``{"success": True, "result": 7, ...}``. Other backends
+    # (subprocess / docker / http) are exercised by tests/test_execution_backends.py.
+    "code_runner": {
+        "code": "result = 3 + 4",
+        "vars": {},
+    },
 }
 
 
@@ -306,7 +440,7 @@ def registry() -> SkillRegistry:
 
 
 def test_auto_discover_loads_at_least_30_skills(registry):
-    """We expect 31 skills across 9 categories."""
+    """We expect 50+ skills: 31 ADAS + 19 general-purpose across 10 categories."""
     loaded = registry.get_all_skills()
     assert len(loaded) >= 30, (
         f"Only {len(loaded)} skills auto-discovered. "

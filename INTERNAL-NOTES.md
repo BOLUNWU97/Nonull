@@ -46,7 +46,11 @@ for the exact dependency pins.
 ## 3. Setting up an LLM
 
 Nonull talks to LLMs through a thin adapter layer. The env vars live
-in `.env` and are loaded at startup:
+in `.env` and are loaded at startup.
+
+For full per-provider configuration (OpenAI / Anthropic / DeepSeek /
+Ollama / custom OpenAI-compatible endpoints), see
+[`docs/llm-setup.md`](docs/llm-setup.md).
 
 | Env var                  | Purpose                                                                 |
 |--------------------------|-------------------------------------------------------------------------|
@@ -73,6 +77,59 @@ You just can't run the LLM agent. On startup you'll see:
 ```
 (Agent mode disabled — set NONULL_LLM_API_KEY to enable)
 ```
+
+---
+
+## 3b. Switching Domains / 切换领域
+
+Nonull ships with two built-in domains: `general` (always on) and `adas` (on by default).
+
+```bash
+# Use ADAS (default)
+python -m nonull
+
+# Disable ADAS, use only general
+NONULL_DOMAIN_ADAS=false python -m nonull
+
+# Add a custom domain via path
+export NONULL_DOMAIN_PATHS=~/my-custom-domain
+python -m nonull
+```
+
+To register a domain programmatically, see `domains/__init__.py` and the `DomainPackage` protocol.
+
+---
+
+## 3c. Using the Web UI / 使用 Web 界面
+
+```bash
+pip install -e ".[web]"
+nonull-web
+# Opens http://127.0.0.1:8765
+```
+
+The web UI exposes all `SkillRegistry` skills and supports
+real-time chat via WebSocket at `/ws/chat`. API endpoints:
+`/api/skills`, `/api/scenarios`, `/api/domains`,
+`/api/agent/chat`, `/api/agent/status`.
+
+---
+
+## 3d. Using the LLM / 使用 LLM
+
+```bash
+# Set API key
+export NONULL_LLM_API_KEY=sk-...
+export NONULL_LLM_PROVIDER=openai
+export NONULL_LLM_MODEL=gpt-4o
+
+# Or use .env
+cp .env.example .env
+$EDITOR .env
+```
+
+Then `python -m nonull` will route questions to the LLM.
+For full per-provider configuration, see `docs/llm-setup.md`.
 
 ---
 
@@ -190,6 +247,88 @@ See the **"Important Disclaimer"** section at the top of
 4. **For safety / certification questions** — escalate internally
    first. Do **not** open a public issue for things that touch
    vehicle control decisions.
+
+---
+
+## 8. Web UI (browser-based dashboard)
+
+Nonull also ships a **browser-based UI** alongside the CLI. It is
+**advisory only** and intended for local development / demos — not
+for production deployment.
+
+### 8.1 Install the web extra
+
+The web UI uses FastAPI / Uvicorn / Jinja2, which are **not** part
+of the default install (keeps the CLI light). Install them with:
+
+```bash
+pip install -e ".[web]"
+# (on Windows PowerShell: pip install -e ".[web]" works the same way)
+```
+
+If you already installed `.[all]` you are good to go.
+
+### 8.2 Launch
+
+```python
+# from a Python REPL or your own script
+from channels.web import create_app, main
+from core import Nonull
+
+agent = Nonull()                # optional — UI works without an agent
+app = create_app(agent=agent)   # pass None to browse skills/scenarios only
+main(agent=agent)               # boots uvicorn on 127.0.0.1:8765 by default
+```
+
+Or run the module directly:
+
+```bash
+python -m channels.web
+```
+
+### 8.3 Configuration
+
+Two environment variables control the bind:
+
+| Env var             | Default     | Purpose                                |
+|---------------------|-------------|----------------------------------------|
+| `NONULL_WEB_HOST`   | `127.0.0.1` | Bind host. Keep localhost for dev.     |
+| `NONULL_WEB_PORT`   | `8765`      | Bind port.                              |
+
+The same values can be set in `config/config.yaml` under the `web:`
+section. The web channel is **disabled** by default in the YAML
+(`web.enabled: false`); flip it to `true` to start it alongside
+the CLI.
+
+### 8.4 What the UI shows
+
+- **Chat panel** — POST `/api/agent/chat`. Calls `agent.run_sync(msg)`
+  and renders the reply. Without a bound agent it shows
+  `[No agent bound]`.
+- **Stats panel** — GET `/api/skills`, `/api/scenarios`, `/api/domains`.
+  Surfaces skill / scenario / domain counts and a tag-grid of all
+  registered skills.
+- **Skills browser** — color-coded tags by category (code / safety /
+  data / general). Hover for the skill's description.
+- **Domains panel** — active domains with display name + description.
+- **WebSocket channel** — `ws://<host>:<port>/ws/chat` accepts
+  `{"type": "chat", "message": "..."}` and returns
+  `{"type": "response", "data": "..."}`. Pings (`{"type": "ping"}`)
+  are answered with `{"type": "pong"}`.
+
+### 8.5 Important safety note
+
+The web UI is a **developer convenience** — same advisory-only
+disclaimer as the CLI. The HTML page itself shows a red-bordered
+"ADVISORY ONLY" banner at the top, matching the CLAUDE.md red
+lines. Do **not** expose this UI to the open internet without
+putting it behind an authenticated reverse proxy and reading every
+bound route through your own auth layer; the bundled UI has **no
+authentication, no rate limiting, and no CORS lockdown**.
+
+If you change the default port for any reason, double-check
+firewall rules so the dev port does not accidentally become a
+public one.
 
 ---
 

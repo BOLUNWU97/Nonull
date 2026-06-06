@@ -42,9 +42,33 @@ skills:
   auto_discover: true
   marketplace_enabled: true
 
+# P15: domain abstraction layer
+# Each domain package is an independent, pluggable bundle of skills,
+# personas, scenarios, and disclaimers. The default install ships with
+# the 'general' fallback (always active) and 'adas' (the original
+# autonomous-driving domain, now isolated). To drop ADAS or add a custom
+# domain, modify this list and re-launch.
+domains:
+  enabled:
+    - general    # always active, cannot be deactivated
+    - adas       # default-on; deactivate via reg.deactivate('adas')
+  # To add a custom domain, drop a package under domains/ that implements
+  # the DomainPackage protocol and add its name to the list above. See
+  # CLAUDE.md §"How to add your own domain" for a working 10-line example.
+  # custom_paths:
+  #   - ./my_custom_domain
+
 channels:
   - cli
   - gateway
+
+web:
+  enabled: false          # set to true to launch the FastAPI web UI alongside the CLI
+  host: 127.0.0.1         # bind host; override with NONULL_WEB_HOST env var
+  port: 8765              # bind port; override with NONULL_WEB_PORT env var
+  # The web UI is a developer convenience (chat / skill browser / scenario
+  # visualizer). It is NOT a production deployment target and must remain
+  # bound to localhost by default.
 
 profiles:
   default:

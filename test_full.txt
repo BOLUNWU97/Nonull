@@ -1,0 +1,85 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.3, pluggy-1.6.0
+rootdir: C:\Users\EDY\Desktop\������
+plugins: anyio-4.13.0
+collected 159 items
+
+tests\test_all_skills_smoke.py ......................................... [ 25%]
+...............FFF.FFF..F..FFFFF                                         [ 45%]
+tests\test_general_skills.py ........................................... [ 72%]
+.                                                                        [ 73%]
+tests\test_creative_skills.py .......................................... [100%]
+
+================================== FAILURES ===================================
+E   assert None is not None
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:545: assert None is not None
+E   AssertionError: Legacy alias 'haras_analysis' should resolve to hara_analysis. If you intentionally removed the alias, update this test.
+    assert None is not None
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:551: AssertionError: Legacy alias 'haras_analysis' should resolve to hara_analysis. If you intentionally removed the alias, update this test.
+E   AssertionError: Expected a 'deprecated alias' warning when looking up the old name. Got: []
+    assert []
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:567: AssertionError: Expected a 'deprecated alias' warning when looking up the old name. Got: []
+E   AssertionError: assert 'hara_analysis' in ['bug_detection', 'code_optimization', 'code_review', 'refactoring', 'code_counter', 'json_schema_generator', ...]
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:581: AssertionError: assert 'hara_analysis' in ['bug_detection', 'code_optimization', 'code_review', 'refactoring', 'code_counter', 'json_schema_generator', ...]
+E   AssertionError: get_skill('carla_runner') returned None
+    assert None is not None
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:670: AssertionError: get_skill('carla_runner') returned None
+E   AssertionError: get_skill('edge_case') returned None
+    assert None is not None
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:670: AssertionError: get_skill('edge_case') returned None
+E   AssertionError: get_skill('scenario_generation') returned None
+    assert None is not None
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:670: AssertionError: get_skill('scenario_generation') returned None
+E   assert None is not None
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:682: assert None is not None
+E   assert None is not None
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:697: assert None is not None
+E   assert None is not None
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:715: assert None is not None
+E   TypeError: 'NoneType' object is not subscriptable
+------------------------------ Captured log call ------------------------------
+ERROR    skills.base.TestCaseDesignSkill:base.py:507 Skill 'test_case_design' unexpected error: unhashable type: 'dict'
+Traceback (most recent call last):
+  File "C:\Users\EDY\Desktop\������\skills\base.py", line 464, in execute
+    data = self._execute_with_timeout(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\EDY\Desktop\������\skills\base.py", line 594, in _execute_with_timeout
+    raise error_container[0]
+  File "C:\Users\EDY\Desktop\������\skills\base.py", line 576, in target
+    res = self._execute_impl(context)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\EDY\Desktop\������\skills\testing_skills.py", line 159, in _execute_impl
+    if key not in seen:
+       ^^^^^^^^^^^^^^^
+TypeError: unhashable type: 'dict'
+ERROR    skills.base.TestCaseDesignSkill:base.py:507 Skill 'test_case_design' unexpected error: unhashable type: 'dict'
+Traceback (most recent call last):
+  File "C:\Users\EDY\Desktop\������\skills\base.py", line 464, in execute
+    data = self._execute_with_timeout(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\EDY\Desktop\������\skills\base.py", line 594, in _execute_with_timeout
+    raise error_container[0]
+  File "C:\Users\EDY\Desktop\������\skills\base.py", line 576, in target
+    res = self._execute_impl(context)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\EDY\Desktop\������\skills\testing_skills.py", line 159, in _execute_impl
+    if key not in seen:
+       ^^^^^^^^^^^^^^^
+TypeError: unhashable type: 'dict'
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:739: TypeError: 'NoneType' object is not subscriptable
+E   assert None is not None
+C:\Users\EDY\Desktop\������\tests\test_all_skills_smoke.py:753: assert None is not None
+=========================== short test summary info ===========================
+FAILED tests/test_all_skills_smoke.py::TestLegacySkillAliases::test_canonical_name_resolves
+FAILED tests/test_all_skills_smoke.py::TestLegacySkillAliases::test_legacy_alias_still_resolves
+FAILED tests/test_all_skills_smoke.py::TestLegacySkillAliases::test_legacy_alias_emits_deprecation_warning
+FAILED tests/test_all_skills_smoke.py::TestLegacySkillAliases::test_canonical_name_has_no_duplicate
+FAILED tests/test_all_skills_smoke.py::test_demo_skills_are_deterministic_with_seed[carla_runner]
+FAILED tests/test_all_skills_smoke.py::test_demo_skills_are_deterministic_with_seed[edge_case]
+FAILED tests/test_all_skills_smoke.py::test_demo_skills_are_deterministic_with_seed[scenario_generation]
+FAILED tests/test_all_skills_smoke.py::test_scenario_generation_marks_demo_data
+FAILED tests/test_all_skills_smoke.py::test_carla_collect_metrics_marks_demo_data
+FAILED tests/test_all_skills_smoke.py::test_hil_simulation_id_is_deterministic_counter
+FAILED tests/test_all_skills_smoke.py::test_test_case_design_uses_stable_req_ids
+FAILED tests/test_all_skills_smoke.py::test_simulation_skill_honors_deterministic_flag
+======================= 12 failed, 147 passed in 1.97s ========================

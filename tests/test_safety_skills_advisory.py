@@ -37,7 +37,8 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from skills.registry import SkillRegistry
-from skills.safety_skills import HazardAnalysisSkill
+# P15: ADAS safety skills moved to domains/adas/skills/safety.py
+from domains.adas.skills.safety import HazardAnalysisSkill
 
 
 # ---------------------------------------------------------------------------

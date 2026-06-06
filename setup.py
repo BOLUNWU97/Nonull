@@ -143,6 +143,11 @@ EXTRAS_REQUIRE = {
     "dingtalk": [
         "dingtalk-sdk>=2.0.0",
     ],
+    "web": [
+        "fastapi>=0.100",
+        "uvicorn>=0.23",
+        "jinja2>=3.1",
+    ],
     "all": [
         "prompt_toolkit>=3.0.0",
         "aiohttp>=3.9.0",
@@ -151,6 +156,9 @@ EXTRAS_REQUIRE = {
         "python-telegram-bot>=20.0",
         "lark-oapi>=1.0.0",
         "dingtalk-sdk>=2.0.0",
+        "fastapi>=0.100",
+        "uvicorn>=0.23",
+        "jinja2>=3.1",
     ],
     "dev": [
         "pytest>=7.0.0",
@@ -209,6 +217,9 @@ setup(
             "experimental", "experimental.*",
             "consciousness", "consciousness.*",
             "evolution", "evolution.*",
+            # P15: domain packages (domains, domains.adas, domains.general)
+            # are picked up by find_packages automatically — they are part
+            # of the shipped package set and need no explicit allowlist.
         ]
     ),
     include_package_data=True,

@@ -535,6 +535,33 @@ class SkillRegistry:
             try:
                 module = importlib.import_module(modname)
                 count += self._register_from_module(module, module_name=modname)
+                # 递归扫描子包 / Recurse into subpackages so that
+                # ``skills.creative.*``, ``skills.multimodal.*``,
+                # ``skills.core.*`` and other grouped skill modules are
+                # also discovered (without this, only top-level
+                # ``skills.<name>_skills`` modules are picked up).
+                if ispkg:
+                    try:
+                        sub_path = os.path.join(
+                            package_path, modname.split(".", 1)[1]
+                        )
+                        if os.path.isdir(sub_path):
+                            count += self._discover_subpackage(
+                                modname, sub_path
+                            )
+                    except Exception as e:
+                        # 子包扫描失败不影响主流程 / Subpackage scan
+                        # failure should not abort the rest of discovery.
+                        self._broken_modules.append(
+                            {
+                                "module": modname,
+                                "error": f"subpackage scan failed: {e}",
+                                "error_type": type(e).__name__,
+                            }
+                        )
+                        self.logger.warning(
+                            f"Failed to scan subpackage '{modname}': {e}"
+                        )
             except Exception as e:
                 # 记录失败模块但继续扫描 / Record but keep going
                 self._broken_modules.append(
@@ -565,6 +592,57 @@ class SkillRegistry:
                 f"Auto-discovery completed cleanly: registered {count} skill(s)."
             )
 
+        return count
+
+    def _discover_subpackage(self, parent_name: str, parent_path: str) -> int:
+        """
+        递归扫描子包中的所有模块并注册其中的 BaseSkill 子类。
+        Recursively scan a subpackage and register BaseSkill subclasses.
+
+        Args:
+            parent_name: 子包的完整点分模块名 / Full dotted module name.
+            parent_path:  子包所在的物理路径 / Physical path of the subpackage.
+
+        Returns:
+            在该子包中成功注册的技能数。
+        """
+        count = 0
+        for _importer, subname, _ispkg in pkgutil.iter_modules(
+            [parent_path], prefix=parent_name + "."
+        ):
+            # 跳过子包自身的 ``__init__``，因为它通常只包含文档字符串；
+            # 但在子包中再下钻一层，递归扫描它的子包。
+            # Skip the subpackage's own ``__init__`` (usually a docstring
+            # marker with no BaseSkill subclasses) but recurse into any
+            # further sub-subpackages.
+            if subname == parent_name and _ispkg:
+                continue
+            try:
+                sub_module = importlib.import_module(subname)
+                if _ispkg:
+                    # 进一步递归（双层 / 深层子包）
+                    # Recurse one more level (two / deeper subpackages)
+                    sub_path = os.path.join(
+                        parent_path, subname.split(".", 1)[1]
+                    )
+                    if os.path.isdir(sub_path):
+                        count += self._discover_subpackage(
+                            subname, sub_path
+                        )
+                count += self._register_from_module(
+                    sub_module, module_name=subname
+                )
+            except Exception as e:
+                self._broken_modules.append(
+                    {
+                        "module": subname,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    }
+                )
+                self.logger.warning(
+                    f"Failed to load subpackage module '{subname}': {e}"
+                )
         return count
 
     def _register_from_module(

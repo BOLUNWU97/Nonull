@@ -1,0 +1,51 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\EDY\.lmstudio\extensions\backends\vendor\_amphibian\cpython3.11-win-x86@6\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\EDY\Desktop\������
+plugins: anyio-4.13.0
+collecting ... collected 42 items
+
+Desktop\������\tests\test_creative_skills.py::TestBrainstormSkill::test_generates_ideas PASSED [  2%]
+Desktop\������\tests\test_creative_skills.py::TestBrainstormSkill::test_default_count PASSED [  4%]
+Desktop\������\tests\test_creative_skills.py::TestBrainstormSkill::test_caps_count_at_20 PASSED [  7%]
+Desktop\������\tests\test_creative_skills.py::TestBrainstormSkill::test_techniques_picked PASSED [  9%]
+Desktop\������\tests\test_creative_skills.py::TestBrainstormSkill::test_requires_topic PASSED [ 11%]
+Desktop\������\tests\test_creative_skills.py::TestMetaphorGeneratorSkill::test_generates_templates PASSED [ 14%]
+Desktop\������\tests\test_creative_skills.py::TestMetaphorGeneratorSkill::test_works_without_domain PASSED [ 16%]
+Desktop\������\tests\test_creative_skills.py::TestMetaphorGeneratorSkill::test_requires_concept PASSED [ 19%]
+Desktop\������\tests\test_creative_skills.py::TestStoryPlotGeneratorSkill::test_default_three_act PASSED [ 21%]
+Desktop\������\tests\test_creative_skills.py::TestStoryPlotGeneratorSkill::test_hero_journey PASSED [ 23%]
+Desktop\������\tests\test_creative_skills.py::TestStoryPlotGeneratorSkill::test_freytag PASSED [ 26%]
+Desktop\������\tests\test_creative_skills.py::TestStoryPlotGeneratorSkill::test_kishotenketsu PASSED [ 28%]
+Desktop\������\tests\test_creative_skills.py::TestStoryPlotGeneratorSkill::test_invalid_structure_falls_back PASSED [ 30%]
+Desktop\������\tests\test_creative_skills.py::TestStoryPlotGeneratorSkill::test_requires_premise PASSED [ 33%]
+Desktop\������\tests\test_creative_skills.py::TestPomodoroSkill::test_generates_schedule PASSED [ 35%]
+Desktop\������\tests\test_creative_skills.py::TestPomodoroSkill::test_minimum_one_pomodoro_per_task PASSED [ 38%]
+Desktop\������\tests\test_creative_skills.py::TestPomodoroSkill::test_requires_tasks_list PASSED [ 40%]
+Desktop\������\tests\test_creative_skills.py::TestEisenhowerMatrixSkill::test_categorizes_tasks PASSED [ 42%]
+Desktop\������\tests\test_creative_skills.py::TestEisenhowerMatrixSkill::test_handles_string_tasks PASSED [ 45%]
+Desktop\������\tests\test_creative_skills.py::TestEisenhowerMatrixSkill::test_requires_tasks_list PASSED [ 47%]
+Desktop\������\tests\test_creative_skills.py::TestFlashcardGeneratorSkill::test_generates_prompt PASSED [ 50%]
+Desktop\������\tests\test_creative_skills.py::TestFlashcardGeneratorSkill::test_default_count PASSED [ 52%]
+Desktop\������\tests\test_creative_skills.py::TestFlashcardGeneratorSkill::test_validates_count_range PASSED [ 54%]
+Desktop\������\tests\test_creative_skills.py::TestFlashcardGeneratorSkill::test_requires_text PASSED [ 57%]
+Desktop\������\tests\test_creative_skills.py::TestQuizGeneratorSkill::test_generates_prompt PASSED [ 59%]
+Desktop\������\tests\test_creative_skills.py::TestQuizGeneratorSkill::test_default_count PASSED [ 61%]
+Desktop\������\tests\test_creative_skills.py::TestQuizGeneratorSkill::test_validates_num_questions PASSED [ 64%]
+Desktop\������\tests\test_creative_skills.py::TestQuizGeneratorSkill::test_requires_text PASSED [ 66%]
+Desktop\������\tests\test_creative_skills.py::TestSpacedRepetitionScheduleSkill::test_generates_schedule PASSED [ 69%]
+Desktop\������\tests\test_creative_skills.py::TestSpacedRepetitionScheduleSkill::test_total_days PASSED [ 71%]
+Desktop\������\tests\test_creative_skills.py::TestSpacedRepetitionScheduleSkill::test_requires_items_list PASSED [ 73%]
+Desktop\������\tests\test_creative_skills.py::TestCreativeSkillsRegistry::test_all_creative_skills_discoverable PASSED [ 76%]
+Desktop\������\tests\test_creative_skills.py::TestCreativeSkillsRegistry::test_all_creative_skills_in_general_category PASSED [ 78%]
+Desktop\������\tests\test_creative_skills.py::TestI18N::test_english_default PASSED [ 80%]
+Desktop\������\tests\test_creative_skills.py::TestI18N::test_chinese_translation PASSED [ 83%]
+Desktop\������\tests\test_creative_skills.py::TestI18N::test_format_substitution PASSED [ 85%]
+Desktop\������\tests\test_creative_skills.py::TestI18N::test_falls_back_to_english_for_unknown_lang PASSED [ 88%]
+Desktop\������\tests\test_creative_skills.py::TestI18N::test_returns_key_for_unknown_key PASSED [ 90%]
+Desktop\������\tests\test_creative_skills.py::TestI18N::test_set_lang_persists PASSED [ 92%]
+Desktop\������\tests\test_creative_skills.py::TestI18N::test_set_lang_ignores_unknown PASSED [ 95%]
+Desktop\������\tests\test_creative_skills.py::TestI18N::test_i18n_class_directly PASSED [ 97%]
+Desktop\������\tests\test_creative_skills.py::TestI18N::test_i18n_falls_back_for_missing_lang PASSED [100%]
+
+============================= 42 passed in 0.12s ==============================

@@ -1,16 +1,19 @@
 # Nonull — Claude Code Project Instructions
 
-You are working on **Nonull (智驾智能体)**, a domain-specific AI Agent framework for autonomous driving that fuses four major architectures: **OpenClaw**, **Hermes Agent**, **openHuman**, and **Claude Code**.
+You are working on **Nonull**, an extensible, **domain-agnostic** AI Agent framework. The framework core itself contains no domain knowledge. Domain-specific content (autonomous driving, medical, legal, finance, etc.) lives in pluggable **domain packages** under `domains/`.
+
+The four-architecture fusion (**OpenClaw**, **Hermes Agent**, **openHuman**, **Claude Code**) is the core engineering foundation. ADAS / 智驾 is shipped as a **built-in domain package** (`domains/adas/`) and is not part of the core.
 
 ---
 
 ## / 核心原则 / Core Principles
 
-1. **四架构融合优先** — All design decisions must respect and leverage the fusion of OpenClaw, Hermes Agent, openHuman, and Claude Code patterns. Do not break the architectural consistency.
-2. **安全第一 / Safety First** — Apply deny-first safety logic. Never bypass safety checks. The safety layer in this project is **advisory only** (see disclaimer below) — it does **not** implement ISO 26262 ASIL-D requirements.
-3. **双语文档 / Bilingual Documentation** — All user-facing documentation MUST be in both Chinese and English.
-4. **技能驱动 / Skill-Driven** — Extend functionality through skills registered in the tool registry, not by modifying core agent code.
-5. **测试覆盖 / Test Coverage** — Core tests and memory tests must pass before any commit.
+1. **领域无关 / Domain-Agnostic** — The Nonull core (memory, channels, hooks, safety, orchestration) contains **no domain-specific knowledge**. All domain content (e.g. ADAS driving scenarios, ISO 26262 templates, driving personas) lives in `domains/<name>/` packages that implement the `DomainPackage` protocol. The ADAS domain is one such built-in package; new users can deactivate it or add their own.
+2. **四架构融合优先** — All core design decisions must respect and leverage the fusion of OpenClaw, Hermes Agent, openHuman, and Claude Code patterns. Do not break the architectural consistency of the core.
+3. **安全第一 / Safety First** — Apply deny-first safety logic. Never bypass safety checks. The safety layer in this project is **advisory only** (see disclaimer below) — it does **not** implement ISO 26262 ASIL-D requirements.
+4. **双语文档 / Bilingual Documentation** — All user-facing documentation MUST be in both Chinese and English.
+5. **技能驱动 / Skill-Driven** — Extend functionality through skills registered in the tool registry, not by modifying core agent code.
+6. **测试覆盖 / Test Coverage** — Core tests and memory tests must pass before any commit.
 
 ---
 
@@ -50,10 +53,12 @@ Nonull/
 ├── nonull/                 # Top-level package (lowercase) — CLI entrypoint
 │   ├── __init__.py
 │   └── __main__.py
-├── core/                   # Core engine
+├── core/                   # Core engine (domain-agnostic)
 │   ├── __init__.py
 │   ├── agent_core.py
-│   └── config.py
+│   ├── config.py
+│   ├── safety_metrics.py   # Generic safety metrics (P15: moved out of persona/)
+│   └── persona_orchestrator.py # Generic persona-orchestrator (P15: moved out of persona/)
 ├── memory/                 # Memory system (openHuman-style)
 │   ├── __init__.py
 │   ├── working_memory.py
@@ -67,32 +72,47 @@ Nonull/
 │   ├── guardian.py
 │   ├── deny_first.py
 │   └── compliance.py
-├── skills/                 # Domain skills (12 files)
-│   ├── __init__.py
+├── domains/                # Pluggable domain packages (P15)
+│   ├── __init__.py         # DomainPackage protocol + DomainMetadata
+│   ├── registry.py         # DomainRegistry + load_default_domains()
+│   ├── general/            # Always-active fallback domain
+│   │   └── __init__.py     #   GeneralDomain
+│   └── adas/               # Built-in 智驾 / ADAS domain
+│       ├── __init__.py     #   ADASDomain + re-exports
+│       ├── personas.py     #   (moved from persona/driving_persona.py)
+│       ├── scenarios.py    #   (moved from persona/scenario_engine.py)
+│       ├── copilot.py      #   (moved from persona/co_pilot.py)
+│       └── skills/
+│           ├── __init__.py
+│           ├── safety.py     # (moved from skills/safety_skills.py)
+│           ├── simulation.py # (moved from skills/simulation_skills.py)
+│           ├── perception.py # (moved from skills/perception_skills.py)
+│           └── planning.py   # (moved from skills/planning_skills.py)
+├── skills/                 # Generic (non-ADAS) skills + ADAS shim
+│   ├── __init__.py         # Backward-compat shim (lazy-loads ADAS skills from domains/adas/skills/)
 │   ├── base.py
 │   ├── registry.py
-│   ├── code_skills.py
-│   ├── data_skills.py
-│   ├── devops_skills.py
-│   ├── perception_skills.py
-│   ├── planning_skills.py
+│   ├── code_skills.py      # Code review / optimization / refactoring / bug detection
+│   ├── data_skills.py      # Log / pipeline / annotation analysis
+│   ├── devops_skills.py    # CI / CD / monitoring
 │   ├── research_skills.py
-│   ├── safety_skills.py
-│   ├── simulation_skills.py
-│   └── testing_skills.py
+│   ├── testing_skills.py
+│   └── core/               # P16: 19 general-purpose, domain-agnostic skills
+│       ├── __init__.py
+│       ├── web_skills.py          # web_fetch / web_search / link_extractor
+│       ├── data_skills.py         # json_formatter / csv_parser / text_statistics / diff
+│       ├── code_skills.py         # regex_tester / json_schema_generator / code_counter
+│       ├── documentation_skills.py # markdown_to_html / readme_skeleton / docstring_generator
+│       ├── translation_skills.py  # language_detector / translation_prompt
+│       └── utilities_skills.py    # uuid_generator / hash / timestamp / base64
 ├── orchestration/          # Multi-agent orchestration
 │   ├── __init__.py
 │   ├── orchestrator.py
 │   ├── agent_pool.py
 │   ├── communication.py
 │   └── workflows.py
-├── persona/                # Unique driving-persona features
-│   ├── __init__.py
-│   ├── driving_persona.py
-│   ├── scenario_engine.py
-│   ├── safety_badge.py
-│   ├── co_pilot.py
-│   └── persona_orchestrator.py
+├── persona/                # Backward-compat shim (P15)
+│   └── __init__.py         # Lazy re-exports of the moved classes
 ├── channels/               # Communication channels (CLI / MCP / gateways)
 │   ├── __init__.py
 │   ├── base.py
@@ -104,7 +124,7 @@ Nonull/
 │   ├── __init__.py
 │   └── hook_system.py
 ├── config/                 # Configuration files
-│   ├── config.yaml         # Main configuration
+│   ├── config.yaml         # Main configuration (now with `domains:` section)
 │   ├── safety_rules.yaml   # Safety policy rules
 │   └── profiles/           # Profile isolation (Hermes-style)
 │       └── default.yaml
@@ -153,6 +173,7 @@ Test suite lives in `tests/` (12 files, all run by CI via `.github/workflows/tes
 - `tests/test_no_experimental_imports.py` — **Guard test** — enforces no production code imports from `experimental/`
 - `tests/test_safety_badge_api.py` — Persona safety_badge public API contract
 - `tests/test_persona_exports.py` — Persona module exports / surface checks
+- `tests/test_domain_registry.py` — Domain registry: register / activate / deactivate / disclaimers
 - `tests/test_no_marketing_claims.py` — Guard test — enforces no forbidden ISO 26262 / ASIL-D / "production-ready" marketing claims in user-facing copy
 - `tests/test_quickstart_runs.py` — Smoke test that `examples/quickstart.py` imports resolve
 - `tests/test_cli_agent_wiring.py` — CLI agent wiring (bind_agent, /agent, result unwrapping)
@@ -160,7 +181,8 @@ Test suite lives in `tests/` (12 files, all run by CI via `.github/workflows/tes
 - `tests/test_orchestrator_async.py` — Async dispatch via asyncio.gather
 - `tests/test_orchestrator_real_skills.py` — Integration with real SkillRegistry and real CodeReviewSkill
 - `tests/test_skill_workflow_integration.py` — End-to-end `examples/skill_workflow.py` import test
-- `tests/test_all_skills_smoke.py` — 31-skill smoke test with parametrized SAMPLE_INPUTS
+- `tests/test_all_skills_smoke.py` — 50-skill smoke test with parametrized SAMPLE_INPUTS
+- `tests/test_general_skills.py` — Per-skill tests for the 19 general-purpose skills in `skills/core/`
 - `tests/test_safety_skills_advisory.py` — HARA "ADVISORY TEMPLATE ONLY" contract
 - `tests/test_no_stale_claims.py` — Stale-number and demo-data guard
 - `tests/_archive/` — Archived mock-based tests, excluded from collection by `conftest.py`
@@ -268,6 +290,93 @@ See `experimental/README.md` for full warnings.
 - Never disable audit logging
 
 ---
+
+## / 技能组织 / Skill Organization
+
+Total skills shipped in P16: **50**
+
+- **31 ADAS-specific skills** in `domains/adas/skills/` (perception / planning / safety / simulation / code / data / research / devops / testing — the original 9-category ADAS set).
+- **19 general-purpose (domain-agnostic) skills** in `skills/core/`:
+  - **Web (3)**: `web_fetch`, `web_search`, `link_extractor`
+  - **Data (4)**: `json_formatter`, `csv_parser`, `text_statistics`, `diff`
+  - **Code (3)**: `regex_tester`, `json_schema_generator`, `code_counter`
+  - **Documentation (3)**: `markdown_to_html`, `readme_skeleton`, `docstring_generator`
+  - **Translation (2)**: `language_detector`, `translation_prompt`
+  - **Utilities (4)**: `uuid_generator`, `hash`, `timestamp`, `base64`
+
+The ADAS skills were moved to `domains/adas/skills/` in **P15**; the `skills/__init__.py` is now a backward-compat shim that lazy-loads the ADAS classes via PEP 562 `__getattr__`. General-purpose skills remain under `skills/core/` and are eagerly importable.
+
+All 50 skills are auto-discovered by `SkillRegistry.auto_discover()` and pass `tests/test_all_skills_smoke.py`.
+
+## / 领域包开发指南 / Domain Package Development Guide
+
+P15 introduces the **domain abstraction layer**: the core (memory, channels,
+hooks, safety, orchestration) is **domain-agnostic**. Domain knowledge
+lives in `domains/<name>/` packages that implement the `DomainPackage`
+protocol defined in `domains/__init__.py`.
+
+Built-in domains:
+
+- `domains/adas/` — 智驾 / ADAS (default, can be deactivated)
+- `domains/general/` — Always-active fallback (cannot be deactivated)
+
+### How to add your own domain / 如何加自己的领域
+
+A working 10-line example that adds a hypothetical `medical` domain:
+
+```python
+# domains/medical/__init__.py
+from domains import DomainPackage, DomainMetadata
+
+class MedicalDomain:
+    @property
+    def metadata(self) -> DomainMetadata:
+        return DomainMetadata(
+            name="medical",
+            display_name="医疗 / Medical",
+            description="Medical knowledge support (advisory).",
+            safety_profile="regulated-medical",  # 'advisory' | 'regulated-medical' | 'safety-critical'
+            requires_disclaimers=[
+                "医疗领域：所有输出仅供研发参考，不构成临床建议。",
+                "Medical domain: outputs are advisory only, not clinical advice.",
+            ],
+        )
+
+    def register(self, registry) -> None:
+        # Defer imports to keep the domain package's import cost low
+        from domains.medical.skills import DrugInteractionSkill
+        registry.register_skill(DrugInteractionSkill())
+
+    def get_safety_disclaimers(self):
+        return self.metadata.requires_disclaimers
+```
+
+```python
+# main.py
+from domains import load_default_domains, DomainRegistry
+from domains.medical import MedicalDomain
+
+reg = load_default_domains()         # 'general' + 'adas'
+reg.register(MedicalDomain())          # add yours
+reg.activate("medical")                # turn it on
+reg.deactivate("adas")                 # (optional) drop ADAS if not needed
+
+# Per-domain safety disclaimers:
+for line in reg.get_all_disclaimers():
+    print(line)
+```
+
+Rules of thumb:
+
+- Domain packages must NOT import from `core/`, `memory/`, `safety/`, or
+  other domain packages. The dependency arrow only goes **core ← domain**.
+- The `general` domain is always active and cannot be deactivated.
+- A domain's `safety_profile` must be one of `advisory`, `regulated-medical`,
+  or `safety-critical`. The core safety layer is always advisory-only;
+  the profile is a label, not a permission grant.
+- New domain packages should pass `tests/test_domain_registry.py`'s
+  contract: register / activate / deactivate / disclaimers behave as
+  documented.
 
 ## / 技能开发指南 / Skill Development Guide
 

@@ -1,0 +1,62 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\EDY\.lmstudio\extensions\backends\vendor\_amphibian\cpython3.11-win-x86@6\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\EDY\Desktop\������
+plugins: anyio-4.13.0
+collecting ... collected 44 items
+
+Desktop\������\tests\test_general_skills.py::TestWebSearchSkill::test_search_returns_demo_warning PASSED [  2%]
+Desktop\������\tests\test_general_skills.py::TestWebSearchSkill::test_search_validates_query FAILED [  4%]
+Desktop\������\tests\test_general_skills.py::TestLinkExtractorSkill::test_extracts_deduped_links PASSED [  6%]
+Desktop\������\tests\test_general_skills.py::TestLinkExtractorSkill::test_validates_content FAILED [  9%]
+Desktop\������\tests\test_general_skills.py::TestJsonFormatterSkill::test_pretty PASSED [ 11%]
+Desktop\������\tests\test_general_skills.py::TestJsonFormatterSkill::test_minify PASSED [ 13%]
+Desktop\������\tests\test_general_skills.py::TestJsonFormatterSkill::test_validate_invalid PASSED [ 15%]
+Desktop\������\tests\test_general_skills.py::TestJsonFormatterSkill::test_invalid_operation_rejected FAILED [ 18%]
+Desktop\������\tests\test_general_skills.py::TestCsvParserSkill::test_parse_basic_csv PASSED [ 20%]
+Desktop\������\tests\test_general_skills.py::TestCsvParserSkill::test_custom_delimiter PASSED [ 22%]
+Desktop\������\tests\test_general_skills.py::TestTextStatisticsSkill::test_basic_counts PASSED [ 25%]
+Desktop\������\tests\test_general_skills.py::TestTextStatisticsSkill::test_empty_text PASSED [ 27%]
+Desktop\������\tests\test_general_skills.py::TestDiffSkill::test_detects_changes PASSED [ 29%]
+Desktop\������\tests\test_general_skills.py::TestDiffSkill::test_identical_inputs PASSED [ 31%]
+Desktop\������\tests\test_general_skills.py::TestRegexBuilderSkill::test_finds_matches PASSED [ 34%]
+Desktop\������\tests\test_general_skills.py::TestRegexBuilderSkill::test_case_insensitive_flag PASSED [ 36%]
+Desktop\������\tests\test_general_skills.py::TestRegexBuilderSkill::test_invalid_regex PASSED [ 38%]
+Desktop\������\tests\test_general_skills.py::TestJsonSchemaGeneratorSkill::test_generates_model PASSED [ 40%]
+Desktop\������\tests\test_general_skills.py::TestJsonSchemaGeneratorSkill::test_empty_schema PASSED [ 43%]
+Desktop\������\tests\test_general_skills.py::TestCodeCounterSkill::test_python_counts PASSED [ 45%]
+Desktop\������\tests\test_general_skills.py::TestCodeCounterSkill::test_cpp_counts PASSED [ 47%]
+Desktop\������\tests\test_general_skills.py::TestMarkdownToHtmlSkill::test_basic_conversion PASSED [ 50%]
+Desktop\������\tests\test_general_skills.py::TestMarkdownToHtmlSkill::test_link_conversion PASSED [ 52%]
+Desktop\������\tests\test_general_skills.py::TestReadmeSkeletonSkill::test_generates_readme PASSED [ 54%]
+Desktop\������\tests\test_general_skills.py::TestReadmeSkeletonSkill::test_requires_name FAILED [ 56%]
+Desktop\������\tests\test_general_skills.py::TestDocstringGeneratorSkill::test_generates_docstring PASSED [ 59%]
+Desktop\������\tests\test_general_skills.py::TestLanguageDetectorSkill::test_detects_english PASSED [ 61%]
+Desktop\������\tests\test_general_skills.py::TestLanguageDetectorSkill::test_detects_chinese PASSED [ 63%]
+Desktop\������\tests\test_general_skills.py::TestLanguageDetectorSkill::test_empty_text PASSED [ 65%]
+Desktop\������\tests\test_general_skills.py::TestTranslationPromptSkill::test_generates_prompt PASSED [ 68%]
+Desktop\������\tests\test_general_skills.py::TestTranslationPromptSkill::test_includes_glossary PASSED [ 70%]
+Desktop\������\tests\test_general_skills.py::TestUuidGeneratorSkill::test_generates_uuid_v4 PASSED [ 72%]
+Desktop\������\tests\test_general_skills.py::TestUuidGeneratorSkill::test_validates_count_range FAILED [ 75%]
+Desktop\������\tests\test_general_skills.py::TestUuidGeneratorSkill::test_uuid_uniqueness PASSED [ 77%]
+Desktop\������\tests\test_general_skills.py::TestHashSkill::test_sha256 PASSED [ 79%]
+Desktop\������\tests\test_general_skills.py::TestHashSkill::test_md5 PASSED [ 81%]
+Desktop\������\tests\test_general_skills.py::TestHashSkill::test_invalid_algorithm FAILED [ 84%]
+Desktop\������\tests\test_general_skills.py::TestTimestampSkill::test_returns_iso_format PASSED [ 86%]
+Desktop\������\tests\test_general_skills.py::TestTimestampSkill::test_local_time PASSED [ 88%]
+Desktop\������\tests\test_general_skills.py::TestBase64Skill::test_encode_decode_roundtrip PASSED [ 90%]
+Desktop\������\tests\test_general_skills.py::TestBase64Skill::test_invalid_decode PASSED [ 93%]
+Desktop\������\tests\test_general_skills.py::TestGeneralSkillsRegistry::test_all_general_skills_discoverable FAILED [ 95%]
+Desktop\������\tests\test_general_skills.py::TestGeneralSkillsRegistry::test_all_general_skills_in_general_category FAILED [ 97%]
+Desktop\������\tests\test_general_skills.py::TestGeneralSkillsRegistry::test_no_duplicate_names PASSED [100%]
+
+=========================== short test summary info ===========================
+FAILED Desktop\������\tests\test_general_skills.py::TestWebSearchSkill::test_search_validates_query
+FAILED Desktop\������\tests\test_general_skills.py::TestLinkExtractorSkill::test_validates_content
+FAILED Desktop\������\tests\test_general_skills.py::TestJsonFormatterSkill::test_invalid_operation_rejected
+FAILED Desktop\������\tests\test_general_skills.py::TestReadmeSkeletonSkill::test_requires_name
+FAILED Desktop\������\tests\test_general_skills.py::TestUuidGeneratorSkill::test_validates_count_range
+FAILED Desktop\������\tests\test_general_skills.py::TestHashSkill::test_invalid_algorithm
+FAILED Desktop\������\tests\test_general_skills.py::TestGeneralSkillsRegistry::test_all_general_skills_discoverable
+FAILED Desktop\������\tests\test_general_skills.py::TestGeneralSkillsRegistry::test_all_general_skills_in_general_category
+======================== 8 failed, 36 passed in 0.13s =========================

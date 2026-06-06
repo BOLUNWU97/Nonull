@@ -2521,33 +2521,76 @@ class Nonull:
 
     def run_sync(
         self,
-        task_input: str,
-        context: Optional[Dict[str, Any]] = None,
+        task: str,
+        *,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.2,
+        max_tokens: int = 4096,
     ) -> Dict[str, Any]:
+        """Execute a task by calling the LLM synchronously.
+
+        Returns a dict with keys:
+          - 'output': the LLM's response text
+          - 'model': the model used
+          - 'usage': token usage dict
+          - 'duration_ms': how long the call took
+          - 'task': the original task
+
+        Falls back to a "no LLM configured" message if api_key is empty.
         """
-        同步运行入口 / Synchronous run entry.
+        import time
+        from core.llm_client import LLMClient, LLMConfig, LLMMessage
 
-        对 async run 的同步包装，用于非异步环境。
+        start = time.time()
+        cfg = LLMConfig.from_env()
+        if not cfg.api_key:
+            return {
+                "output": (
+                    "[Nonull] LLM not configured. Set NONULL_LLM_API_KEY to enable the agent.\n"
+                    "Other channels (slash commands, skills, scenarios) still work."
+                ),
+                "model": "none",
+                "usage": {},
+                "duration_ms": 0.0,
+                "task": task,
+                "status": "no_llm",
+            }
 
-        Args:
-            task_input: 任务描述
-            context:    可选初始上下文
+        client = LLMClient(cfg)
+        sys_prompt = system_prompt or (
+            "You are Nonull, a domain-agnostic AI agent assistant. "
+            "You have access to 31+ domain skills across multiple verticals (ADAS, "
+            "general programming, data analysis, etc.). When asked to perform a task, "
+            "decide which skills to use and explain your reasoning. "
+            "ADVISORY: you are a development assistant, not a certified safety system. "
+            "Always suggest the user verify critical outputs."
+        )
 
-        Returns:
-            执行结果字典
-        """
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # 已有事件循环时创建新任务
-                future = asyncio.run_coroutine_threadsafe(
-                    self.run(task_input, context), loop
-                )
-                return future.result(timeout=self._timeout + 30)
-            else:
-                return loop.run_until_complete(self.run(task_input, context))
-        except RuntimeError:
-            return asyncio.run(self.run(task_input, context))
+            resp = client.simple_chat(
+                user_message=task,
+                system_message=sys_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+        except Exception as e:
+            return {
+                "output": f"[Nonull] LLM call failed: {type(e).__name__}: {e}",
+                "model": cfg.model,
+                "usage": {},
+                "duration_ms": (time.time() - start) * 1000,
+                "task": task,
+                "status": "error",
+            }
+
+        return {
+            "output": resp,
+            "model": cfg.model,
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},  # filled in by client
+            "duration_ms": (time.time() - start) * 1000,
+            "task": task,
+            "status": "ok",
+        }
 
     def __repr__(self) -> str:
         return (

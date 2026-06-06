@@ -1,0 +1,9 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.3, pluggy-1.6.0
+rootdir: C:\Users\EDY\Desktop\������
+plugins: anyio-4.13.0
+collected 73 items / 65 deselected / 8 selected
+
+tests\test_all_skills_smoke.py ........                                  [100%]
+
+====================== 8 passed, 65 deselected in 0.08s =======================

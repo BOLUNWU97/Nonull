@@ -416,6 +416,17 @@ class BaseSkill(abc.ABC):
             return SkillResult.failure(
                 error=str(e), skill_name=skill_name
             )
+        except (ValueError, TypeError, KeyError) as e:
+            # Treat plain ValueError / TypeError / KeyError raised from
+            # ``_validate_input`` as validation failures (matches the
+            # documented contract that bad input returns a failure result
+            # rather than propagating the exception). This lets skills
+            # raise the lighter-weight ``ValueError`` from stdlib idioms
+            # while still producing a clean SkillResult.
+            self.logger.error(f"Input validation failed: {e}")
+            return SkillResult.failure(
+                error=str(e), skill_name=skill_name
+            )
 
         # 初始化指标 / Initialize metrics
         metrics = SkillMetrics(

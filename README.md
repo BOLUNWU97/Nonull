@@ -1,15 +1,16 @@
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Nonull-智驾智能体-FF6B35?style=for-the-badge&logo=autoprefixer&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Nonull-全领域智能体-Universal-FF6B35?style=for-the-badge&logo=autoprefixer&logoColor=white"/>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.1.0-blue?style=flat-square"/>
+  <img src="https://img.shields.io/badge/version-0.2.0-blue?style=flat-square"/>
   <img src="https://img.shields.io/badge/python-3.10%2B-green?style=flat-square&logo=python&logoColor=white"/>
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square"/>
   <img src="https://img.shields.io/badge/Advisory%20Safety-orange?style=flat-square"/>
   <img src="https://img.shields.io/badge/Advisory%20Checks-yellow?style=flat-square"/>
   <img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square"/>
+  <img src="https://img.shields.io/badge/domains-ADAS%20%2B%20General-6C63FF?style=flat-square"/>
 </p>
 
 <p align="center">
@@ -24,11 +25,11 @@
 </p>
 
 <h3 align="center">
-  🚗 有性格 · 有记忆 · 有安全的智驾 AI 工程师
+  🌍 通用领域 AI 智能体，内置智驾、通用技能、LLM 接入
 </h3>
 
 <p align="center">
-  <i>An AI engineer for autonomous driving — with personality, memory, and safety awareness.</i>
+  <i>Universal Domain AI Agent — with built-in ADAS, general-purpose skills, and LLM integration.</i>
 </p>
 
 <br>
@@ -38,9 +39,9 @@
 <h2 align="center">✨ 一句话认识 Nonull ✨</h2>
 
 <p align="center">
-  <b>Nonull</b> 是专为 <b>智能驾驶行业</b> 设计的下一代 AI 智能体。<br>
-  它像一位经验丰富的资深工程师，帮你审查代码、分析安全、设计测试、生成场景。<br>
-  而且它<b>有记忆、有安全意识、有自己的性格</b>。
+  <b>Nonull</b> 是面向<b>任意领域</b>的下一代 AI 智能体框架。<br>
+  内置<b>智驾（ADAS）领域</b>与<b>通用领域</b>，自带 50+ 技能、四层记忆、五关安全、LLM 接入、Web UI、评估套件。<br>
+  领域无关，<b>有记忆、有安全意识、有自己的性格</b>。
 </p>
 
 <br>
@@ -105,6 +106,62 @@
     <td align="center"><b>安全指标记录</b>（基础反馈统计，建议性，非游戏化进度）</td>
   </tr>
 </table>
+
+<br>
+
+---
+
+<h2 align="center">🌍 All Domains / 全领域</h2>
+
+<p align="center">
+  <b>Nonull is domain-agnostic.</b> ADAS is one of many built-in domains.<br>
+  <b>Nonull 是领域无关的。</b> 智驾（ADAS）只是众多内置领域之一。
+</p>
+
+Each domain provides:
+- Domain-specific skills
+- Domain-specific personas (e.g., ADAS: Conservative/Sporty/Veteran)
+- Domain-specific scenarios (e.g., ADAS: 36 driving scenarios)
+- Domain-specific safety disclaimers
+
+### Built-in Domains / 内置领域
+
+| Domain | Status | Contents / 内容 |
+|---|---|---|
+| `general` | ✅ Always loaded | Neutral defaults, no domain-specific knowledge / 中性默认，无领域知识 |
+| `adas` | ✅ Default-on | 13 ADAS skills, 36 scenarios, 3 personas, HARA templates / 13 个智驾技能，36 个场景，3 种人格，HARA 模板 |
+
+### Adding Your Own Domain / 添加自定义领域
+
+```python
+from domains import DomainPackage, DomainMetadata
+
+class MyDomain:
+    @property
+    def metadata(self):
+        return DomainMetadata(name="my", display_name="...", description="...")
+
+    def register(self, registry):
+        # Register your skills
+        registry.register_skill(MySkill())
+
+    def get_safety_disclaimers(self):
+        return ["My domain: not for clinical use."]
+```
+
+### Domain-Agnostic Skills (skills/core/)
+
+21 skills that work for ANY domain:
+- **Web (3)**: `web_fetch`, `web_search`, `link_extractor`
+- **Data (4)**: `json_formatter`, `csv_parser`, `text_statistics`, `diff`
+- **Code (3)**: `regex_tester`, `json_schema_generator`, `code_counter`
+- **Documentation (3)**: `markdown_to_html`, `readme_skeleton`, `docstring_generator`
+- **Translation (2)**: `language_detector`, `translation_prompt`
+- **Utilities (4)**: `uuid_generator`, `hash`, `timestamp`, `base64`
+- **Multimodal (7)**: `image_info`, `image_resize`, `image_base64`, `pdf_info`, `pdf_extract_text`, `audio_info`, `audio_transcribe`
+- **Creative (3)**: `brainstorm`, `metaphor_generator`, `story_plot`
+- **Productivity (2)**: `pomodoro_schedule`, `eisenhower_matrix`
+- **Learning (3)**: `flashcard_generator`, `quiz_generator`, `spaced_repetition`
 
 <br>
 
@@ -210,7 +267,7 @@ print(result["output"])
 | 🤖 **核心引擎** | ReAct + 规划 + 反思 融合状态机 | ✅ |
 | 🧠 **记忆系统** | 工作/情景/知识/技能 四种记忆 + 潜意识 | ✅ |
 | 🛡️ **安全卫士** | ISO 26262 + Deny-First + 五关检查流水线 | ✅ |
-| 🔧 **31 个技能** | 覆盖代码/安全/感知/规划/测试/仿真/数据/研究/DevOps 9 大领域 | ✅ |
+| 🔧 **50+ 个技能** | 31 个 ADAS 专属 + 19 个通用 (web/data/code/docs/translation/utilities) + 8 个创意 (brainstorm/pomodoro/flashcards/...) | ✅ |
 | 🔄 **多Agent** | DAG 任务分解 + 8 个 Agent 并行 + 冲突解决 | ✅ |
 | 👤 **驾驶人格** | 🛡️ 保守派 / 🚀 运动派 / 🧓 老司机 | ✅ 🆕 |
 | 🧠 **场景思维** | 36 个标准场景自动关联 + 覆盖率分析 | ✅ 🆕 |
@@ -250,6 +307,55 @@ print(result["output"])
 <p align="center">
   详见 <a href="experimental/README.md">experimental/README.md</a>
 </p>
+
+<br>
+
+---
+
+<h2 align="center">🏗️ Adding Your Own Domain (添加你自己的领域)</h2>
+
+<p align="center">
+  Nonull is <b>domain-agnostic</b>. ADAS is just one built-in domain. To add your own:
+</p>
+
+```python
+# domains/my_domain/__init__.py
+from domains import DomainPackage, DomainMetadata
+
+class MyDomain:
+    @property
+    def metadata(self):
+        return DomainMetadata(
+            name="medical",
+            display_name="医疗 / Medical",
+            description="Medical domain (or whatever you want).",
+            safety_profile="regulated-medical",  # 'advisory' | 'regulated-medical' | 'safety-critical'
+        )
+
+    def register(self, registry):
+        # Register your skills/personas/scenarios
+        from domains.my_domain.skills import MySkill
+        registry.register_skill(MySkill())
+
+    def get_safety_disclaimers(self):
+        return ["Medical domain: not for clinical use without review."]
+```
+
+```python
+# main.py
+from domains import load_default_domains
+reg = load_default_domains()
+reg.deactivate('adas')  # turn off ADAS if you don't need it
+# Or register your own:
+reg.register(MyDomain())
+reg.activate('medical')
+```
+
+That's it. Your domain's skills become available alongside (or instead of) the built-ins.
+
+The built-in domains are:
+- `domains/adas/` — 智驾 / ADAS (default)
+- `domains/general/` — always-active fallback (cannot be deactivated)
 
 <br>
 
@@ -298,6 +404,89 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 
 ---
 
+<h2 align="center">🎨 Creative / Productivity / Learning Skills</h2>
+
+<br>
+
+<p align="center">
+  Nonull 越来越像一个"next-gen 智能体"：除了 ADAS 专属技能和通用工具，
+  它还配备了 8 个 <b>创意 / 效率 / 学习</b> 技能（来自 <code>skills/creative/</code>）。
+</p>
+
+<p align="center">
+  <i>Beyond the 31 ADAS-specific skills and 19 general-purpose utilities,
+  Nonull ships 8 additional <b>creative / productivity / learning</b> skills
+  (<code>skills/creative/</code>) — making it feel like a next-gen agent.</i>
+</p>
+
+<br>
+
+<div align="center">
+
+| 分类 | 技能 | 用途 |
+|------|------|------|
+| 💡 **创意激发 / Ideation** | `brainstorm` | 用 7 种经典头脑风暴技术（SCAMPER、六顶思考帽、最坏想法、类比、Reversal、First Principles）针对主题生成创意 |
+| 💡 **创意激发 / Ideation** | `metaphor_generator` | 为抽象概念生成隐喻 / 类比（"X is like ___ because both ___"） |
+| 💡 **创意激发 / Ideation** | `story_plot` | 用 4 种叙事结构（Three-Act / Hero's Journey / Freytag / 起承转合）生成故事骨架 |
+| ⏱️ **效率 / Productivity** | `pomodoro_schedule` | 把任务列表拆成 25 分钟番茄钟 + 5/15 分钟休息的节奏表 |
+| ⏱️ **效率 / Productivity** | `eisenhower_matrix` | 把任务按"紧急/重要"四象限分类（Do / Schedule / Delegate / Eliminate） |
+| 📚 **学习 / Learning** | `flashcard_generator` | 从一段文本中生成 N 张 Q&A 抽认卡（Anki 风格） |
+| 📚 **学习 / Learning** | `quiz_generator` | 从一段文本中生成 N 道多选题（1 正确 + 3 干扰） |
+| 📚 **学习 / Learning** | `spaced_repetition` | 为一组记忆项生成 Leitner 间隔重复复习计划（1/3/7/14/30/60/120 天） |
+
+</div>
+
+<br>
+
+```python
+# 5 秒钟上手 / 5-second start
+from skills.creative.idea_skills import BrainstormSkill
+from skills.creative.learning_skills import FlashcardGeneratorSkill
+
+# 用 3 种头脑风暴技术为某个主题生成 5 个创意
+result = BrainstormSkill().execute({"topic": "smart home for elderly", "count": 5})
+for idea in result.data["ideas"]:
+    print(idea)
+
+# 把一段关于光合作用的文字切成 10 张抽认卡
+cards = FlashcardGeneratorSkill().execute({
+    "text": "Photosynthesis converts CO2 and H2O into glucose using sunlight.",
+    "count": 10,
+})
+print(cards.data["instruction"])
+```
+
+<br>
+
+---
+
+<h2 align="center">🌍 Internationalization (i18n) / 多语言支持</h2>
+
+<br>
+
+<p align="center">
+  Nonull 用户面字符串已支持中英双语切换，存放在 <code>i18n/__init__.py</code>。
+</p>
+
+```python
+from i18n import t, set_lang
+
+# 默认英文 / English by default
+print(t("welcome"))            # "Nonull — Universal AI Agent"
+
+# 切到中文 / Switch to Chinese
+set_lang("zh")
+print(t("welcome"))            # "Nonull — 通用 AI 智能体"
+print(t("skills_loaded", n=8)) # "已加载 8 个技能"
+
+# Per-call 覆盖 / Per-call override
+print(t("welcome", lang="en")) # "Nonull — Universal AI Agent"
+```
+
+<br>
+
+---
+
 <h2 align="center">📂 项目结构</h2>
 
 <br>
@@ -327,17 +516,24 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
 │   ├── deny_first.py         #    Deny-First 规则引擎
 │   └── compliance.py         #    ISO 26262 / MISRA 合规
 │
-├── 📁 skills/                # 🔧 31 个技能
+├── 📁 skills/                # 🔧 50 个技能 (31 ADAS + 19 通用)
 │   ├── registry.py           #    动态注册中心
 │   ├── code_skills.py        #    代码技能组
-│   ├── safety_skills.py      #    安全技能组
-│   ├── perception_skills.py  #    感知技能组
-│   ├── planning_skills.py    #    规划技能组
+│   ├── safety_skills.py      #    (P15 移至 domains/adas/skills/)
+│   ├── perception_skills.py  #    (P15 移至 domains/adas/skills/)
+│   ├── planning_skills.py    #    (P15 移至 domains/adas/skills/)
 │   ├── testing_skills.py     #    测试技能组
-│   ├── simulation_skills.py  #    仿真技能组
+│   ├── simulation_skills.py  #    (P15 移至 domains/adas/skills/)
 │   ├── data_skills.py        #    数据技能组
 │   ├── research_skills.py    #    研究技能组
-│   └── devops_skills.py      #    DevOps 技能组
+│   ├── devops_skills.py      #    DevOps 技能组
+│   └── core/                 #    P16: 19 个通用领域无关技能
+│       ├── web_skills.py          #    web_fetch / web_search / link_extractor
+│       ├── data_skills.py         #    json_formatter / csv_parser / text_statistics / diff
+│       ├── code_skills.py         #    regex_tester / json_schema_generator / code_counter
+│       ├── documentation_skills.py #    markdown_to_html / readme_skeleton / docstring_generator
+│       ├── translation_skills.py  #    language_detector / translation_prompt
+│       └── utilities_skills.py    #    uuid_generator / hash / timestamp / base64
 │
 ├── 📁 persona/               # 👤 独有：人格系统
 │   ├── driving_persona.py    #    三种驾驶人格
@@ -409,6 +605,9 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
   </a>
   <a href="docs/architecture.md">
     <img src="https://img.shields.io/badge/🏗️-架构文档-FF6B6B?style=for-the-badge"/>
+  </a>
+  <a href="docs/llm-setup.md">
+    <img src="https://img.shields.io/badge/🔌-LLM%20Setup-00BFA5?style=for-the-badge"/>
   </a>
 </p>
 
@@ -521,7 +720,7 @@ public method shape, this test is the first thing CI will flag.
   <tr><td>🤖 Core Engine</td><td>ReAct + Plan-and-Execute + Reflexion fused state machine</td></tr>
   <tr><td>🧠 Memory System</td><td>Working/Episodic/Semantic/Procedural + Neocortex (configurable capacity, default in-memory backend)</td></tr>
   <tr><td>🛡️ Safety Guardian</td><td>ISO 26262 + Deny-First + 5-layer safety pipeline</td></tr>
-  <tr><td>🔧 31 Skills</td><td>9 categories: Code/Safety/Perception/Planning/Testing/Simulation/Data/Research/DevOps</td></tr>
+  <tr><td>🔧 50 Skills</td><td>31 ADAS-specific (Code/Safety/Perception/Planning/Testing/Simulation/Data/Research/DevOps) + 19 general-purpose (Web/Data/Code/Docs/Translation/Utilities) under <code>skills/core/</code></td></tr>
   <tr><td>👤 Driving Persona</td><td>Conservative 🛡️ / Sporty 🚀 / Veteran 🧓 — three characters</td></tr>
   <tr><td>🧠 Scenario Engine</td><td>36 built-in driving scenarios + coverage analysis</td></tr>
   <tr><td>📊 Safety Metrics</td><td>Safety metrics tracking (advisory, not gamified)</td></tr>

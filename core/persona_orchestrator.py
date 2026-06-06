@@ -5,10 +5,17 @@ Persona Orchestrator — Unifies Nonull's unique persona, scenario thinking, saf
 
 from enum import Enum
 from typing import Optional
-from .driving_persona import DrivingPersona, PersonaType
-from .scenario_engine import ScenarioEngine
-from .safety_badge import SafetyBadgeSystem
-from .co_pilot import CoPilot
+
+# P15: 领域抽象 / Domain abstraction.
+# The persona orchestrator is a CORE module (not ADAS-specific) — it composes
+# a persona, a scenario engine, a safety-metrics system, and a co-pilot. The
+# concrete classes it composes used to live in `persona/`, which has been
+# refactored: ADAS-specific bits now live in `domains/adas/`, and the safety
+# metrics moved into `core/` because they are domain-agnostic.
+from domains.adas.personas import DrivingPersona, PersonaType
+from domains.adas.scenarios import ScenarioEngine
+from domains.adas.copilot import CoPilot
+from core.safety_metrics import SafetyBadgeSystem
 
 
 class PersonaOrchestrator:

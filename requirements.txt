@@ -52,3 +52,13 @@ pytest-cov>=4.0
 # Code quality
 # mypy>=1.0
 # ruff>=0.1
+
+# Optional multimodal dependencies (install as needed)
+# Pillow>=10.0  # for image_resize skill
+# pypdf>=4.0  # for pdf_extract_text skill
+# openai-whisper>=20231117  # for audio_transcribe skill (real ASR)
+
+# Web UI optional
+# fastapi>=0.100,<1.0
+# uvicorn>=0.23,<1.0
+# jinja2>=3.1,<4.0

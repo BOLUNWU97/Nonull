@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from persona.driving_persona import DrivingPersona, PersonaType
+from domains.adas.personas import DrivingPersona, PersonaType
 
 
 # ---------------------------------------------------------------------------
