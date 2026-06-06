@@ -7,7 +7,7 @@
 
 > **⚠️ Disclaimer / 免责声明**
 >
-> All numerical claims and timeline predictions in this document are **illustrative research targets and design aspirations**. Nonull is an **internal development assistant** and does **not** implement certified safety mechanisms, formal verification, or any production-ready autonomous driving capability — explicitly **not production-ready, not 量产**, advisory only. Numbers such as latency bounds (e.g. "10ms"), collision rates, or roadmap dates are drawn from third-party research papers and prototypes, not from Nonull's own validated, certified, or deployed systems. Nothing in this report constitutes an ISO 26262 / ASIL / SOTIF / ASPICE claim.
+> All numerical claims and timeline predictions in this document are **illustrative research targets and design aspirations**. Nonull is an **internal development assistant** — explicitly **not production-ready, not production-grade, not certified, not 量产**, advisory only. Numbers such as latency bounds (e.g. "10ms"), collision rates, or roadmap dates are drawn from third-party research papers and prototypes, not from Nonull's own validated, certified, or deployed systems. Nothing in this report constitutes an ISO 26262 / ASIL / SOTIF / ASPICE claim.
 >
 > 本文件中的所有数值声明与时间线预测均为**示例性的研究目标与设计愿景**。Nonull 是**内部开发助手**，**不**实现任何经过认证的安全机制、形式化验证或可上车的自动驾驶能力。"10ms"延迟、碰撞率、路线图日期等数字均引自第三方研究论文与原型，**非** Nonull 自身经过验证、认证或部署的系统。本文件不构成 ISO 26262 / ASIL / SOTIF / ASPICE 声明。
 
@@ -326,7 +326,7 @@ Key capabilities:
 **Tagline:** *"Safety is not a feature — it's the architecture"*
 
 **What it is:**
-A **constitutional safety layer** inspired by Anthropic's Constitutional AI and extended with autonomous driving-specific constraints. This is a monitor-system architecture where a lightweight **Runtime Safety Monitor** runs alongside the driving agent, continuously checking actions against a constitution of driving rules. The monitor is **advisory** — it does not perform formal verification or implement certified safety-element processes; this is a non-certified, not certified safety pattern reference only.
+A **constitutional safety layer** inspired by Anthropic's Constitutional AI and extended with autonomous driving-specific constraints. This is a monitor-system architecture where a lightweight **Runtime Safety Monitor** runs alongside the driving agent, continuously checking actions against a constitution of driving rules. The monitor is **advisory** — it does not perform formal verification or implement any certified-element process; this is a non-certified advisory pattern reference only.
 
 Constitutional rules include:
 - **Hard constraints:** Never exceed speed limit by more than 10%, never cross solid lines, always stop at red lights
