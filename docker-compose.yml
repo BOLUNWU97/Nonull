@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+  nonull:
+    build: .
+    ports:
+      - "8765:8765"
+    environment:
+      - NONULL_LLM_API_KEY=${NONULL_LLM_API_KEY:-}
+      - NONULL_LLM_PROVIDER=${NONULL_LLM_PROVIDER:-openai}
+      - NONULL_LLM_MODEL=${NONULL_LLM_MODEL:-gpt-4o}
+      - NONULL_LLM_API_BASE=${NONULL_LLM_API_BASE:-https://api.openai.com/v1}
+    volumes:
+      - nonull_memory:/app/memory_data
+    restart: unless-stopped
+
+volumes:
+  nonull_memory:
