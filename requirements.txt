@@ -5,16 +5,31 @@
 # on upgrading to a real vector backend (FAISS / Milvus / pgvector) by
 # implementing the MemoryBackend interface.
 
+# Pinned to compatible ranges
+# 锁定到兼容范围
+#
+# Upper bounds protect against silent breaking changes between
+# minor versions. httpx 0.27→0.28 changed the async transport API,
+# pydantic 2.x keeps tightening BaseModel semantics, numpy 2.0
+# removed deprecated aliases, and rich 14+ reorganized console
+# internals. If you need a newer major, also update the lockfile
+# and run the full test matrix.
+#
+# 上界用于避免 minor 版本之间的静默破坏性变更。httpx 0.27→0.28
+# 更改了异步传输 API，pydantic 2.x 持续收紧 BaseModel 语义，
+# numpy 2.0 删除了已弃用别名，rich 14+ 重组了 console 内部结构。
+# 如需升级到更新的主版本，请同步更新 lockfile 并运行完整测试矩阵。
+
 # Core
-pyyaml>=6.0
-pydantic>=2.0
-numpy>=1.24
+pyyaml>=6.0,<7.0
+pydantic>=2.0,<3.0
+numpy>=1.24,<2.1
 
 # CLI & UI
-rich>=13.0
+rich>=13.0,<14.0
 
 # Networking
-httpx>=0.24
+httpx>=0.27,<0.29
 
 # Async
 # asyncio is part of Python stdlib

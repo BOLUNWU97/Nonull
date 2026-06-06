@@ -46,11 +46,44 @@ def _get_version() -> str:
 
 def _get_long_description() -> str:
     """Get the long description from README if available.
-    如果存在 README 则获取长描述。"""
+    如果存在 README 则获取长描述。
+
+    The README is the primary long description. The supplementary
+    project files (CONTRIBUTING, CHANGELOG, INTERNAL-NOTES) are
+    referenced inline so that PyPI / GitHub visitors can find
+    development, history, and onboarding docs in one place.
+    """
     readme_path = HERE / "README.md"
+    contributing_path = HERE / "CONTRIBUTING.md"
+    changelog_path = HERE / "CHANGELOG.md"
+    internal_notes_path = HERE / "INTERNAL-NOTES.md"
+
     if readme_path.exists():
-        return readme_path.read_text(encoding="utf-8")
-    return "Nonull - Multi-Channel Agent Framework / 多通道智能体框架"
+        body = readme_path.read_text(encoding="utf-8")
+    else:
+        body = "Nonull - Multi-Channel Agent Framework / 多通道智能体框架"
+
+    extras = []
+    if contributing_path.exists():
+        extras.append(
+            "\n\n## Contributing / 贡献指南\n\n"
+            "See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, "
+            "code style, testing, and the marketing copy red lines."
+        )
+    if changelog_path.exists():
+        extras.append(
+            "\n\n## Release history / 发布历史\n\n"
+            "See [CHANGELOG.md](CHANGELOG.md) for the full release history "
+            "(Keep a Changelog format)."
+        )
+    if internal_notes_path.exists():
+        extras.append(
+            "\n\n## First-day setup / 首日上手\n\n"
+            "New engineers should read [INTERNAL-NOTES.md](INTERNAL-NOTES.md) "
+            "for LLM setup, the three workflows, and known limitations."
+        )
+
+    return body + "".join(extras)
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +100,7 @@ INSTALL_REQUIRES = [
     "rich>=13.0",
 
     # HTTP client for LLM provider integrations (default install)
-    "httpx>=0.24",
+    "httpx>=0.27,<0.29",
 
     # CLI channel extras (optional — prompt_toolkit is heavier):
     # "prompt_toolkit>=3.0.0", # Enhanced REPL

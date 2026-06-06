@@ -1,0 +1,68 @@
+# Nonull Dependency Lock File 依赖锁定文件
+#
+# DO NOT EDIT BY HAND for normal development — regenerate via:
+#   pip-compile requirements.txt  (if pip-tools is available)
+#   # or
+#   pip freeze --exclude-editable > requirements.lock
+#
+# 不要在常规开发中手动编辑 — 请通过以下方式重新生成：
+#   pip-compile requirements.txt
+#   # 或
+#   pip freeze --exclude-editable > requirements.lock
+#
+# This lockfile pins the exact versions known to work with the
+# Nonull 0.1.0 alpha test matrix (Ubuntu + Windows × Python
+# 3.10/3.11/3.12). It is provided as a hand-curated starting
+# point for reproducible CI; the CI workflow should refresh
+# these pins when bumping requirements.txt.
+#
+# 本 lockfile 锁定了与 Nonull 0.1.0 alpha 测试矩阵
+# （Ubuntu + Windows × Python 3.10/3.11/3.12）兼容的精确版本。
+# 它是手工整理的可复现 CI 起点；CI workflow 在升级
+# requirements.txt 时应刷新这些锁定。
+
+# ---- Runtime / Core ----
+pydantic==2.6.4
+numpy==1.26.4
+pyyaml==6.0.1
+rich==13.7.1
+httpx==0.27.0
+
+# ---- Channel extras (optional) ----
+# Uncomment as needed; these match the [all] extras_require in setup.py
+# prompt_toolkit==3.0.43
+# aiohttp==3.9.5
+# websockets==12.0
+# mcp==1.2.0
+# python-telegram-bot==20.7
+# lark-oapi==1.2.6
+# dingtalk-sdk==2.1.5
+
+# ---- Dev / Test ----
+pytest==7.4.4
+pytest-asyncio==0.23.6
+pytest-cov==4.1.0
+mypy==1.8.0
+ruff==0.1.15
+pre-commit==3.6.0
+
+# ---- Transitive pins (kept for transparency) ----
+# These come from the direct pins above; listed for reproducibility.
+# annotated-types==0.6.0           # via pydantic
+# anyio==4.3.0                     # via httpx
+# certifi==2024.2.2                # via httpx
+# click==8.1.7                     # via rich
+# colorama==0.4.6                  # via rich (Windows)
+# exceptiongroup==1.2.0            # via pytest (py<3.11)
+# h11==0.14.0                      # via httpx
+# idna==3.6                        # via httpx
+# iniconfig==2.0.0                 # via pytest
+# markdown-it-py==3.0.0            # via rich
+# mdurl==0.1.2                     # via rich
+# packaging==23.2                  # via pytest
+# pluggy==1.4.0                    # via pytest
+# pygments==2.17.2                 # via rich
+# pydantic-core==2.16.3            # via pydantic
+# sniffio==1.3.0                   # via httpx
+# tomli==2.0.1                     # via pytest (py<3.11)
+# typing-extensions==4.10.0        # via pydantic, mypy

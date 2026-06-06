@@ -180,7 +180,7 @@ NONULL_LLM_API_KEY=sk-your-key-here
 <p align="center">
   <img src="https://img.shields.io/badge/CLI-Rich%20Formatting-FF6B35?style=flat-square"/>
   &nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/11%20Slash%20Commands-Ready-success?style=flat-square"/>
+  <img src="https://img.shields.io/badge/12%20Slash%20Commands-Ready-success?style=flat-square"/>
   &nbsp;&nbsp;
   <img src="https://img.shields.io/badge/Multi--line-Supported-blue?style=flat-square"/>
 </p>
@@ -425,6 +425,56 @@ for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
   engineer uses (code review, scenario coverage, multi-agent),
   known limitations, and where to ask for help.<br>
   <i>Advisory only — does not replace the disclaimer above.</i>
+</p>
+
+<br>
+
+The example `examples/skill_workflow.py` (one-shot AEB review) is
+guarded by an end-to-end smoke test at
+[`tests/test_skill_workflow_integration.py`](tests/test_skill_workflow_integration.py).
+It imports the example, auto-discovers the real `SkillRegistry`,
+verifies the `code_review` skill is present, instantiates the
+`Orchestrator`, and pins the public
+`Orchestrator.run_with_skills` signature. Run it with:
+
+```bash
+pytest tests/test_skill_workflow_integration.py -v
+```
+
+If you change `examples/skill_workflow.py` or the orchestrator's
+public method shape, this test is the first thing CI will flag.
+
+<br>
+
+---
+
+<h2 align="center">🔗 Project Links / 项目链接</h2>
+
+<p align="center">
+  <a href="CONTRIBUTING.md">
+    <img src="https://img.shields.io/badge/📝-CONTRIBUTING-FF6B35?style=for-the-badge"/>
+  </a>
+  <a href="CHANGELOG.md">
+    <img src="https://img.shields.io/badge/📜-CHANGELOG-6C63FF?style=for-the-badge"/>
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/⚖️-LICENSE-yellow?style=for-the-badge"/>
+  </a>
+  <a href="INTERNAL-NOTES.md">
+    <img src="https://img.shields.io/badge/🧑‍💻-INTERNAL%20NOTES-00C9A7?style=for-the-badge"/>
+  </a>
+</p>
+
+| File | Purpose | 用途 |
+|------|---------|------|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Development setup, code style, testing, PR process, marketing red lines | 开发环境、代码风格、测试、PR 流程、营销文案红线 |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release history in [Keep a Changelog](https://keepachangelog.com/) format | [Keep a Changelog](https://keepachangelog.com/) 格式的发布历史 |
+| [`LICENSE`](LICENSE) | MIT license terms | MIT 许可证条款 |
+| [`INTERNAL-NOTES.md`](INTERNAL-NOTES.md) | One-page warning sheet for first-day engineers | 首日工程师一页纸警告说明 |
+
+<p align="center">
+  <i>All four files are advisory documentation. The binding safety
+  disclaimer is at the top of this README.</i>
 </p>
 
 <br>

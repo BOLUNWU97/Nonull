@@ -137,6 +137,15 @@ opinions on the same code.
 For a one-shot demo that wires skills + workflow together, see
 `examples/skill_workflow.py`.
 
+There is a smoke-test that protects this public entrypoint from
+breaking: `tests/test_skill_workflow_integration.py`. It imports
+`examples/skill_workflow.py`, verifies `run_aeb_review_workflow` is
+defined, auto-discovers the real `SkillRegistry`, checks the
+`code_review` skill is registered, and pins the
+`Orchestrator.run_with_skills` signature. If you change the example
+or the orchestrator's public method shape, this test is the first
+thing CI will yell about.
+
 ---
 
 ## 6. Known limitations

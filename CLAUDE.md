@@ -146,14 +146,24 @@ All user-facing documentation lives in `docs/` and is bilingual where required:
 
 ## / 测试 / Tests
 
-Test suite lives in `tests/` (6 files, all run by CI via `.github/workflows/test.yml`):
+Test suite lives in `tests/` (12 files, all run by CI via `.github/workflows/test.yml`):
 
-- `tests/test_core.py` — Core engine / agent_core / config tests
-- `tests/test_memory.py` — Memory layer (Neocortex, Subconscious, etc.)
+- `tests/test_core_real.py` — Real core engine / agent_core / config tests (replaces mock-based `test_core.py`)
+- `tests/test_memory_real.py` — Real memory layer tests (replaces mock-based `test_memory.py`)
 - `tests/test_no_experimental_imports.py` — **Guard test** — enforces no production code imports from `experimental/`
 - `tests/test_safety_badge_api.py` — Persona safety_badge public API contract
 - `tests/test_persona_exports.py` — Persona module exports / surface checks
 - `tests/test_no_marketing_claims.py` — Guard test — enforces no forbidden ISO 26262 / ASIL-D / "production-ready" marketing claims in user-facing copy
+- `tests/test_quickstart_runs.py` — Smoke test that `examples/quickstart.py` imports resolve
+- `tests/test_cli_agent_wiring.py` — CLI agent wiring (bind_agent, /agent, result unwrapping)
+- `tests/test_orchestrator_skills_glue.py` — Orchestrator + skill registry glue (8 tests)
+- `tests/test_orchestrator_async.py` — Async dispatch via asyncio.gather
+- `tests/test_orchestrator_real_skills.py` — Integration with real SkillRegistry and real CodeReviewSkill
+- `tests/test_skill_workflow_integration.py` — End-to-end `examples/skill_workflow.py` import test
+- `tests/test_all_skills_smoke.py` — 31-skill smoke test with parametrized SAMPLE_INPUTS
+- `tests/test_safety_skills_advisory.py` — HARA "ADVISORY TEMPLATE ONLY" contract
+- `tests/test_no_stale_claims.py` — Stale-number and demo-data guard
+- `tests/_archive/` — Archived mock-based tests, excluded from collection by `conftest.py`
 
 Run all tests:
 
