@@ -32,6 +32,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import numpy as np
+
 from .episodic import EmbeddingProvider
 
 logger = logging.getLogger(__name__)

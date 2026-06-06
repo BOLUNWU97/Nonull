@@ -4,6 +4,65 @@ All notable changes to Nonull will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] - 0.2.2
+
+### Real-World Test Verification (P23)
+
+**Date:** 2026-06-06
+**Python:** 3.13.0 (first real Python run after 14 rounds of polish)
+
+#### Test results (multi-role, multi-dimensional)
+
+| Metric | Value |
+|---|---|
+| Test files | 22 |
+| Test classes | 34 |
+| Test functions | 431 |
+| **Passed** | **351 (81.4%)** |
+| Failed | 46 |
+| Errors | 33 |
+| Skipped | 1 |
+
+**By role:**
+- Imports: 0 collection errors
+- Unit tests: 165 pass / 12 fail
+- Integration: 25 pass / 4 fail / 25 errors
+- Orchestrator: 63 pass / 3 fail / 8 errors
+- Smoke tests: 97 pass / 28 fail / 1 skip
+- Full suite: 351 pass / 46 fail / 33 errors
+
+### Fixed (P23)
+
+| Bug | File:line | Fix |
+|---|---|---|
+| `Tuple` not defined | `core/config.py:714` | Added `Tuple` to typing import |
+| `_REGISTRY` dataclass issue | `domains/adas/personas.py:49` | Changed to `ClassVar[Dict]` |
+| Malformed docstring | `channels/cli.py:369` | Replaced raw triple-quote docstring content |
+| ClassVar on `_REGISTRY` | `domains/adas/personas.py` | Added `ClassVar` import |
+| Real persona classes | `domains/adas/personas.py` | Added real `ConservativePersona`/`SportyPersona`/`VeteranPersona` |
+
+### Known limitations (alpha)
+
+**82% green is real**. The remaining 18% cluster in:
+1. **Test code issues** (mock path wrong, expected values off, missing methods) — ~30%
+2. **Marketing copy violations in docs** (~5% — README/CLAUDE still contain "ISO 26262 Compliant" or "production-ready" in positive context)
+3. **Real code issues** (memory layer return shape, hooks calling signature, etc.) — ~30%
+4. **API mismatches** between test and code — ~30%
+
+**Honest verdict:** Nonull v0.2.x is a real working framework that the team can use, but it is **not** a polished, fully-tested, public-release product. It requires:
+- 6-10 hours of focused fix-up work to reach 95%+
+- A round of real ADAS engineer use to surface remaining edge cases
+- Honest documentation about its current state (not "production-ready")
+
+### Changed
+- `domains/adas/personas.py` uses `ClassVar[Dict]` properly for the registry
+- `channels/cli.py` docstring is well-formed
+
+### Notes
+- The 81.4% test pass rate on Python 3.13 is the first time anyone has **actually executed** the test suite. Previous 14 rounds of polish were static review only.
+- This is **expected and good**: the project had a pretense of "zero bugs" based on static review, but the real test run surfaced real issues that static review missed.
+- The user (Nonull owner) installed Python 3.13 on their workstation, ran the test suite, and got these results. This is the **most important** verification step in the project's history.
+
 ## [Unreleased] - 0.2.0
 
 ### Added - Domain Abstraction (P15)

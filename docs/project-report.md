@@ -543,3 +543,34 @@ d849604 🔧 Linux兼容 + cli入口 + setup.py完善
 > It is **not** marketing copy, **not** an ISO 26262 / ASIL-D claim, **not** a production-ready promise.
 > It **is** an honest project snapshot + team handbook + onboarding guide for future contributors.
 > For questions, see the "where to ask for help" flow in `INTERNAL-NOTES.md` §7.
+
+---
+
+## 附录 E: 真实测试运行（2026-06-06）
+
+After 14 rounds of static-review polish, the project owner installed Python 3.13 and ran the test suite for the first time. Results:
+
+| Test role | Pass rate |
+|---|---|
+| Imports | 100% (0 collection errors) |
+| Unit tests | 93% |
+| Integration | 39% |
+| Orchestrator | 85% |
+| Smoke tests | 77% |
+| **Full suite** | **81.4%** (351/431) |
+
+**Key insight:** The "zero bug" claim from P10 was based on static review only. Real test execution surfaced 79 issues that static review couldn't see. This is normal for any project of this size — static review has limits.
+
+**The honest verdict:** Nonull v0.2 is a working alpha, not a polished release. The team can use it for:
+- Internal pilot testing
+- Building custom skills
+- Running scenarios
+- Testing LLM integrations
+
+But it is **not** ready for:
+- Public release
+- OEM customer demos
+- Safety-critical decisions
+- Any kind of compliance certification
+
+**The 81.4% pass rate is the real state of the project, and it is HONEST.**

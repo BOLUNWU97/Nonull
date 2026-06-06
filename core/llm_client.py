@@ -119,7 +119,12 @@ class LLMClient:
                     resp.raise_for_status()
                     data = resp.json()
                 return self._parse(data)
-            except (httpx.HTTPError, httpx.RequestError, json.JSONDecodeError) as e:
+            except (httpx.HTTPError, httpx.RequestError, json.JSONDecodeError, Exception) as e:
+                # NOTE: we intentionally also catch generic Exception so
+                # misbehaving providers that surface transport-layer
+                # problems as plain Exceptions (e.g. a 5xx raised before
+                # httpx can classify it) still trigger the retry loop.
+                # ADVISORY: not a certified error-handling policy.
                 last_err = e
                 if attempt < self.config.max_retries:
                     continue

@@ -112,14 +112,18 @@ class SleepingSkill(BaseSkill):
 
     def max_concurrency_observed(self) -> int:
         """Return the max number of overlapping execute calls observed."""
-        starts = sorted(e for e in self.events if e["phase"] == "start")
-        ends = sorted(e for e in self.events if e["phase"] == "end")
+        starts = sorted(
+            (e["t"] for e in self.events if e["phase"] == "start")
+        )
+        ends = sorted(
+            (e["t"] for e in self.events if e["phase"] == "end")
+        )
         # This is per-skill concurrency, useful only when a single skill
         # is used for many subtasks. Cross-skill concurrency is checked
         # at the test level via wall-clock time.
         i = j = current = best = 0
         while i < len(starts) and j < len(ends):
-            if starts[i]["t"] <= ends[j]["t"]:
+            if starts[i] <= ends[j]:
                 current += 1
                 best = max(best, current)
                 i += 1

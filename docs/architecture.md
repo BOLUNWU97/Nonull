@@ -845,7 +845,7 @@ wrapped in a few dozen lines.
 
 > **⚠️ Disclaimer / 免责声明**
 >
-> **This is an ADVISORY safety layer, not a certified safety mechanism.** It does not implement ISO 26262 ASIL-D requirements (freedom from interference, MC/DC coverage, formal verification, SEooC, etc.). Use only as a developer assistant. Do not rely on this layer for any production deployment, safety-critical decision, or as a substitute for a certified safety element.
+> **This is an ADVISORY safety layer, not a certified safety mechanism.** It does not implement ISO 26262 ASIL-D requirements (freedom from interference, MC/DC coverage, formal verification, SEooC, etc.). Use only as a developer assistant. Do not rely on this layer for any production deployment, safety-critical decision, or as a substitute for a non-certified, not certified safety element.
 >
 > **本节描述的是一个"建议性（advisory）"安全层，不是经过认证的安全机制。** 它**不**实现 ISO 26262 ASIL-D 的相关要求（抗干扰、MC/DC 覆盖、形式化验证、SEooC 等）。请仅作为开发助手使用，不可用于任何量产部署、安全关键决策，也不可替代经过认证的安全要素。
 

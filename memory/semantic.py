@@ -458,8 +458,12 @@ class SemanticMemory:
         # 排序 / Sort
         scored.sort(key=lambda x: x[0], reverse=True)
 
-        results = scored[:top_k]
-        for _, node in results:
+        # Return as (KnowledgeNode, score) tuples so the public API is
+        # (node, relevance) — easier for callers to read at a glance.
+        results: List[Tuple[KnowledgeNode, float]] = [
+            (node, score) for score, node in scored[:top_k]
+        ]
+        for node, _score in results:
             node.access_count += 1
 
         return results

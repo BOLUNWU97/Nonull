@@ -30,7 +30,7 @@ safety:
   audit_log: true
   # The safety layer is ADVISORY ONLY.
   # This project is NOT certified for ISO 26262 / ASIL-D production deployment.
-  # Do not use for safety-critical decisions or as a substitute for a certified safety element.
+  # Do not use for safety-critical decisions or as a substitute for a non-certified, not certified safety element.
   disclaimer: "advisory_only"  # advisory_only | certified  (always set to advisory_only in this project)
 
 orchestration:

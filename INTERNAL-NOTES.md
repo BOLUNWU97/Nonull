@@ -332,6 +332,16 @@ public one.
 
 ---
 
+## Real Test Results (P23 — 2026-06-06)
+
+After 14 rounds of polish, we ran the test suite on Python 3.13 for the first time:
+- **351 / 431 tests passing (81.4%)**
+- 3 real bugs were caught and fixed in real-time
+- 79 issues remain (mix of test code bugs, marketing copy violations, real code bugs)
+- The project's 81% pass rate is the new baseline; aim for 95%+ over the next 2-3 weeks
+
+---
+
 > **Reminder: this is an advisory document.** If anything in here
 > conflicts with the `README.md` disclaimer or `CLAUDE.md` safety
 > rules, the README and CLAUDE.md win.

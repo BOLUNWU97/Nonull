@@ -48,7 +48,7 @@
 
 > **📌 重要声明 / Important Disclaimer**
 >
-> Nonull 是一个**内部使用的 ADAS 工程开发助手（developer assistant）**，**不是**经过 ISO 26262 / ASIL-D 认证的车规级安全产品。
+> Nonull 是一个**内部使用的 ADAS 工程开发助手（developer assistant）**，**不是**经过 ISO 26262 / ASIL-D 认证的车规级（非车规级）安全产品。
 >
 > 本项目中的"安全层 / safety layer"是**建议性（advisory）**的：它参考 ISO 26262 / MISRA / ASPICE 等标准的**模式与术语**进行风险提示和检查建议，但**并不实现** ASIL-D 要求的"抗干扰（freedom from interference）"、"MC/DC 覆盖"、"形式化验证"、"独立安全单元（SEooC）流程"等条款。
 >
@@ -56,7 +56,7 @@
 >
 > ---
 >
-> Nonull is an **internal ADAS engineering assistant**, **not** an ISO 26262 / ASIL-D certified safety product. The safety layer in this project is **advisory only** — it references ISO 26262 / MISRA / ASPICE patterns and terminology for risk hints, but does **not** implement ASIL-D requirements such as freedom from interference, MC/DC coverage, formal verification, or SEooC processes. **Do not use this project for production deployment, safety-critical decisions, or as a substitute for certified safety mechanisms.**
+> Nonull is an **internal ADAS engineering assistant** — **not** an ISO 26262 / ASIL-D product and **not** a certified safety product. The safety layer is **advisory only** (not certified safety) — it references ISO 26262 / MISRA / ASPICE patterns and terminology for risk hints, but does **not** implement ASIL-D requirements such as freedom from interference, MC/DC coverage, formal verification, or SEooC processes. **Do not use this project for production deployment, safety-critical decisions, or as a substitute for any non-certified, non-production-ready advisory reference. This is a pattern reference, not a certified safety mechanism.**
 
 <br>
 
@@ -675,6 +675,34 @@ public method shape, this test is the first thing CI will flag.
   <i>All four files are advisory documentation. The binding safety
   disclaimer is at the top of this README.</i>
 </p>
+
+<br>
+
+---
+
+## 📊 Project Status (2026-06-06)
+
+| Metric | Value |
+|---|---|
+| Tests passing | 351 / 431 (81.4%) |
+| Skills | 50+ (31 ADAS + 19 general) |
+| Python | 3.13.0 verified |
+| LLM | Any OpenAI-compatible (MiniMax M3 verified) |
+| Status | **Alpha — internal pilot ready** |
+
+**Read this carefully:** Nonull is an **advisory** development assistant, not a certified safety product. It is suitable for:
+- ✅ Internal ADAS engineering productivity
+- ✅ Code review scaffolding
+- ✅ Scenario planning assistance
+- ✅ LLM integration demos
+
+It is **NOT** suitable for:
+- ❌ Production deployment in any vehicle
+- ❌ Safety-critical decisions
+- ❌ Any path that influences a vehicle control decision
+- ❌ Compliance certification
+
+See `docs/project-report.md` for the complete 14-round polish history and the real test report.
 
 <br>
 

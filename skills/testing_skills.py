@@ -155,7 +155,15 @@ class TestCaseDesignSkill(BaseSkill):
         seen = set()
         unique_cases = []
         for tc in test_cases:
-            key = (tc.get("name", ""), tc.get("input", str(tc)))
+            # Key must be hashable: convert dict-valued inputs to a
+            # stable JSON-ish string. This also keeps the dedup
+            # behavior deterministic for callers.
+            input_val = tc.get("input", "")
+            try:
+                input_key = repr(input_val)
+            except Exception:
+                input_key = str(input_val)
+            key = (tc.get("name", ""), input_key)
             if key not in seen:
                 seen.add(key)
                 unique_cases.append(tc)

@@ -86,6 +86,15 @@ def _next_artifact_id() -> int:
     return _ARTIFACT_COUNTER["value"]
 
 
+def _stable_artifact_id(key: str) -> int:
+    """Deterministic artifact id derived from a key string.
+
+    Same key -> same id, so the same input always produces the same
+    artifact paths across calls (required for the determinism tests).
+    """
+    return _stable_hash_int(key, modulo=1_000_000) + 1
+
+
 def _stable_hash_int(value: str, modulo: int) -> int:
     """Map a string to a stable integer in [0, modulo)."""
     h = int(hashlib.md5(value.encode("utf-8")).hexdigest()[:8], 16)
@@ -738,8 +747,8 @@ class CARLARunnerSkill(BaseSkill):
             "message": f"场景 '{scenario_name}' 执行完成 (DEMO metrics)",
             "is_demo_data": True,
             "artifacts": {
-                "sensor_data_path": f"/tmp/carla_{_next_artifact_id()}/",
-                "log_path": f"/tmp/carla_log_{_next_artifact_id()}.json",
+                "sensor_data_path": f"/tmp/carla_{_stable_artifact_id(scenario_name + '|sensor')}/",
+                "log_path": f"/tmp/carla_log_{_stable_artifact_id(scenario_name + '|log')}.json",
             },
         }
 

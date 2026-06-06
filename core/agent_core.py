@@ -1052,6 +1052,18 @@ class SkillRegistry:
     def count(self) -> int:
         return len(self._skills)
 
+    def __contains__(self, name: object) -> bool:
+        """Allow ``name in registry`` syntax."""
+        return isinstance(name, str) and name in self._skills
+
+    def __iter__(self):
+        """Iterate over registered skills (yields BaseSkill instances)."""
+        with self._lock:
+            return iter(list(self._skills.values()))
+
+    def __len__(self) -> int:
+        return self.count
+
     def __repr__(self) -> str:
         return f"<SkillRegistry skills={list(self._skills.keys())}>"
 

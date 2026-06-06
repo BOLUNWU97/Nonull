@@ -31,17 +31,26 @@ class PdfInfoSkill(BaseSkill):
         if not path.exists():
             return {"error": f"File not found: {path}"}
         data = path.read_bytes()
-        info = {"path": str(path), "size_bytes": len(data)}
+        info: Dict[str, Any] = {"path": str(path), "size_bytes": len(data)}
         if data[:4] != b"%PDF":
             return {**info, "valid": False, "error": "Not a valid PDF header"}
         info["valid"] = True
-        # Find version
+        # Find version: prefer the standard "%%PDF-1.x" comment in the
+        # first ~1KB; fall back to the bare "%PDF" header on the first line.
+        pdf_version = "unknown"
         try:
-            version_line = data[:100].split(b"\n")[1].decode("latin-1", errors="ignore")
-            if version_line.startswith("%"):
-                info["pdf_version"] = version_line[1:6]
+            head = data[:1024].decode("latin-1", errors="ignore")
+            for line in head.splitlines():
+                line = line.strip()
+                if line.startswith("%PDF-"):
+                    pdf_version = line[len("%PDF-"):].strip()
+                    break
+                if line.startswith("%PDF") and not line.startswith("%%"):
+                    pdf_version = line[len("%PDF"):].strip() or "unknown"
+                    break
         except (IndexError, UnicodeDecodeError):
             pass
+        info["pdf_version"] = pdf_version
         # Estimate page count by counting /Type /Page (rough)
         info["page_count_estimate"] = data.count(b"/Type /Page") + data.count(b"/Type/Page")
         return info

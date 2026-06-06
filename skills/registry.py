@@ -575,6 +575,37 @@ class SkillRegistry:
                     f"Failed to load module '{modname}': {e}"
                 )
 
+        # Also scan the ``domains.adas.skills`` package so that the ADAS
+        # domain skills (HARA, FMEA, planning, perception, simulation, etc.)
+        # are auto-discovered. Without this, only ``skills.*`` modules are
+        # picked up; the ADAS skills live in a different package and would
+        # be missed by tests that iterate ``registry.get_all_skills()``.
+        project_root = os.path.dirname(package_path)
+        adas_skills_path = os.path.join(
+            project_root, "domains", "adas", "skills"
+        )
+        if os.path.isdir(adas_skills_path):
+            sys.path.insert(0, project_root)
+            for _importer, modname, _ispkg in pkgutil.iter_modules(
+                [adas_skills_path], prefix="domains.adas.skills."
+            ):
+                try:
+                    module = importlib.import_module(modname)
+                    count += self._register_from_module(
+                        module, module_name=modname
+                    )
+                except Exception as e:
+                    self._broken_modules.append(
+                        {
+                            "module": modname,
+                            "error": str(e),
+                            "error_type": type(e).__name__,
+                        }
+                    )
+                    self.logger.warning(
+                        f"Failed to load ADAS skill module '{modname}': {e}"
+                    )
+
         # 摘要日志 / Summary log so operators can see at a glance which
         # modules were skipped without trawling debug output.
         if self._broken_modules:
@@ -906,6 +937,11 @@ class SkillRegistry:
 
     def __len__(self) -> int:
         return self.skill_count()
+
+    def __iter__(self):
+        """Iterate over all registered BaseSkill instances (forces lazy init)."""
+        # Force lazy instantiation so iteration sees every skill.
+        return iter(self.get_all_skills())
 
     def __repr__(self) -> str:
         return (

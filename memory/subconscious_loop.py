@@ -929,6 +929,36 @@ class SubconsciousLoop:
     # 巩固检查 / Consolidation Check
     # ------------------------------------------------------------------
 
+    def collect_insights(
+        self,
+        min_confidence: float = 0.0,
+        max_results: Optional[int] = None,
+    ) -> List[Insight]:
+        """收集/汇总已生成的洞察 / Collect aggregated insights.
+
+        Convenience method that returns the currently stored insights,
+        optionally filtered by a minimum confidence threshold. This is
+        a read-only snapshot — the underlying ``self.insights`` dict is
+        not mutated.
+
+        Args:
+            min_confidence: 最低置信度阈值 / Minimum confidence to include.
+            max_results:    限制返回数量 / Max number of results to return.
+                            ``None`` returns all (most-recent first).
+
+        Returns:
+            List of :class:`Insight` (newest first). May be empty if
+            no insights have been generated yet.
+        """
+        results = [
+            ins for ins in self.insights.values()
+            if ins.confidence >= min_confidence
+        ]
+        results.sort(key=lambda x: x.created_at, reverse=True)
+        if max_results is not None:
+            results = results[:max_results]
+        return results
+
     def _check_consolidation(self) -> None:
         """检查并触发记忆巩固 / Check and trigger memory consolidation."""
         stats = self.neocortex.update_capacity_stats()
