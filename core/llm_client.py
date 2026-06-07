@@ -35,7 +35,16 @@ class LLMConfig:
 
     @classmethod
     def from_env(cls) -> "LLMConfig":
-        """Load from NONULL_LLM_* environment variables."""
+        """Load from NONULL_LLM_* environment variables (auto-loads .env)."""
+        # Auto-load .env if present
+        _dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+        if os.path.exists(_dotenv_path):
+            with open(_dotenv_path) as _f:
+                for _line in _f:
+                    _line = _line.strip()
+                    if _line and not _line.startswith("#") and "=" in _line:
+                        _k, _v = _line.split("=", 1)
+                        os.environ.setdefault(_k.strip(), _v.strip())
         api_key = os.environ.get("NONULL_LLM_API_KEY", "")
         provider = os.environ.get("NONULL_LLM_PROVIDER", "openai")
         model = os.environ.get("NONULL_LLM_MODEL", "gpt-4o")

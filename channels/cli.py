@@ -994,8 +994,6 @@ class CLIChannel(BaseChannel):
 
             if text:
                 await self._output(text, style="message")
-        except Exception as e:  # pragma: no cover - environment dependent
-            await self._output(f"Agent error: {e}", style="error")
 
     # ------------------------------------------------------------------
     # Signal Handling

@@ -410,6 +410,11 @@ SAMPLE_INPUTS: Dict[str, Dict[str, Any]] = {
         "code": "result = 3 + 4",
         "vars": {},
     },
+
+    # ------------------ creative / fun skills (3) — new in v0.2.2 ---------------
+    "dad_joke": {"seed": "test"},
+    "random_fact": {"seed": "test"},
+    "decision_helper": {"decision": "Should I use N+1 queries?"},
 }
 
 

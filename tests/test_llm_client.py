@@ -9,7 +9,7 @@ from core.llm_client import (
 
 
 def test_llm_config_from_env_defaults():
-    with patch.dict(os.environ, {}, clear=True):
+    with patch.dict(os.environ, {}, clear=True), patch("os.path.exists", return_value=False):
         cfg = LLMConfig.from_env()
         # No api_key set
         assert cfg.api_key == ""
@@ -22,7 +22,7 @@ def test_llm_config_provider_defaults():
     with patch.dict(os.environ, {
         "NONULL_LLM_API_KEY": "test-key",
         "NONULL_LLM_PROVIDER": "deepseek",
-    }, clear=False):
+    }, clear=True), patch("os.path.exists", return_value=False):
         cfg = LLMConfig.from_env()
         assert cfg.provider == "deepseek"
         assert cfg.base_url == "https://api.deepseek.com/v1"
@@ -74,9 +74,11 @@ def test_llm_client_chat_success():
     cfg = LLMConfig(api_key="test-key", model="gpt-4o")
     client = LLMClient(cfg)
 
-    with patch("httpx.Client") as MockClient:
-        MockClient.return_value.__enter__.return_value.post.return_value = mock_response
-        resp = client.simple_chat("Hi")
+    # Mock the persistent client rather than the context manager pattern
+    fake_http = MagicMock()
+    fake_http.post.return_value = mock_response
+    client._client = fake_http
+    resp = client.simple_chat("Hi")
 
     assert resp == "Hello!"
 
@@ -102,9 +104,10 @@ def test_llm_client_chat_retry_on_5xx():
             raise Exception("500 server error")
         return mock_response
 
-    with patch("httpx.Client") as MockClient:
-        MockClient.return_value.__enter__.return_value.post.side_effect = fake_post
-        resp = client.simple_chat("Hi")
+    fake_http = MagicMock()
+    fake_http.post.side_effect = fake_post
+    client._client = fake_http
+    resp = client.simple_chat("Hi")
 
     assert resp == "OK"
     assert call_count[0] == 2  # retried once
