@@ -163,15 +163,14 @@ class TestAgentStatusCommand:
     def test_agent_command_shows_disabled_without_key(self, cli_channel, monkeypatch):
         """Without the env var, ``/agent`` must not raise and must not load the core agent."""
         monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
-        # Force the lazy-load path to be re-evaluated from a known state.
-        cli_channel._agent = None
+        # Patch .env to not exist so the auto-loader doesn't find the key
+        with patch("os.path.exists", return_value=False):
+            cli_channel._agent = None
 
-        async def run():
-            await cli_channel._cmd_agent("")
+            async def run():
+                await cli_channel._cmd_agent("")
 
-        asyncio.run(run())
-        # No exception is the primary contract. We also assert the agent is
-        # NOT magically loaded just because the user typed /agent.
+            asyncio.run(run())
         assert cli_channel._agent is None
 
     def test_agent_command_reports_bound_agent(self, cli_channel):
@@ -199,7 +198,8 @@ class TestLazyLoad:
     def test_no_env_var_returns_none(self, cli_channel, monkeypatch):
         """Without the env var, the lazy loader must return ``None`` and mark the agent unavailable."""
         monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
-        result = cli_channel._try_load_core_agent()
+        with patch("os.path.exists", return_value=False):
+            result = cli_channel._try_load_core_agent()
         assert result is None
         assert cli_channel._agent_status == "unavailable"
 
@@ -483,25 +483,23 @@ class TestMissingLLMIsFriendly:
     def test_no_agent_no_env_var_prints_warning(self, cli_channel, monkeypatch, capsys):
         monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
         cli_channel._agent = None
+        with patch("os.path.exists", return_value=False):
+            async def run():
+                await cli_channel._handle_input(_dummy_message("hi"))
 
-        async def run():
-            await cli_channel._handle_input(_dummy_message("hi"))
-
-        asyncio.run(run())
+            asyncio.run(run())
         captured = capsys.readouterr()
-        # The friendly message should mention NONULL_LLM_API_KEY so the
-        # user knows what to set.
         assert "NONULL_LLM_API_KEY" in captured.out
 
     def test_no_agent_no_env_var_does_not_crash(self, cli_channel, monkeypatch):
         """The CLI must not raise even if no agent is configured and no key is set."""
         monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
         cli_channel._agent = None
+        with patch("os.path.exists", return_value=False):
+            async def run():
+                await cli_channel._handle_input(_dummy_message("hi"))
 
-        async def run():
-            await cli_channel._handle_input(_dummy_message("hi"))
-
-        asyncio.run(run())
+            asyncio.run(run())
 
 
 if __name__ == "__main__":
