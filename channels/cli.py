@@ -961,7 +961,8 @@ class CLIChannel(BaseChannel):
         await self._output("🤖 Thinking...", style="info")
         try:
             if hasattr(agent, "run_sync") and callable(agent.run_sync):
-                result = agent.run_sync(message.content)
+                # run_sync is blocking — offload to a thread so the event loop stays alive
+                result = await asyncio.to_thread(agent.run_sync, message.content)
             elif hasattr(agent, "run") and callable(agent.run):
                 coro = agent.run(message.content)
                 if asyncio.iscoroutine(coro):
@@ -980,22 +981,21 @@ class CLIChannel(BaseChannel):
             return
 
         # Display the result. Support common return shapes.
-            text: Optional[str] = None
-            if isinstance(result, str):
-                text = result
-            elif isinstance(result, dict):
-                # Common Nonull run_sync() shape: {"output": ..., "response": ...}
-                for key in ("output", "response", "result", "content", "message"):
-                    if key in result and isinstance(result[key], str):
-                        text = result[key]
-                        break
-                if text is None:
-                    text = json.dumps(result, ensure_ascii=False, indent=2)
-            else:
-                text = str(result)
+        text: Optional[str] = None
+        if isinstance(result, str):
+            text = result
+        elif isinstance(result, dict):
+            for key in ("output", "response", "result", "content", "message"):
+                if key in result and isinstance(result[key], str):
+                    text = result[key]
+                    break
+            if text is None:
+                text = json.dumps(result, ensure_ascii=False, indent=2)
+        else:
+            text = str(result)
 
-            if text:
-                await self._output(text, style="message")
+        if text:
+            await self._output(text, style="message")
 
     # ------------------------------------------------------------------
     # Signal Handling
