@@ -921,6 +921,10 @@ class CLIChannel(BaseChannel):
         Returns:
             The constructed agent instance, or ``None`` on failure.
         """
+        # Load .env first (LLMConfig.from_env auto-loads it)
+        from core.llm_client import LLMConfig
+        LLMConfig.from_env()
+
         # Honor the env-var contract documented in /agent output.
         if not os.environ.get("NONULL_LLM_API_KEY"):
             self._agent_status = "unavailable"
