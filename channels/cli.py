@@ -955,21 +955,26 @@ class CLIChannel(BaseChannel):
         if agent is None:
             return
 
-        try:
-            if hasattr(agent, "run_sync") and callable(agent.run_sync):
-                result = agent.run_sync(message.content)
-            elif hasattr(agent, "run") and callable(agent.run):
-                coro = agent.run(message.content)
-                if asyncio.iscoroutine(coro):
-                    result = await coro
+        # Show animated spinner while waiting for the LLM
+        async with await self.show_progress("🤖 思考中 / Thinking..."):
+            try:
+                if hasattr(agent, "run_sync") and callable(agent.run_sync):
+                    result = agent.run_sync(message.content)
+                elif hasattr(agent, "run") and callable(agent.run):
+                    coro = agent.run(message.content)
+                    if asyncio.iscoroutine(coro):
+                        result = await coro
+                    else:
+                        result = coro
                 else:
-                    result = coro
-            else:
-                await self._output(
-                    "Bound agent has neither run_sync() nor run(); cannot "
-                    "process message.",
-                    style="error",
-                )
+                    await self._output(
+                        "Bound agent has neither run_sync() nor run(); cannot "
+                        "process message.",
+                        style="error",
+                    )
+                    return
+            except Exception as e:
+                await self._output(f"❌ Error: {e}", style="error")
                 return
 
             # Display the result. Support common return shapes.

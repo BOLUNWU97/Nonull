@@ -30,8 +30,8 @@ class LLMConfig:
     base_url: str = "https://api.openai.com/v1"
     model: str = "gpt-4o"
     provider: str = "openai"
-    timeout: float = 60.0
-    max_retries: int = 2
+    timeout: float = 15.0  # 15s is plenty for most LLMs
+    max_retries: int = 1   # one retry, not two
 
     @classmethod
     def from_env(cls) -> "LLMConfig":
@@ -90,10 +90,14 @@ class LLMResponse:
 
 
 class LLMClient:
-    """Synchronous + async LLM client over OpenAI-compatible Chat Completions API."""
+    """Synchronous + async LLM client over OpenAI-compatible Chat Completions API.
+
+    Reuses httpx Client for connection pooling (faster on repeated calls).
+    """
 
     def __init__(self, config: LLMConfig):
         self.config = config
+        self._client: httpx.Client | None = None
 
     def _build_request(self, messages: List[LLMMessage], **kwargs) -> Dict[str, Any]:
         return {
@@ -103,7 +107,7 @@ class LLMClient:
         }
 
     def chat(self, messages: List[LLMMessage], **kwargs) -> LLMResponse:
-        """Synchronous chat completion."""
+        """Synchronous chat completion (reuses httpx Client for connection pooling)."""
         url = f"{self.config.base_url}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
@@ -111,13 +115,15 @@ class LLMClient:
         }
         payload = self._build_request(messages, **kwargs)
 
+        if self._client is None:
+            self._client = httpx.Client(timeout=self.config.timeout)
+
         last_err = None
         for attempt in range(self.config.max_retries + 1):
             try:
-                with httpx.Client(timeout=self.config.timeout) as client:
-                    resp = client.post(url, json=payload, headers=headers)
-                    resp.raise_for_status()
-                    data = resp.json()
+                resp = self._client.post(url, json=payload, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
                 return self._parse(data)
             except (httpx.HTTPError, httpx.RequestError, json.JSONDecodeError, Exception) as e:
                 # NOTE: we intentionally also catch generic Exception so
