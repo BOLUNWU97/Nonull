@@ -444,34 +444,25 @@ class CLIChannel(BaseChannel):
             )
             return
 
-        # Regular message -> dispatch to external handlers
-        if self._message_handlers:
-            for handler in self._message_handlers:
-                try:
-                    if asyncio.iscoroutinefunction(handler):
-                        await handler(message)
-                    else:
-                        handler(message)
-                except Exception as e:
-                    await self._output(f"Handler error: {e}", style="error")
+        # Try the agent first (either bound or lazy-loaded)
+        if self._agent is None:
+            from core.llm_client import LLMConfig
+            cfg = LLMConfig.from_env()
+            if cfg.api_key:
+                self._agent = self._try_load_core_agent()
+                if self._agent is not None:
+                    self._agent_status = "ready"
+
+        if self._agent is not None:
+            await self._run_bound_agent(message)
             return
 
-        # No registered handlers: try the bound agent first, then a
-        # lazy-imported core agent. If neither is available, surface a
-        # friendly message explaining how to enable the LLM-backed agent.
-        if self._agent is None:
-            self._agent = self._try_load_core_agent()
-            if self._agent is not None:
-                self._agent_status = "ready"
-
-        if self._agent is None:
-            await self._output(
-                "No agent is currently loaded. Use /help to see available "
-                "commands. To use the LLM-backed agent, set the "
-                "NONULL_LLM_API_KEY environment variable.",
-                style="warning",
-            )
-            return
+        # No agent: show a friendly message
+        await self._output(
+            "No LLM agent configured. Set NONULL_LLM_API_KEY in .env to enable.\n"
+            "Slash commands (/help, /clear, /stats) still work.",
+            style="warning",
+        )
 
         # Run the agent synchronously to keep REPL behavior predictable.
         await self._run_bound_agent(message)
@@ -651,7 +642,13 @@ class CLIChannel(BaseChannel):
 
     async def _cmd_agent(self, args: str = "") -> None:
         """显示智能体连接状态 / Show LLM agent connection status."""
-        api_key_set = bool(os.environ.get("NONULL_LLM_API_KEY"))
+        # Always load .env first so /agent shows real status
+        from core.llm_client import LLMConfig
+        cfg = LLMConfig.from_env()
+        api_key_set = bool(cfg.api_key)
+        # Also show what provider/model are configured
+        provider_model = f"{cfg.provider}/{cfg.model}" if api_key_set else "none"
+
         # Probe the lazy import only when the env var is set so we don't
         # generate noise for users who intentionally haven't configured one.
         if self._agent is None and api_key_set:
@@ -664,6 +661,7 @@ class CLIChannel(BaseChannel):
         lines = [
             f"LLM agent:          {status}",
             f"NONULL_LLM_API_KEY: {'set' if api_key_set else 'not set'}",
+            f"Provider/Model:     {provider_model}",
             f"Bound agent:        {'yes' if self._agent is not None else 'no'}",
             f"Message handlers:   {len(self._message_handlers)}",
         ]
@@ -1051,10 +1049,13 @@ def main() -> None:
         print("       Nonull  # 启动交互模式")
         return
 
-    # Startup check: warn if LLM API key is not configured.
-    # 启动检查:未配置 LLM API key 时给出友好提示。
-    if not os.environ.get("NONULL_LLM_API_KEY"):
-        print("(Agent mode disabled — set NONULL_LLM_API_KEY to enable)")
+    # Load .env so startup warning is accurate
+    from core.llm_client import LLMConfig
+    cfg = LLMConfig.from_env()
+    if not cfg.api_key:
+        print("(Agent mode disabled — set NONULL_LLM_API_KEY in .env to enable)")
+    else:
+        print(f"(Agent: {cfg.provider}/{cfg.model} — key loaded from .env)")
 
     async def _run():
         channel = CLIChannel()
