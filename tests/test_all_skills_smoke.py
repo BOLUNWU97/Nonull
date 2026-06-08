@@ -415,6 +415,14 @@ SAMPLE_INPUTS: Dict[str, Dict[str, Any]] = {
     "dad_joke": {"seed": "test"},
     "random_fact": {"seed": "test"},
     "decision_helper": {"decision": "Should I use N+1 queries?"},
+
+    # ------------------ filesystem skills (6) — LangChain Deep Agents style ------
+    "file_read": {"path": "README.md", "limit": 5},
+    "file_write": {"path": "/tmp/_nonull_test.txt", "content": "test"},
+    "file_edit": {"path": "/tmp/_nonull_test_edit.txt", "old_str": "foo", "new_str": "bar"},
+    "glob": {"pattern": "README.md"},
+    "grep": {"pattern": "Nonull", "path": "README.md"},
+    "list_dir": {"path": "."},
 }
 
 
