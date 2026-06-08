@@ -55,7 +55,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -148,7 +148,7 @@ class DrivingContext:
     fault_active: bool = False
     fault_codes: List[str] = field(default_factory=list)
     asil_mode: SafetyLevel = SafetyLevel.QM
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def is_safety_critical_situation(self) -> bool:
         """Determine if the current situation is safety-critical."""
@@ -764,7 +764,7 @@ class SafetyGuardian:
         # Log the post-check as an audit entry
         entry = AuditEntry(
             entry_id=f"post_{uuid.uuid4().hex[:12]}",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             action=action.tool,
             action_category=action.category.value,
             decision=verdict.value,
@@ -987,7 +987,7 @@ class SafetyGuardian:
         # Build audit entry
         entry = AuditEntry(
             entry_id=f"audit_{uuid.uuid4().hex[:12]}",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             action=action.tool,
             action_category=action.category.value,
             decision=verdict.value,

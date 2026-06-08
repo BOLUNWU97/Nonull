@@ -34,7 +34,7 @@ import logging
 import re
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, List, Optional, Tuple
 
 from safety import SafetyLevel, Verdict
@@ -119,7 +119,7 @@ class ComplianceResult:
     findings: List[ComplianceFinding] = field(default_factory=list)
     summary: str = ""
     score: float = 0.0            # 0.0 to 100.0
-    checked_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    checked_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def is_pass(self) -> bool:
         return self.status == ComplianceStatus.PASS
@@ -947,7 +947,7 @@ class ComplianceChecker:
         is_valid = has_goal and has_arguments and has_evidence
 
         case.is_valid = is_valid
-        case.validated_at = datetime.utcnow().isoformat()
+        case.validated_at = datetime.now(UTC).isoformat()
 
         status = ComplianceStatus.PASS if is_valid else ComplianceStatus.FAIL
         result = ComplianceResult(

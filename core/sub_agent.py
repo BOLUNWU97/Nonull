@@ -10,7 +10,7 @@ import json
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger("Nonull.sub_agent")
@@ -22,7 +22,7 @@ class SubAgentTask:
     id: str = field(default_factory=lambda: f"task_{uuid.uuid4().hex[:8]}")
     description: str = ""
     context: Dict[str, Any] = field(default_factory=dict)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     status: str = "pending"  # pending | running | completed | failed
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
