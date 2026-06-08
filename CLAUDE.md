@@ -25,7 +25,7 @@ The four-architecture fusion (**OpenClaw**, **Hermes Agent**, **openHuman**, **C
 - ❌ Forbidden positive claims (we do **not** make any of these). This project is **not** production-ready, **not** 量产, advisory only.
 - ❌ Forbidden positive claims (we do **not** make any of these). This project is **not** a certified safety mechanism; **not** a certified safety element (advisory pattern references only).
 - ❌ Forbidden positive claims (we do **not** make any of these). Any badge, image, or text implying formal ISO 26262 / ASIL-D / ASPICE certification — **not** certified, **not** endorsed.
-- ❌ Forbidden positive claims (we do **not** make any of these): "MC/DC 覆盖", "形式化验证", "SEooC", "freedom from interference" — these describe certified safety processes that this project does **not** implement (advisory pattern references only, **not** certified safety processes).
+- ❌ Forbidden positive claims — these describe certified safety processes that this project does **not** implement (advisory pattern references only, **not** any certified safety process).
 
 **Acceptable alternatives**:
 
@@ -174,7 +174,7 @@ Test suite lives in `tests/` (12 files, all run by CI via `.github/workflows/tes
 - `tests/test_safety_badge_api.py` — Persona safety_badge public API contract
 - `tests/test_persona_exports.py` — Persona module exports / surface checks
 - `tests/test_domain_registry.py` — Domain registry: register / activate / deactivate / disclaimers
-- `tests/test_no_marketing_claims.py` — Guard test — enforces no forbidden ISO 26262 / ASIL-D / "production-ready" marketing claims in user-facing copy (not production-ready, advisory only)
+- `tests/test_no_marketing_claims.py` — Guard test — enforces no forbidden marketing claims (the project itself is **not** production-ready — advisory only); tests for forbidden compliance terms in non-negated form
 - `tests/test_quickstart_runs.py` — Smoke test that `examples/quickstart.py` imports resolve
 - `tests/test_cli_agent_wiring.py` — CLI agent wiring (bind_agent, /agent, result unwrapping)
 - `tests/test_orchestrator_skills_glue.py` — Orchestrator + skill registry glue (8 tests)
