@@ -145,6 +145,13 @@ from skills.execution.subprocess_backend import SubprocessBackend
 from skills.execution.docker_backend import DockerBackend
 from skills.execution.http_backend import HTTPBackend
 
+# Filesystem skills (Deep Agents style)
+from skills.filesystem import (
+    ReadFileSkill, WriteFileSkill, EditFileSkill,
+    GlobSkill, GrepSkill, ListDirSkill,
+    FileSystemBackend, LocalBackend, get_backend, set_backend,
+)
+
 
 # ---------------------------------------------------------------------------
 # Lazy re-exports for ADAS-specific skills (P15)
@@ -292,6 +299,15 @@ __all__ = [
     "SubprocessBackend",
     "DockerBackend",
     "HTTPBackend",
+    # Filesystem skills (skills/filesystem/) — Deep Agents style / 文件系统技能
+    "ReadFileSkill",
+    "WriteFileSkill",
+    "EditFileSkill",
+    "GlobSkill",
+    "GrepSkill",
+    "ListDirSkill",
+    "FileSystemBackend",
+    "LocalBackend",
 ]
 
 __version__ = "1.0.0"
