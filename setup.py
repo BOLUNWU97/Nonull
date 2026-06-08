@@ -228,6 +228,7 @@ setup(
     entry_points={
         "console_scripts": [
             "nonull=channels.cli:main",
+            "nonull-mcp=channels.mcp_server:main",
         ],
     },
     zip_safe=False,
