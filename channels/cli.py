@@ -1044,10 +1044,15 @@ def main() -> None:
     import sys
 
     if "--help" in sys.argv or "-h" in sys.argv:
-        print("Nonull 智驾智能体 CLI")
+        print("Nonull 全领域 AI 智能体 CLI")
         print("Usage: Nonull [--help]")
-        print("       Nonull  # 启动交互模式")
+        print("       Nonull           # 交互模式 (Rich UI)")
+        print("       Nonull --plain   # 纯文本模式 (兼容性更好)")
+        print("       Nonull --help    # 帮助")
         return
+
+    # Detect plain mode
+    use_rich = not any(arg in sys.argv for arg in ("--plain", "--no-rich", "--text"))
 
     # Load .env so startup warning is accurate
     from core.llm_client import LLMConfig
@@ -1057,9 +1062,11 @@ def main() -> None:
     else:
         print(f"(Agent: {cfg.provider}/{cfg.model} — key loaded from .env)")
 
+    if not use_rich:
+        print("(Plain text mode — Rich formatting disabled)")
+
     async def _run():
-        channel = CLIChannel()
-        # `connect()` already starts the auto-receive loop; we just run the REPL.
+        channel = CLIChannel(use_rich=use_rich)
         await channel.run()
 
     try:
