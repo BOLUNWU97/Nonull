@@ -130,14 +130,19 @@ Nonull/
 │       └── default.yaml
 ├── experimental/           # DO NOT USE — research only
 │   ├── README.md
-│   ├── consciousness/      # Self-evolving memory (experimental)
-│   └── evolution/          # Self-evolution (experimental)
+│   ├── agent_enhancements.py
+│   ├── skill_discovery/    # Skill auto-discovery (experimental)
+│   ├── evolution/          # Self-evolution (experimental)
+│   └── consciousness/      # Reserved path; current impls live in skill_discovery/ + evolution/
 ├── docs/                   # Documentation (see Documentation section below)
 ├── examples/               # Usage examples
 │   ├── quickstart.py
 │   ├── code_review.py
 │   ├── safety_analysis.py
-│   └── multi_agent_workflow.py
+│   ├── multi_agent_workflow.py
+│   ├── skill_workflow.py
+│   ├── interactive_demo.py
+│   └── test_llm_connection.py
 ├── tests/                  # Test suite (see Tests section below)
 └── .github/
     ├── CODEOWNERS
@@ -166,7 +171,7 @@ All user-facing documentation lives in `docs/` and is bilingual where required:
 
 ## / 测试 / Tests
 
-Test suite lives in `tests/` (12 files, all run by CI via `.github/workflows/test.yml`):
+Test suite lives in `tests/` (**36 active files** as of 2026-06, all auto-discovered by pytest via `conftest.py`; CI runs them in `.github/workflows/test.yml`). The core ones are listed below; the rest (LLM client, persistence, E2E offline, skill backends, multimodal/creative skills, etc.) are discovered automatically:
 
 - `tests/test_core_real.py` — Real core engine / agent_core / config tests (replaces mock-based `test_core.py`)
 - `tests/test_memory_real.py` — Real memory layer tests (replaces mock-based `test_memory.py`)
@@ -185,6 +190,9 @@ Test suite lives in `tests/` (12 files, all run by CI via `.github/workflows/tes
 - `tests/test_general_skills.py` — Per-skill tests for the 19 general-purpose skills in `skills/core/`
 - `tests/test_safety_skills_advisory.py` — HARA "ADVISORY TEMPLATE ONLY" contract
 - `tests/test_no_stale_claims.py` — Stale-number and demo-data guard
+- `tests/test_agent_e2e_offline.py` — **Offline end-to-end** plan→reason→act→reflect loop (MockLLM, no API key) — regression baseline for the agent state machine
+- `tests/test_persistence.py` — Atomic-write + round-trip for SessionMemory / KnowledgeGraph / PromptRegistry
+- `tests/test_llm_client_hardening.py` — LLM error classification, 429 Retry-After, model fallback, streaming+tools
 - `tests/_archive/` — Archived mock-based tests, excluded from collection by `conftest.py`
 
 Run all tests:
@@ -192,6 +200,8 @@ Run all tests:
 ```bash
 pytest tests/ -v
 ```
+
+> **Note:** `pytest tests/` auto-discovers all 36 active test files. Files in `tests/_archive/` are explicitly excluded by `conftest.py`'s `collect_ignore_glob`. When adding a new top-level test, no registration is needed.
 
 ---
 

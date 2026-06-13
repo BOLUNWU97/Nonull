@@ -24,17 +24,17 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from consciousness.self_model import (
+from .self_model import (
     SelfModel,
     CapabilityDomain,
     Capability,
     KnowledgeGap,
     EmotionalState,
 )
-from consciousness.curiosity_driver import CuriosityDriver, ExplorationMode, CuriosityTrigger
-from consciousness.autonomy_engine import AutonomyEngine, AutonomyLevel, AutonomyGoal
-from consciousness.growth_journal import GrowthJournal, EntryType, Milestone
-from consciousness.consciousness_loop import ConsciousnessLoop, PulsePhase, ConsciousnessInsight
+from .curiosity_driver import CuriosityDriver, ExplorationMode, CuriosityTrigger
+from .autonomy_engine import AutonomyEngine, AutonomyLevel, AutonomyGoal
+from .growth_journal import GrowthJournal, EntryType, Milestone
+from .consciousness_loop import ConsciousnessLoop, PulsePhase, ConsciousnessInsight
 
 logger = logging.getLogger("consciousness.orchestrator")
 

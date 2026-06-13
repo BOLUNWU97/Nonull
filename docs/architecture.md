@@ -511,7 +511,7 @@ async def validate_input(context: HookContext) -> bool:
 | `OrchestrationEngine` | Manages workflow patterns and sub-agent lifecycle | 管理工作流模式和子智能体生命周期 |
 | `SkillRegistry` | Global registry for all skills with versioning | 全局技能注册表，支持版本管理 |
 | `MemorySystem` | Dual-system memory (Neocortex + Subconscious) | 双系统记忆（新皮质 + 潜意识） |
-| `SafetySystem` | Deny-first safety with ISO 26262 compliance | 拒绝优先安全系统，ISO 26262 合规 |
+| `SafetySystem` | Advisory deny-first safety (ISO 26262 pattern references, NOT certified) | 建议性拒绝优先安全（参考 ISO 26262 模式，非认证合规） |
 | `ChannelManager` | Multi-channel I/O abstraction | 多通道 I/O 抽象层 |
 | `ProfileManager` | Hermes-style profile isolation | Hermes 风格的配置文件隔离管理 |
 | `HookManager` | Pre/post execution hook system | 执行前后钩子系统 |
@@ -871,12 +871,13 @@ wrapped in a few dozen lines.
 │  └──────────────────────────────────────────────────────┘    │
 │                                                               │
 │  ┌──────────────────────────────────────────────────────┐    │
-│  │           ISO 26262 COMPLIANCE MODULE                  │    │
+│  │   ISO 26262 PATTERN REFERENCES (advisory only —       │    │
+│  │   not certified, not compliant with any ASIL)          │    │
 │  │                                                       │    │
-│  │  • HARA (Hazard Analysis and Risk Assessment)         │    │
-│  │  • ASIL classification (A, B, C, D)                   │    │
-│  │  • Safety goal definition and validation              │    │
-│  │  • Functional safety requirement traceability         │    │
+│  │  • HARA-style hazard hints (suggestions, not enforced)│    │
+│  │  • Risk-scoring heuristics (0.0-1.0, developer-set)   │    │
+│  │  • Risk hint and check templates                      │    │
+│  │  • Traceability logging (advisory audit log only)      │    │
 │  │  • Safety case generation                             │    │
 │  └──────────────────────────────────────────────────────┘    │
 │                                                               │

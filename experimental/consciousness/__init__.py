@@ -22,12 +22,12 @@ __description__ = (
     "the self-aware soul of an autonomous driving AI agent."
 )
 
-from consciousness.self_model import SelfModel
-from consciousness.curiosity_driver import CuriosityDriver
-from consciousness.autonomy_engine import AutonomyEngine
-from consciousness.growth_journal import GrowthJournal
-from consciousness.consciousness_loop import ConsciousnessLoop
-from consciousness.consciousness_orchestrator import ConsciousnessOrchestrator
+from .self_model import SelfModel
+from .curiosity_driver import CuriosityDriver
+from .autonomy_engine import AutonomyEngine
+from .growth_journal import GrowthJournal
+from .consciousness_loop import ConsciousnessLoop
+from .consciousness_orchestrator import ConsciousnessOrchestrator
 
 __all__ = [
     "SelfModel",

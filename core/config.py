@@ -32,7 +32,7 @@ logger = logging.getLogger("Nonull.config")
 # ---------------------------------------------------------------------------
 
 _DEFAULT_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".Nonull")
-_ENV_PREFIX = "Nonull_"
+_ENV_PREFIX = "NONULL_"
 _PROFILES = ("dev", "test", "prod", "simulation")
 _DEFAULT_PROFILE = "dev"
 
@@ -358,7 +358,7 @@ class NonullConfig:
       2. 默认 Profile YAML
       3. 当前 Profile YAML
       4. 用户自定义 YAML
-      5. 环境变量 (前缀 Nonull_)
+      5. 环境变量 (前缀 NONULL_)
       6. 运行时 set() 调用
 
     使用示例 / Usage::
@@ -407,7 +407,7 @@ class NonullConfig:
         Args:
             profile:      配置档名称 (dev / test / prod / simulation)
             config_dir:   配置文件目录 (默认 ~/.Nonull)
-            env_prefix:   环境变量前缀 (默认 Nonull_)
+            env_prefix:   环境变量前缀 (默认 NONULL_)
         """
         if profile not in _PROFILES:
             logger.warning("未知 Profile '%s'，将使用默认值", profile)
@@ -451,18 +451,21 @@ class NonullConfig:
             self._load_yaml_file(path)
 
     def _load_env_vars(self) -> None:
-        """加载环境变量 (Nonull_*) / Load environment variables."""
+        """加载环境变量 (NONULL_*) / Load environment variables."""
         prefix = self._env_prefix
         for env_key, env_val in os.environ.items():
             if not env_key.startswith(prefix):
                 continue
-            # Nonull_LLM_API_KEY → llm.api_key
+            # NONULL_LLM_API_KEY → llm.api_key
             config_key = env_key[len(prefix):].lower().replace("__", ".")
-            # 尝试 JSON 解析
-            try:
-                parsed = json.loads(env_val)
-            except (json.JSONDecodeError, TypeError):
-                parsed = env_val
+            # Only JSON-parse values that look like objects or arrays;
+            # plain strings (API keys, model names) stay as-is.
+            parsed = env_val
+            if env_val.startswith(("{", "[")):
+                try:
+                    parsed = json.loads(env_val)
+                except (json.JSONDecodeError, TypeError):
+                    pass
             self._set_raw(config_key, parsed)
             logger.debug("环境变量覆盖: %s = %s", config_key, _mask_sensitive(config_key, str(parsed)))
 
@@ -488,12 +491,13 @@ class NonullConfig:
         if key in _CONFIG_SCHEMA:
             expected_type = _CONFIG_SCHEMA[key]["type"]
             if not isinstance(value, expected_type):
+                coerce_type = expected_type[0] if isinstance(expected_type, tuple) else expected_type
                 try:
-                    value = expected_type(value)
+                    value = coerce_type(value)
                 except (TypeError, ValueError):
                     logger.warning(
                         "配置项 %s 类型不匹配 (期望 %s, 得到 %s)，跳过",
-                        key, expected_type.__name__, type(value).__name__,
+                        key, coerce_type.__name__, type(value).__name__,
                     )
                     return
         parts = key.split(".")
@@ -781,8 +785,9 @@ class NonullConfig:
                 continue
             expected = meta["type"]
             if not isinstance(value, expected):
+                type_name = expected.__name__ if hasattr(expected, '__name__') else str(expected)
                 errors.append(
-                    f"配置项 {key} 类型错误: 期望 {expected.__name__}, 得到 {type(value).__name__}"
+                    f"配置项 {key} 类型错误: 期望 {type_name}, 得到 {type(value).__name__}"
                 )
         return errors
 

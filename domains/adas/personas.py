@@ -10,7 +10,7 @@ from __future__ import annotations
 import enum
 import random
 from dataclasses import dataclass, field
-from typing import ClassVar, Dict, List, Optional, Protocol, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple
 
 
 # ---------------------------------------------------------------------------

@@ -696,7 +696,7 @@ class SafetyCaseSkill(BaseSkill):
         target_asil: str = context.get("target_asil", "ASIL_B")
 
         # GSN 论据结构 / GSN argument structure
-        gsn_structure = self._build_gsn(system_name, safety_goals)
+        gsn_structure = self._build_gsn(system_name, safety_goals, target_asil)
 
         # 证据映射 / Evidence mapping
         evidence_map = self._map_evidence(safety_goals, evidence_items)
@@ -724,7 +724,7 @@ class SafetyCaseSkill(BaseSkill):
         }
 
     def _build_gsn(
-        self, system: str, safety_goals: List
+        self, system: str, safety_goals: List, target_asil: str = "ASIL_B"
     ) -> Dict[str, Any]:
         """构建 GSN 论据结构 / Build GSN argument structure."""
         goals = []

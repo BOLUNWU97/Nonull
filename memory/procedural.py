@@ -645,6 +645,14 @@ class ProceduralMemory:
     # 统计与序列化 / Stats & Serialization
     # ------------------------------------------------------------------
 
+    def clear(self) -> None:
+        """清空所有程序记忆 / Clear all procedural memories."""
+        self.skills.clear()
+        self.traces.clear()
+        self._category_index.clear()
+        self._tag_index.clear()
+        self._pattern_cache = None
+
     def stats(self) -> Dict[str, Any]:
         """获取程序记忆统计 / Get procedural memory statistics."""
         category_counts = defaultdict(int)

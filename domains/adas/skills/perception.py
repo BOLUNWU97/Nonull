@@ -763,7 +763,7 @@ class ObjectDetectionReviewSkill(BaseSkill):
             "precision": round(precision, 4),
             "recall": round(recall, 4),
             "f1_score": round(f1, 4),
-            "mAP": round(context.get("mAP", precision), 4),
+            "mAP": round(precision, 4),
             "average_confidence": round(avg_conf, 4),
         }
 

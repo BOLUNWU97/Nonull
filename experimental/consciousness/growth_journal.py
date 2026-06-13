@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from consciousness.self_model import CapabilityDomain, EmotionalState, GrowthEvent
+from .self_model import CapabilityDomain, EmotionalState, GrowthEvent
 
 logger = logging.getLogger("consciousness.growth_journal")
 

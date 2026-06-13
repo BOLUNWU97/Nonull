@@ -68,6 +68,7 @@ def test_llm_client_chat_success():
         "usage": {"prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8},
     }
     mock_response = MagicMock()
+    mock_response.status_code = 200
     mock_response.json.return_value = fake_response
     mock_response.raise_for_status.return_value = None
 
@@ -85,14 +86,20 @@ def test_llm_client_chat_success():
 
 def test_llm_client_chat_retry_on_5xx():
     """5xx errors should trigger retry; ultimate success returns the result."""
-    fake_response = {
+    fake_ok = {
         "model": "gpt-4o",
         "choices": [{"message": {"role": "assistant", "content": "OK"}}],
         "usage": {},
     }
-    mock_response = MagicMock()
-    mock_response.json.return_value = fake_response
-    mock_response.raise_for_status.return_value = None
+    ok_response = MagicMock()
+    ok_response.status_code = 200
+    ok_response.json.return_value = fake_ok
+
+    err_response = MagicMock()
+    err_response.status_code = 503
+    err_response.headers = {}
+    err_response.json.return_value = {"error": {"message": "overloaded"}}
+    err_response.text = "overloaded"
 
     cfg = LLMConfig(api_key="test-key", max_retries=2)
     client = LLMClient(cfg)
@@ -101,13 +108,14 @@ def test_llm_client_chat_retry_on_5xx():
     def fake_post(*args, **kwargs):
         call_count[0] += 1
         if call_count[0] == 1:
-            raise Exception("500 server error")
-        return mock_response
+            return err_response  # first attempt: 503
+        return ok_response      # retry: 200
 
     fake_http = MagicMock()
     fake_http.post.side_effect = fake_post
     client._client = fake_http
-    resp = client.simple_chat("Hi")
+    with patch("time.sleep"):  # don't actually wait
+        resp = client.simple_chat("Hi")
 
     assert resp == "OK"
     assert call_count[0] == 2  # retried once

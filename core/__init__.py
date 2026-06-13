@@ -54,6 +54,64 @@ __all__: List[str] = [
     # Hooks
     "HookRegistry",
     "HookPoint",
+    # Event Stream
+    "EventStream",
+    "EventType",
+    "Event",
+    # Handoff
+    "HandoffManager",
+    "AgentCard",
+    "AgentRegistry",
+    "HandoffStrategy",
+    # Tracing
+    "Tracer",
+    "get_tracer",
+    "SpanKind",
+    # Guardrails
+    "Guard",
+    "Validator",
+    "OnFail",
+    # Structured Output
+    "ResponseSchema",
+    "structured_call",
+    # Prompt Optimizer
+    "PromptOptimizer",
+    "Signature",
+    # Knowledge Graph
+    "KnowledgeGraph",
+    "Entity",
+    "Triple",
+    # Action Registry
+    "ActionRegistry",
+    "ActionInfo",
+    "ActionResult",
+    # Filter Pipeline
+    "FilterPipeline",
+    "Filter",
+    "InvocationContext",
+    # Eval Judge
+    "EvalJudge",
+    "EvalMetric",
+    "EvalResult",
+    # Session Memory
+    "SessionMemory",
+    "SessionMessage",
+    # Prompt Registry
+    "PromptRegistry",
+    "PromptVersion",
+    "CompiledPrompt",
+    # LLM Client
+    "LLMClient",
+    "LLMConfig",
+    "LLMMessage",
+    "LLMResponse",
+    "ToolDefinition",
+    "get_default_client",
+    "LLMError",
+    "LLMAuthError",
+    "LLMRateLimitError",
+    "LLMServerError",
+    "LLMRequestError",
 ]
 
 # ---------------------------------------------------------------------------
@@ -62,17 +120,12 @@ __all__: List[str] = [
 
 from enum import Enum, auto
 
-
-class AgentState(str, Enum):
-    """智能体状态枚举 / Agent state enumeration."""
-    IDLE = "idle"
-    PLANNING = "planning"
-    REASONING = "reasoning"
-    ACTING = "acting"
-    REFLECTING = "reflecting"
-    COMPLETED = "completed"
-    ERROR = "error"
-    RECOVERING = "recovering"
+# AgentState 的唯一权威定义在 core.states（10 个状态值，含子智能体状态）。
+# 此前这里有一份只含 8 个值的重复定义，会 shadow agent_core 的版本 —— 已修复。
+# Canonical AgentState lives in core.states (10 values incl. subagent states).
+# A divergent 8-value duplicate used to live here and shadowed agent_core's
+# version — now fixed by importing the single source of truth.
+from .states import AgentState
 
 
 class AgentStatus:
@@ -152,7 +205,7 @@ def Nonull(*args, **kwargs):
 
 def SafetyGuardian(*args, **kwargs):
     """延迟初始化的安全监护类 / Lazily initialized safety guardian class."""
-    cls = _lazy_import("agent_core", "SafetyGuardian")
+    cls = _lazy_import("safety", "SafetyGuardian")
     return cls(*args, **kwargs)
 
 
@@ -162,23 +215,81 @@ def SafetyGuardian(*args, **kwargs):
 def __getattr__(name: str):
     """支持顶级包属性访问 / Support top-level package attribute access."""
     _MAPPING = {
-        "AgentState": ("agent_core", "AgentState"),
-        "AgentStatus": ("agent_core", "AgentStatus"),
-        "BaseMemory": ("agent_core", "BaseMemory"),
-        "WorkingMemory": ("agent_core", "WorkingMemory"),
-        "EpisodicMemory": ("agent_core", "EpisodicMemory"),
-        "SemanticMemory": ("agent_core", "SemanticMemory"),
-        "ProceduralMemory": ("agent_core", "ProceduralMemory"),
-        "SafetyGuardian": ("agent_core", "SafetyGuardian"),
-        "SafetyViolation": ("agent_core", "SafetyViolation"),
-        "ToolRegistry": ("agent_core", "ToolRegistry"),
-        "BaseTool": ("agent_core", "BaseTool"),
-        "SkillRegistry": ("agent_core", "SkillRegistry"),
-        "BaseSkill": ("agent_core", "BaseSkill"),
-        "SubagentSpec": ("agent_core", "SubagentSpec"),
-        "SubagentResult": ("agent_core", "SubagentResult"),
-        "HookRegistry": ("agent_core", "HookRegistry"),
-        "HookPoint": ("agent_core", "HookPoint"),
+        "AgentState": ("states", "AgentState"),
+        # AgentStatus 在本文件模块级定义，__getattr__ 不会触发；不需要映射。
+        "BaseMemory": ("memory_legacy", "BaseMemory"),
+        "WorkingMemory": ("memory_legacy", "WorkingMemory"),
+        "EpisodicMemory": ("memory_legacy", "EpisodicMemory"),
+        "SemanticMemory": ("memory_legacy", "SemanticMemory"),
+        "ProceduralMemory": ("memory_legacy", "ProceduralMemory"),
+        "SafetyGuardian": ("safety", "SafetyGuardian"),
+        "SafetyViolation": ("errors", "SafetyViolation"),
+        "ToolRegistry": ("registries", "ToolRegistry"),
+        "BaseTool": ("registries", "BaseTool"),
+        "SkillRegistry": ("registries", "SkillRegistry"),
+        "BaseSkill": ("registries", "BaseSkill"),
+        "SubagentSpec": ("subagents", "SubagentSpec"),
+        "SubagentResult": ("subagents", "SubagentResult"),
+        "HookRegistry": ("hooks", "HookRegistry"),
+        "HookPoint": ("hooks", "HookPoint"),
+        # Event Stream
+        "EventStream": ("event_stream", "EventStream"),
+        "EventType": ("event_stream", "EventType"),
+        "Event": ("event_stream", "Event"),
+        # Handoff
+        "HandoffManager": ("handoff", "HandoffManager"),
+        "AgentCard": ("handoff", "AgentCard"),
+        "AgentRegistry": ("handoff", "AgentRegistry"),
+        "HandoffStrategy": ("handoff", "HandoffStrategy"),
+        # Tracing
+        "Tracer": ("tracing", "Tracer"),
+        "get_tracer": ("tracing", "get_tracer"),
+        "SpanKind": ("tracing", "SpanKind"),
+        # Guardrails
+        "Guard": ("guardrails", "Guard"),
+        "Validator": ("guardrails", "Validator"),
+        "OnFail": ("guardrails", "OnFail"),
+        # Structured Output
+        "ResponseSchema": ("structured_output", "ResponseSchema"),
+        "structured_call": ("structured_output", "structured_call"),
+        # Prompt Optimizer
+        "PromptOptimizer": ("prompt_optimizer", "PromptOptimizer"),
+        "Signature": ("prompt_optimizer", "Signature"),
+        # Knowledge Graph
+        "KnowledgeGraph": ("graph_memory", "KnowledgeGraph"),
+        "Entity": ("graph_memory", "Entity"),
+        "Triple": ("graph_memory", "Triple"),
+        # Action Registry
+        "ActionRegistry": ("action_registry", "ActionRegistry"),
+        "ActionInfo": ("action_registry", "ActionInfo"),
+        "ActionResult": ("action_registry", "ActionResult"),
+        # Filter Pipeline
+        "FilterPipeline": ("filter_pipeline", "FilterPipeline"),
+        "Filter": ("filter_pipeline", "Filter"),
+        "InvocationContext": ("filter_pipeline", "InvocationContext"),
+        # Eval Judge
+        "EvalJudge": ("eval_judge", "EvalJudge"),
+        "EvalMetric": ("eval_judge", "EvalMetric"),
+        "EvalResult": ("eval_judge", "EvalResult"),
+        # Session Memory
+        "SessionMemory": ("session_memory", "SessionMemory"),
+        "SessionMessage": ("session_memory", "SessionMessage"),
+        # Prompt Registry
+        "PromptRegistry": ("prompt_registry", "PromptRegistry"),
+        "PromptVersion": ("prompt_registry", "PromptVersion"),
+        "CompiledPrompt": ("prompt_registry", "CompiledPrompt"),
+        # LLM Client
+        "LLMClient": ("llm_client", "LLMClient"),
+        "LLMConfig": ("llm_client", "LLMConfig"),
+        "LLMMessage": ("llm_client", "LLMMessage"),
+        "LLMResponse": ("llm_client", "LLMResponse"),
+        "ToolDefinition": ("llm_client", "ToolDefinition"),
+        "get_default_client": ("llm_client", "get_default_client"),
+        "LLMError": ("llm_client", "LLMError"),
+        "LLMAuthError": ("llm_client", "LLMAuthError"),
+        "LLMRateLimitError": ("llm_client", "LLMRateLimitError"),
+        "LLMServerError": ("llm_client", "LLMServerError"),
+        "LLMRequestError": ("llm_client", "LLMRequestError"),
     }
     if name in _MAPPING:
         mod, cls_name = _MAPPING[name]

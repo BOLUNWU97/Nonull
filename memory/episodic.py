@@ -90,7 +90,7 @@ class EmbeddingProvider:
         for i in range(len(text_lower) - 2):
             ngrams[text_lower[i:i+3]] += 1.5
         # 词级别特征 / Word-level features
-        words = re.findall(r'\\w+', text_lower)
+        words = re.findall(r'\w+', text_lower)
         for w in words:
             if len(w) > 1:
                 ngrams[f"word_{w}"] += 2.0
@@ -173,6 +173,7 @@ class Episode:
     metadata: Dict[str, Any] = field(default_factory=dict)
     consolidated: bool = False
     episode_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    last_decayed_at: float = field(default_factory=time.time)
 
     def __post_init__(self):
         if not self.summary:
@@ -476,11 +477,12 @@ class EpisodicMemory:
         for episode in self.episodes.values():
             if episode.strength <= 0.0:
                 continue
-            hours_since = (now - episode.last_accessed) / 3600.0
+            hours_since = (now - episode.last_decayed_at) / 3600.0
             if hours_since > 0:
                 decay_factor = math.exp(-self.decay_rate * hours_since)
                 episode.strength *= decay_factor
                 episode.strength = max(0.0, min(1.0, episode.strength))
+                episode.last_decayed_at = now
 
     def forget_decayed(self, threshold: float = 0.01) -> int:
         """移除已严重衰减的旧记忆 / Remove heavily decayed memories.
@@ -592,6 +594,13 @@ class EpisodicMemory:
     # 统计与序列化 / Stats & Serialization
     # ------------------------------------------------------------------
 
+    def clear(self) -> None:
+        """清空所有情景记忆 / Clear all episodic memories."""
+        self.episodes.clear()
+        self._scenario_index.clear()
+        self._tag_index.clear()
+        self._type_index.clear()
+
     def stats(self) -> Dict[str, Any]:
         """获取记忆统计 / Get memory statistics."""
         self._apply_decay()
@@ -630,6 +639,7 @@ class EpisodicMemory:
                 "strength": ep.strength,
                 "access_count": ep.access_count,
                 "last_accessed": ep.last_accessed,
+                "last_decayed_at": ep.last_decayed_at,
                 "consolidated": ep.consolidated,
                 "metadata": ep.metadata,
             }
@@ -669,6 +679,7 @@ class EpisodicMemory:
                 strength=ep_data.get("strength", 1.0),
                 access_count=ep_data.get("access_count", 0),
                 last_accessed=ep_data.get("last_accessed", time.time()),
+                last_decayed_at=ep_data.get("last_decayed_at", time.time()),
                 consolidated=ep_data.get("consolidated", False),
                 metadata=ep_data.get("metadata", {}),
             )

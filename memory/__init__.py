@@ -40,7 +40,7 @@ __version__ = "0.1.0"
 __author__ = "Nonull Team"
 
 from .working_memory import WorkingMemory, ContextWindow, TokenBudget
-from .episodic import EpisodicMemory, Episode
+from .episodic import EpisodicMemory, Episode, EpisodeType
 from .semantic import SemanticMemory, KnowledgeNode
 from .procedural import ProceduralMemory, Skill, ExecutionTrace
 from .neocortex import Neocortex, MemoryQuery, MemoryResult, RelevanceScore
@@ -58,6 +58,7 @@ __all__ = [
     # Episodic Memory
     "EpisodicMemory",
     "Episode",
+    "EpisodeType",
 
     # Semantic Memory
     "SemanticMemory",

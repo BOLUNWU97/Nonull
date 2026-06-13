@@ -138,7 +138,7 @@ from skills.creative.learning_skills import (
 from skills.execution import (
     CodeRunnerSkill,
     ExecutionBackend,
-    get_backend,
+    get_backend as get_execution_backend,
 )
 from skills.execution.inline import InlineBackend
 from skills.execution.subprocess_backend import SubprocessBackend
@@ -294,7 +294,9 @@ __all__ = [
     # Sandboxed code execution backends — P16 / 沙箱化代码执行
     "CodeRunnerSkill",
     "ExecutionBackend",
+    "get_execution_backend",
     "get_backend",
+    "set_backend",
     "InlineBackend",
     "SubprocessBackend",
     "DockerBackend",

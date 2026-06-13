@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from consciousness.self_model import CapabilityDomain, KnowledgeGap
+from .self_model import CapabilityDomain, KnowledgeGap
 
 logger = logging.getLogger("consciousness.curiosity")
 
@@ -683,7 +683,7 @@ class CuriosityDriver:
                 for t, p in self._profiles.items()
             },
             "total_discoveries": len(self._discoveries),
-            "top_curiosities": self.all_curiosities()[:5],
+            "top_curiosities": dict(list(self.all_curiosities().items())[:5]),
             "exploration_mode": self.balance_explore_exploit().value,
             "learning_goals": len(self._learning_goals),
         }

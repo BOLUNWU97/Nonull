@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Tuple
 
-from consciousness.self_model import CapabilityDomain, KnowledgeGap
+from .self_model import CapabilityDomain, KnowledgeGap
 
 logger = logging.getLogger("consciousness.autonomy")
 
@@ -115,7 +115,7 @@ class LearningPath:
         """Overall progress: fraction of completed steps."""
         if not self.steps:
             return 0.0
-        return sum(1 for s in steps if s.completed) / len(self.steps)
+        return sum(1 for s in self.steps if s.completed) / len(self.steps)
 
     @property
     def estimated_total_hours(self) -> float:

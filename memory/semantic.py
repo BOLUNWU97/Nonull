@@ -568,6 +568,14 @@ class SemanticMemory:
     # 统计与序列化 / Stats & Serialization
     # ------------------------------------------------------------------
 
+    def clear(self) -> None:
+        """清空所有语义记忆 / Clear all semantic memories."""
+        self.nodes.clear()
+        self._domain_index.clear()
+        self._tag_index.clear()
+        self._source_index.clear()
+        self._node_count = 0
+
     def stats(self) -> Dict[str, Any]:
         """获取知识库统计 / Get knowledge base statistics."""
         domain_counts = defaultdict(int)

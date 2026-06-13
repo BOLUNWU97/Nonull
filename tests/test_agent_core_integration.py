@@ -9,6 +9,12 @@ from core.agent_core import Nonull
 from core import AgentState
 
 
+@pytest.fixture(autouse=True)
+def _skip_no_llm():
+    if not os.environ.get("NONULL_LLM_API_KEY"):
+        pytest.skip("NONULL_LLM_API_KEY not set")
+
+
 class TestNonullIntegration:
     def test_agent_initializes(self):
         agent = Nonull()

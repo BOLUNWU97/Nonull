@@ -156,6 +156,9 @@ class ConsciousnessLoop:
         self._goal_check_callback: Optional[Callable] = None
         self._journal_callback: Optional[Callable] = None
 
+        # Track when the loop was started (for non-destructive uptime)
+        self._start_time: Optional[datetime.datetime] = None
+
         # Experience buffer — experiences waiting to be integrated
         self._experience_buffer: List[Dict[str, Any]] = []
 
@@ -229,6 +232,7 @@ class ConsciousnessLoop:
         self._stop_event.clear()
         self._state.is_active = True
         self._state.awareness_level = 0.8  # Start with high awareness
+        self._start_time = datetime.datetime.now()
 
         if self._enable_background:
             self._thread = threading.Thread(
@@ -264,9 +268,9 @@ class ConsciousnessLoop:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5.0)
 
-        self._state.uptime_seconds += (
-            datetime.datetime.now() - self._state.last_pulse_time
-        ).total_seconds() if self._state.last_pulse_time else 0
+        self._state.uptime_seconds = (
+            datetime.datetime.now() - self._start_time
+        ).total_seconds() if self._start_time else 0
 
         logger.info("Consciousness loop stopped")
         return True
@@ -668,11 +672,13 @@ class ConsciousnessLoop:
         Returns a snapshot of awareness — like checking
         someone's level of consciousness.
         """
-        # Update uptime
-        if self._state.is_active and self._state.last_pulse_time:
-            self._state.uptime_seconds += (
-                datetime.datetime.now() - self._state.last_pulse_time
+        # Compute uptime non-destructively
+        if self._state.is_active and self._start_time:
+            uptime = (
+                datetime.datetime.now() - self._start_time
             ).total_seconds()
+        else:
+            uptime = self._state.uptime_seconds
 
         return ConsciousnessState(
             is_active=self._state.is_active,
@@ -682,7 +688,7 @@ class ConsciousnessLoop:
             total_insights_generated=self._state.total_insights_generated,
             recent_reflection=self._state.recent_reflection,
             awareness_level=self._state.awareness_level,
-            uptime_seconds=self._state.uptime_seconds,
+            uptime_seconds=uptime,
         )
 
     def get_state(self) -> Dict[str, Any]:

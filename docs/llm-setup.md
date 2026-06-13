@@ -29,7 +29,10 @@ NONULL_LLM_MODEL=gpt-4o
 NONULL_LLM_API_KEY=sk-ant-...
 NONULL_LLM_PROVIDER=custom
 NONULL_LLM_API_BASE=https://api.anthropic.com/v1
-NONULL_LLM_MODEL=claude-sonnet-4
+# Anthropic 当前通过 OpenAI 兼容代理暴露;请用你代理实际支持的模型名
+# Anthropic currently exposed via OpenAI-compatible proxy; use whatever
+# model id your proxy actually serves (e.g. claude-3-5-sonnet-20241022)
+NONULL_LLM_MODEL=claude-3-5-sonnet-20241022
 ```
 
 ### DeepSeek
@@ -39,7 +42,7 @@ NONULL_LLM_PROVIDER=deepseek
 NONULL_LLM_MODEL=deepseek-chat
 ```
 
-### MiniMax / MiniMax / Kimi
+### MiniMax / Kimi (and other MiniMax-M3 endpoints)
 ```bash
 NONULL_LLM_API_KEY=your-key
 NONULL_LLM_PROVIDER=custom

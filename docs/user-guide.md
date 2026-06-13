@@ -662,21 +662,24 @@ Action → [Layer 1: Tool Pre-filter] → [Layer 2: Deny-First Rules]
 在规则引擎之前，检查工具本身是否本质危险：
 
 ```python
-# 内置危险工具黑名单
+# 内置危险工具黑名单（仅建议性 / advisory only）
+# 这些 risk_score 值是开发者配置的启发式评分，不是 ASIL 等级
+# These risk_score values are developer-configured heuristics, NOT ASIL
+# ratings. The project does not implement any certified safety classification.
 dangerous_tools = {
-    "shell_exec":    SafetyLevel.ASIL_D,  # Shell 执行 — ASIL-D 最高危
-    "format_disk":   SafetyLevel.ASIL_D,  # 磁盘格式化
-    "modify_kernel": SafetyLevel.ASIL_D,  # 内核修改
-    "bypass_safety": SafetyLevel.ASIL_D,  # 绕过安全系统
-    "kill_process":  SafetyLevel.ASIL_C,  # 进程终止
-    "delete_file":   SafetyLevel.ASIL_B,  # 文件删除
+    "shell_exec":    1.0,  # Shell 执行 — 最高风险 (developer-set heuristic)
+    "format_disk":   1.0,  # 磁盘格式化
+    "modify_kernel": 1.0,  # 内核修改
+    "bypass_safety": 1.0,  # 绕过安全系统
+    "kill_process":  0.8,  # 进程终止
+    "delete_file":   0.5,  # 文件删除
 }
 
-# 车辆控制特殊处理
+# 车辆控制特殊处理 (advisory, never enforce in production)
 vehicle_tools = {
-    "set_throttle": SafetyLevel.ASIL_D,   # 油门控制
-    "set_brake":    SafetyLevel.ASIL_D,   # 制动控制
-    "set_steering": SafetyLevel.ASIL_D,   # 转向控制
+    "set_throttle": 1.0,   # 油门控制
+    "set_brake":    1.0,   # 制动控制
+    "set_steering": 1.0,   # 转向控制
 }
 ```
 

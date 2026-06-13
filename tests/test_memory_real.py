@@ -382,6 +382,7 @@ class TestEbbinghausDecay:
         # Insert an episode whose last_accessed is 10 hours ago
         ep = em.store(content="to-be-decayed", episode_type=EpisodeType.OTHER)
         ep.last_accessed = time.time() - 10 * 3600
+        ep.last_decayed_at = time.time() - 10 * 3600
         original_strength = ep.strength
 
         # Apply decay

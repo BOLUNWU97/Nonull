@@ -1,17 +1,34 @@
-version: "3.9"
+# Nonull AI Agent — Docker Compose
+# Run: docker compose up -d
+
 services:
   nonull:
     build: .
+    container_name: nonull-agent
     ports:
       - "8765:8765"
     environment:
       - NONULL_LLM_API_KEY=${NONULL_LLM_API_KEY:-}
       - NONULL_LLM_PROVIDER=${NONULL_LLM_PROVIDER:-openai}
       - NONULL_LLM_MODEL=${NONULL_LLM_MODEL:-gpt-4o}
-      - NONULL_LLM_API_BASE=${NONULL_LLM_API_BASE:-https://api.openai.com/v1}
+      - NONULL_LLM_API_BASE=${NONULL_LLM_API_BASE:-}
+      - NONULL_LLM_MAX_TOKENS=${NONULL_LLM_MAX_TOKENS:-4096}
+      - NONULL_LLM_TEMPERATURE=${NONULL_LLM_TEMPERATURE:-0.2}
+      - NONULL_WEB_ENABLED=${NONULL_WEB_ENABLED:-false}
+      - NONULL_WEB_HOST=${NONULL_WEB_HOST:-127.0.0.1}
+      - NONULL_WEB_PORT=${NONULL_WEB_PORT:-8765}
+      - NONULL_MEMORY_ENABLED=${NONULL_MEMORY_ENABLED:-true}
+      - NONULL_MEMORY_BACKEND=${NONULL_MEMORY_BACKEND:-in_memory}
     volumes:
-      - nonull_memory:/app/memory_data
+      - nonull_data:/app/memory_data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "from core.llm_client import LLMConfig; print('ok')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
-  nonull_memory:
+  nonull_data:
+    driver: local
