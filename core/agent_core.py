@@ -171,11 +171,14 @@ class Nonull:
         # ── 记忆 / Memory ──
         # 优先使用 memory/ 包的完整 Neocortex 后端；如果不可用，回退到简化版
         try:
-            from .memory_system import MemorySystem as _EnhancedMemorySystem
-            self._memory: MemorySystem = _EnhancedMemorySystem(self._config)
+            from .memory_system import MemorySystem as _FullMemorySystem
+            self._memory: MemorySystem = _FullMemorySystem(self._config)
         except ImportError:
-            # Fallback: use the simplified MemorySystem defined below
-            self._memory: MemorySystem = MemorySystem(self._config)
+            # core.memory_system 不可用时回退到轻量 legacy 实现
+            # Fall back to the lightweight legacy MemorySystem if the full
+            # memory_system module (Neocortex + SubconsciousLoop) cannot import.
+            from .memory_legacy import MemorySystem as _LegacyMemorySystem
+            self._memory = _LegacyMemorySystem(self._config)
 
         # ── 工具 / Tools ──
         self._tool_registry: ToolRegistry = ToolRegistry()

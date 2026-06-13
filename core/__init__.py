@@ -112,6 +112,10 @@ __all__: List[str] = [
     "LLMRateLimitError",
     "LLMServerError",
     "LLMRequestError",
+    # Cost Tracker
+    "CostTracker",
+    "BudgetExceeded",
+    "UsageRecord",
 ]
 
 # ---------------------------------------------------------------------------
@@ -290,6 +294,10 @@ def __getattr__(name: str):
         "LLMRateLimitError": ("llm_client", "LLMRateLimitError"),
         "LLMServerError": ("llm_client", "LLMServerError"),
         "LLMRequestError": ("llm_client", "LLMRequestError"),
+        # Cost Tracker
+        "CostTracker": ("cost_tracker", "CostTracker"),
+        "BudgetExceeded": ("cost_tracker", "BudgetExceeded"),
+        "UsageRecord": ("cost_tracker", "UsageRecord"),
     }
     if name in _MAPPING:
         mod, cls_name = _MAPPING[name]
