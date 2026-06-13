@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased] - 0.2.2
 
+### Deep Optimization & Cleanup (2026-06-13)
+
+**Critical fix:** the Neocortex memory subsystem never actually ran. `EpisodeType`
+was never exported from `memory/__init__.py`, so `core.memory_system` silently fell
+back to a stub backend on every launch. Fixed — the full memory system (Ebbinghaus
+decay, vector retrieval, SubconsciousLoop) is now active for the first time since it
+was written.
+
+#### Added
+- `core/cost_tracker.py` — LLM cost & token tracking (per-model aggregation, budget
+  limits, fuzzy model matching, atomic persistence). 20 tests.
+- `core/persistence.py` — atomic JSON write infrastructure (temp-file + os.replace).
+- `tests/test_agent_e2e_offline.py` — offline end-to-end agent loop (MockLLM, no API
+  key); first test that drives the full plan→reason→act→reflect cycle.
+- `to_dict/from_dict/save/load` on SessionMemory, KnowledgeGraph, PromptRegistry.
+- LLM client hardening: classified errors (auth / rate-limit / server / request),
+  429 Retry-After, model fallback chain, streaming+tools (`chat_stream_full`).
+
+#### Changed / Refactored
+- Split `core/agent_core.py` 2858→1451 lines into 7 modules (`states`, `errors`,
+  `safety`, `registries`, `subagents`, `hooks`, `memory_legacy`), all re-exported
+  for backward compatibility.
+- `MemorySystem` re-export now points at the full implementation (was legacy) —
+  eliminates the silent three-way name confusion between re-export, Nonull instance,
+  and test docstring.
+- `_safe_execute_step` returns a sentinel instead of re-raising — the
+  RECOVERING→REASONING recovery path now actually runs instead of being bypassed.
+- Removed 13 dead imports + dead `TypeVar("T")` from agent_core (split residue).
+
+#### Fixed
+- `memory/__init__.py` missing `EpisodeType` export (memory system activation).
+- ISO 26262 positive-voice claims in docs (architecture.md, user-guide.md, README.md).
+- Non-existent API references in docs (`claude-sonnet-4`, `SafetyLevel.ASIL_D`,
+  `CoPilot.get_daily_brief`).
+- `llm_client` reading `.env` without UTF-8 encoding (broke on Windows GBK default).
+- `eval_judge` CUSTOM metric name auto-selection.
+- Removed self-attribution ("MiniMax M3 verified") from README; aligned Python badge
+  to the actual 3.10+ requirement.
+
+#### Tests
+- ~690 passing (up from 351/431 in P23). The agent main loop now has end-to-end
+  regression coverage that would have caught the dormant-memory bug immediately.
+
 ### Real-World Test Verification (P23)
 
 **Date:** 2026-06-06

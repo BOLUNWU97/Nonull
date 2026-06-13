@@ -266,7 +266,7 @@ print(result["output"])
 |------|-----------|:----:|
 | 🤖 **核心引擎** | ReAct + 规划 + 反思 融合状态机 | ✅ |
 | 🧠 **记忆系统** | 工作/情景/知识/技能 四种记忆 + 潜意识 | ✅ |
-| 🛡️ **安全卫士** | ISO 26262 + Deny-First + 五关检查流水线 | ✅ |
+| 🛡️ **安全卫士** | ISO 26262 模式参考 + Deny-First + 五关检查（建议性，非认证） | ✅ |
 | 🔧 **50+ 个技能** | 31 个 ADAS 专属 + 19 个通用 (web/data/code/docs/translation/utilities) + 8 个创意 (brainstorm/pomodoro/flashcards/...) | ✅ |
 | 🔄 **多Agent** | DAG 任务分解 + 8 个 Agent 并行 + 冲突解决 | ✅ |
 | 👤 **驾驶人格** | 🛡️ 保守派 / 🚀 运动派 / 🧓 老司机 | ✅ 🆕 |
@@ -684,10 +684,10 @@ public method shape, this test is the first thing CI will flag.
 
 | Metric | Value |
 |---|---|
-| Tests passing | 351 / 431 (81.4%) |
+| Tests passing | ~690 / ~700 (see CHANGELOG) |
 | Skills | 50+ (31 ADAS + 19 general) |
-| Python | 3.13.0 verified |
-| LLM | Any OpenAI-compatible (MiniMax M3 verified) |
+| Python | 3.10+ |
+| LLM | Any OpenAI-compatible endpoint (OpenAI / DeepSeek / MiniMax / Ollama / vLLM) |
 | Status | **Alpha — internal pilot ready** |
 
 **Read this carefully:** Nonull is an **advisory** development assistant, not a certified safety product. It is suitable for:
@@ -747,7 +747,7 @@ See `docs/project-report.md` for the complete 14-round polish history and the re
   </tr>
   <tr><td>🤖 Core Engine</td><td>ReAct + Plan-and-Execute + Reflexion fused state machine</td></tr>
   <tr><td>🧠 Memory System</td><td>Working/Episodic/Semantic/Procedural + Neocortex (configurable capacity, default in-memory backend)</td></tr>
-  <tr><td>🛡️ Safety Guardian</td><td>ISO 26262 + Deny-First + 5-layer safety pipeline</td></tr>
+  <tr><td>🛡️ Safety Guardian</td><td>ISO 26262 pattern refs + Deny-First + 5-layer advisory pipeline (not certified)</td></tr>
   <tr><td>🔧 50 Skills</td><td>31 ADAS-specific (Code/Safety/Perception/Planning/Testing/Simulation/Data/Research/DevOps) + 19 general-purpose (Web/Data/Code/Docs/Translation/Utilities) under <code>skills/core/</code></td></tr>
   <tr><td>👤 Driving Persona</td><td>Conservative 🛡️ / Sporty 🚀 / Veteran 🧓 — three characters</td></tr>
   <tr><td>🧠 Scenario Engine</td><td>36 built-in driving scenarios + coverage analysis</td></tr>
