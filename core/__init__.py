@@ -116,6 +116,10 @@ __all__: List[str] = [
     "CostTracker",
     "BudgetExceeded",
     "UsageRecord",
+    # Agent Loop (标准 agentic 循环)
+    "AgentLoop",
+    "AgentLoopResult",
+    "LoopStep",
 ]
 
 # ---------------------------------------------------------------------------
@@ -298,6 +302,10 @@ def __getattr__(name: str):
         "CostTracker": ("cost_tracker", "CostTracker"),
         "BudgetExceeded": ("cost_tracker", "BudgetExceeded"),
         "UsageRecord": ("cost_tracker", "UsageRecord"),
+        # Agent Loop (标准 agentic 循环 / ReAct while-loop)
+        "AgentLoop": ("agent_loop", "AgentLoop"),
+        "AgentLoopResult": ("agent_loop", "AgentLoopResult"),
+        "LoopStep": ("agent_loop", "LoopStep"),
     }
     if name in _MAPPING:
         mod, cls_name = _MAPPING[name]

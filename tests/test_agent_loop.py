@@ -1,0 +1,192 @@
+"""
+Agent Loop 测试 / Tests for the standard agentic loop (core.agent_loop).
+
+用脚本化 MockLLM 驱动 AgentLoop, 覆盖: 自然完成 (final)、max_steps 截断、
+工具执行与 observe、工具不存在/抛异常、LLM 崩溃、无工具。无真实 LLM/$0。
+"""
+import pytest
+
+from core.agent_loop import AgentLoop, AgentLoopResult, LoopStep
+from core.llm_client import LLMResponse
+
+
+def _tool_call(name: str, args: str = "{}") -> dict:
+    return {"id": f"call_{name}", "function": {"name": name, "arguments": args}}
+
+
+def _final(text: str) -> LLMResponse:
+    return LLMResponse(content=text, tool_calls=[])
+
+
+def _thinking(tool_calls=None, content="thinking...") -> LLMResponse:
+    return LLMResponse(content=content, tool_calls=tool_calls or [])
+
+
+class ScriptedLLM:
+    """按预设序列返回 LLMResponse 的 MockLLM."""
+    def __init__(self, responses):
+        self.responses = responses
+        self.idx = 0
+
+    def chat(self, messages, tools=None, **kwargs):
+        r = self.responses[min(self.idx, len(self.responses) - 1)]
+        self.idx += 1
+        return r
+
+
+# 测试工具
+def calc(**kwargs):
+    """计算器."""
+    return 42
+
+
+def echo(msg=""):
+    """回声."""
+    return f"echo:{msg}"
+
+
+# ── 完成行为 ────────────────────────────────────────────────────
+
+class TestAgentLoopCompletion:
+    async def test_completes_on_final(self):
+        """LLM 调一次工具后给最终答案 → completed, 2 steps, 1 tool_call."""
+        llm = ScriptedLLM([
+            _thinking([_tool_call("calc")]),
+            _final("The answer is 42"),
+        ])
+        loop = AgentLoop(llm, tools=[calc], max_steps=5)
+        result = await loop.run("calc")
+        assert result.completed
+        assert not result.truncated
+        assert result.total_steps == 2
+        assert result.tool_calls == 1
+        assert "42" in result.output
+
+    async def test_immediate_final(self):
+        """LLM 不调工具直接给答案 → 1 step, 0 tool_calls."""
+        llm = ScriptedLLM([_final("done immediately")])
+        loop = AgentLoop(llm, tools=[calc], max_steps=5)
+        result = await loop.run("easy task")
+        assert result.completed
+        assert result.total_steps == 1
+        assert result.tool_calls == 0
+        assert result.output == "done immediately"
+
+    async def test_output_is_final_observation(self):
+        """output = 最后一步的 observation (final 答案)."""
+        llm = ScriptedLLM([_final("my final answer")])
+        loop = AgentLoop(llm, tools=[], max_steps=3)
+        result = await loop.run("test")
+        assert result.output == "my final answer"
+
+
+# ── 截断行为 ────────────────────────────────────────────────────
+
+class TestAgentLoopTruncation:
+    async def test_truncates_on_max_steps(self):
+        """LLM 一直调工具 → max_steps 截断, completed=False."""
+        llm = ScriptedLLM([_thinking([_tool_call("calc")])] * 100)
+        loop = AgentLoop(llm, tools=[calc], max_steps=3)
+        result = await loop.run("infinite tool loop")
+        assert not result.completed
+        assert result.truncated
+        assert result.total_steps == 3
+
+    async def test_max_steps_one(self):
+        """max_steps=1 只跑一步."""
+        llm = ScriptedLLM([_thinking([_tool_call("calc")])])
+        loop = AgentLoop(llm, tools=[calc], max_steps=1)
+        result = await loop.run("one step")
+        assert result.total_steps == 1
+
+
+# ── 工具执行 ────────────────────────────────────────────────────
+
+class TestToolExecution:
+    async def test_tool_result_observed(self):
+        """工具结果进入 step.observation."""
+        llm = ScriptedLLM([
+            _thinking([_tool_call("echo", '{"msg": "hello"}')]),
+            _final("done"),
+        ])
+        loop = AgentLoop(llm, tools=[echo], max_steps=5)
+        result = await loop.run("echo hello")
+        assert any("echo:hello" in s.observation for s in result.steps)
+
+    async def test_tool_not_found(self):
+        """调不存在的工具 → observe 'not found', 不崩, 继续到 final."""
+        llm = ScriptedLLM([
+            _thinking([_tool_call("nonexistent")]),
+            _final("ok"),
+        ])
+        loop = AgentLoop(llm, tools=[calc], max_steps=5)
+        result = await loop.run("bad tool")
+        assert result.completed
+        assert any("not found" in s.observation for s in result.steps)
+
+    async def test_tool_raises_caught(self):
+        """工具抛异常 → observe 'Error', 不崩, 继续."""
+        def boom(**kwargs):
+            raise ValueError("boom")
+        llm = ScriptedLLM([
+            _thinking([_tool_call("boom")]),
+            _final("recovered"),
+        ])
+        loop = AgentLoop(llm, tools=[boom], max_steps=5)
+        result = await loop.run("exploding tool")
+        assert result.completed
+        assert any("Error" in s.observation or "boom" in s.observation for s in result.steps)
+
+    async def test_multiple_tool_calls_one_step(self):
+        """一轮多个 tool_call 都执行."""
+        llm = ScriptedLLM([
+            _thinking([_tool_call("calc"), _tool_call("echo", '{"msg": "x"}')]),
+            _final("done"),
+        ])
+        loop = AgentLoop(llm, tools=[calc, echo], max_steps=5)
+        result = await loop.run("multi")
+        assert result.tool_calls == 2
+
+
+# ── 鲁棒性 ──────────────────────────────────────────────────────
+
+class TestAgentLoopRobustness:
+    async def test_llm_exception_caught(self):
+        """LLM.chat 抛异常 → error 设置, 不崩."""
+        class CrashLLM:
+            def chat(self, *a, **k):
+                raise RuntimeError("LLM crashed")
+        loop = AgentLoop(CrashLLM(), tools=[calc], max_steps=5)
+        result = await loop.run("crash test")
+        assert result.error is not None
+        assert "crashed" in result.error
+
+    async def test_no_tools(self):
+        """无工具时 LLM 应直接 final."""
+        llm = ScriptedLLM([_final("no tools needed")])
+        loop = AgentLoop(llm, tools=[], max_steps=3)
+        result = await loop.run("toolless")
+        assert result.completed
+        assert result.tool_calls == 0
+
+    async def test_result_to_dict_structure(self):
+        """result.to_dict() 结构完整."""
+        llm = ScriptedLLM([_final("done")])
+        loop = AgentLoop(llm, tools=[calc], max_steps=3)
+        result = await loop.run("test")
+        d = result.to_dict()
+        assert {"output", "steps", "completed", "total_steps", "tool_calls"}.issubset(d.keys())
+        assert d["total_steps"] == 1
+        assert d["completed"] is True
+
+    async def test_step_records_thought_and_action(self):
+        """每步记录 thought + action."""
+        llm = ScriptedLLM([
+            _thinking([_tool_call("calc")], content="I should calculate"),
+            _final("done"),
+        ])
+        loop = AgentLoop(llm, tools=[calc], max_steps=5)
+        result = await loop.run("test")
+        assert result.steps[0].action == "tool:calc"
+        assert "calculate" in result.steps[0].thought
+        assert result.steps[1].action == "final"
