@@ -730,7 +730,7 @@ class Nonull:
                         LLMMessage(role="system", content=system_prompt),
                         LLMMessage(role="user", content=user_prompt),
                     ],
-                    max_tokens=1024,
+                    max_tokens=2048,
                     fallback={
                         "next_action": "text:Proceeding with analysis step.",
                         "reasoning": "Fallback reasoning",
@@ -856,7 +856,7 @@ class Nonull:
                         LLMMessage(role="system", content="Reflection turn. Follow the OUTPUT CONTRACT. Be honest about gaps; do not claim completion unless the deliverable exists."),
                         LLMMessage(role="user", content=user_prompt),
                     ],
-                    max_tokens=1024,
+                    max_tokens=2048,
                     fallback={
                         "completed": len(action_history) >= 3,
                         "summary": f"Executed {len(action_history)} actions.",
