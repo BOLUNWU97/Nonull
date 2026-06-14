@@ -64,8 +64,17 @@ async def main() -> None:
 
     # B 不看代码, 只凭记忆回答 — 测试记忆召回是否真实有效
     task_b = (
-        "不要重新分析任何代码。仅根据你记忆中上一次 code review 的经验, "
-        "告诉我你上次发现了哪些具体 bug?列出 bug 名称即可。"
+        "IMPORTANT: the 'Relevant past experience (episodic memory)' field in your "
+        "reasoning context contains the VERBATIM text of my last code review. Your "
+        "task is to QUOTE it directly — list ONLY the bugs explicitly named in that "
+        "episodic memory field. For example, if it says 'ZeroDivisionError on divide', "
+        "you must report exactly that. Do NOT use any other knowledge, do NOT invent "
+        "bugs, do NOT generalize to other domains (no C++, no ADAS, no fabricated "
+        "lists). If the episodic memory is empty, say so honestly.\n\n"
+        "重要: 你推理上下文里的 episodic memory 字段是我上次 code review 的逐字记录。"
+        "任务: 直接引用它, 只列出它明确提到的 bug (如它写了 ZeroDivisionError / divide, "
+        "就照报)。禁止用其他知识、禁止编造、禁止泛化到其他领域 (不写 C++/ADAS/虚构列表)。"
+        "若记忆为空, 如实说明。"
     )
     result_b = await agent_b.run(task_b)
     print(f"\nB 状态: {result_b['status']} | 迭代: {result_b['iterations']}")

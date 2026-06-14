@@ -459,11 +459,37 @@ class MemorySystem:
 
         失败的经验重要性更高。
         Failed experiences are stored with higher importance.
+
+        结果可能是 dict (如 {'status':..., 'output':...}); str(dict)[:500] 会在
+        截断时破坏 repr, 使后续召回无法重新解析, 把发现文本埋在 'status'/'output'
+        键名后。这里先抽取真正的文本字段再截断, 保证存进去的就是可读的发现。
+        The result may be a dict (e.g. {'status':..., 'output':...}); str(dict)[:500]
+        corrupts the repr at truncation so later recall cannot re-parse it, burying
+        the finding behind key names. We flatten to the real text field first.
         """
+        def _flatten_result(r: Any, limit: int = 600) -> str:
+            # 递归抽 dict 里的真正文本 (output/content/text/message), 避免存 dict-repr
+            cur = r
+            for _ in range(3):
+                if isinstance(cur, dict):
+                    nxt = (
+                        cur.get("output")
+                        or cur.get("content")
+                        or cur.get("text")
+                        or cur.get("message")
+                        or cur.get("result")
+                    )
+                    if nxt is None or nxt is cur:
+                        break
+                    cur = nxt
+                else:
+                    break
+            return str(cur)[:limit]
+
         content = {
             "task": task,
             "action": action,
-            "result": str(result)[:500],
+            "result": _flatten_result(result),
             "success": success,
         }
         importance = 0.9 if not success else 0.3

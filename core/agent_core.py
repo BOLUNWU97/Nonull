@@ -75,18 +75,55 @@ def _extract_memory_finding(content: Any, limit: int = 600) -> str:
     读到 task preamble (代码片段) 再读到发现, 容易误判 "只有截断代码"。
     本函数优先提取 result/action/summary 字段 (真正的发现), 跳过 preamble。
 
+    注意 result/action 本身可能是嵌套的 dict-as-string (例如
+    {'status': 'text_output', 'output': '<真正的发现文本>'}), 这种情况下
+    若直接返回会再次把发现埋在 'status'/'output' 键名后面。本函数会递归
+    向下钻取 (最多 3 层), 直到找到真正的文本字段 (output/content/text/
+    message) 或纯字符串。
+
     Memory content may be a dict-as-string; injecting it raw buries the
     findings behind task metadata, so the LLM fixates on the preamble.
-    This extracts result/action/summary first (the actual finding).
+    This extracts result/action/summary first (the actual finding). It then
+    recurses into nested dict-as-string values (e.g. {'output': '...'}) so
+    the finding text is not buried a second time behind inner key names.
     """
+    import ast
+
+    def _cleanest(text_val: str) -> str:
+        # 递归钻取:若值还是 dict-as-string,取其 output/content/text/message
+        # Recurse: if the value is itself a dict-as-string, drill into it.
+        for _ in range(3):
+            try:
+                inner = ast.literal_eval(text_val)
+            except Exception:
+                break
+            if not isinstance(inner, dict):
+                break
+            nxt = (
+                inner.get("output")
+                or inner.get("content")
+                or inner.get("text")
+                or inner.get("message")
+                or inner.get("result")
+                or inner.get("action")
+                or inner.get("summary")
+            )
+            if nxt is None or str(nxt) == text_val:
+                break
+            text_val = str(nxt)
+        return text_val
+
     text = str(content)
     try:
-        import ast
         parsed = ast.literal_eval(text)
         if isinstance(parsed, dict):
-            finding = parsed.get("result") or parsed.get("action") or parsed.get("summary")
+            finding = (
+                parsed.get("result")
+                or parsed.get("action")
+                or parsed.get("summary")
+            )
             if finding:
-                return str(finding)[:limit]
+                return _cleanest(str(finding))[:limit]
     except Exception:
         pass
     return text[:limit]
