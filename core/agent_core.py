@@ -583,13 +583,37 @@ class Nonull:
             }
 
         start = time.time()
+
+        # 记忆注入: 召回相关经验, 让 react 模式也有记忆连续性 (与 run() 的
+        # reason 阶段注入对等)。react 模式把记忆拼进 system_prompt。
+        mem_hint = ""
+        try:
+            mem_context = self._memory.get_context(query=task, k=2)
+            episodic = [_extract_memory_finding(e.content) for e in mem_context.get("episodic", [])]
+            if episodic:
+                mem_hint = "\n\nRelevant past experience (use if applicable):\n" + "\n".join(
+                    f"- {e[:200]}" for e in episodic[:2]
+                )
+        except Exception:
+            pass
+
         loop = AgentLoop(
             llm_client=self._llm_client,
             tools=tools or [],
+            system_prompt=self._build_system_prompt() + mem_hint,
             max_steps=max_steps,
             cost_tracker=self._cost_tracker,
         )
         result = await loop.run(task)
+
+        # 经验存储: 让 react 模式也学习 (与 run() 的 store_experience 对等),
+        # 后续 run()/run_react() 都能召回本次经验。
+        try:
+            self._memory.store_experience(
+                task, "react_loop", result.output, success=result.completed,
+            )
+        except Exception:
+            pass
 
         return {
             "status": "completed" if result.completed else "max_steps_reached",
