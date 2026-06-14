@@ -120,9 +120,43 @@ class AgentLoop:
             if name is None:
                 continue
             desc = getattr(t, "description", "") or (getattr(t, "__doc__", "") or "")[:100]
-            params = getattr(t, "parameters", None) or {"type": "object", "properties": {}}
+            params = getattr(t, "parameters", None)
+            if params is None and callable(t):
+                # plain-function 工具: 从签名推断 schema, 让 LLM 知道参数名
+                # (而非空 properties, 那样弱模型会瞎猜/漏参数)
+                params = self._infer_schema(t)
+            elif params is None:
+                params = {"type": "object", "properties": {}}
             defs.append(ToolDefinition(name=name, description=desc, parameters=params))
         return defs
+
+    @staticmethod
+    def _infer_schema(func: Callable) -> Dict[str, Any]:
+        """从函数签名推断 JSON Schema (简单版, 参数默认 string).
+
+        plain-function 工具无 .parameters 属性时用, 让 LLM 知道参数名
+        (而非空 schema)。生产级应据类型注解推断, 这里 demo 级默认 string。
+
+        Infers a JSON schema from the signature so the LLM knows parameter
+        names (instead of an empty properties object that makes weak models
+        guess/omit args). Production-grade would map type hints; demo-grade
+        defaults all params to string.
+        """
+        import inspect
+        properties: Dict[str, Any] = {}
+        required: List[str] = []
+        for pname, param in inspect.signature(func).parameters.items():
+            if param.kind == inspect.Parameter.VAR_KEYWORD:  # **kwargs
+                continue
+            if pname == "self":
+                continue
+            properties[pname] = {"type": "string"}
+            if param.default is inspect.Parameter.empty:
+                required.append(pname)
+        schema: Dict[str, Any] = {"type": "object", "properties": properties}
+        if required:
+            schema["required"] = required
+        return schema
 
     def _execute_tool(self, name: str, args: Dict[str, Any]) -> str:
         """执行一个工具, 返回结果字符串 / Execute a tool, return result string."""
@@ -209,6 +243,11 @@ class AgentLoop:
 
         tool_call_count = sum(1 for s in steps if s.action.startswith("tool:"))
         output = steps[-1].observation if steps else ""
+        # strip 模型推理块 (MiniMax-M3 / DeepSeek-R1 的 <think>...</think>),
+        # 否则 output 含推理链而非干净最终答案。
+        # Strip model reasoning blocks so output is the clean final answer.
+        import re
+        output = re.sub(r"<think>.*?(?:</think>|$)", "", output, flags=re.DOTALL).strip()
 
         return AgentLoopResult(
             output=output,
