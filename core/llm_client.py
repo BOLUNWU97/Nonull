@@ -329,6 +329,7 @@ class LLMClient:
         messages: List[LLMMessage],
         tools: Optional[List[ToolDefinition]] = None,
         model: Optional[str] = None,
+        json_mode: bool = False,
         **kwargs,
     ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {
@@ -339,6 +340,13 @@ class LLMClient:
             "top_p": self.config.top_p,
             **kwargs,
         }
+        # JSON 强约束模式 (OpenAI 兼容端点支持 response_format)。
+        # 强制模型输出合法 JSON, 根治 _parse_llm_json 解析报错。
+        # 不支持该参数的端点 (如旧版 Ollama) 调用时应不传 json_mode。
+        # Force valid JSON output via response_format — cures parse errors.
+        # Endpoints without this param must call without json_mode.
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
         if tools:
             payload["tools"] = [t.to_dict() for t in tools]
             payload["tool_choice"] = "auto"

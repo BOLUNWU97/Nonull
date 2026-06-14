@@ -55,14 +55,14 @@ class MockLLMClient:
 
     def chat(self, messages, tools=None, **kwargs) -> LLMResponse:
         user = messages[-1].content
-        if "Break this task into" in user:
+        if "Decompose into" in user:
             self.calls.append("plan")
             payload = self.plan_payload
-        elif "Decide the next action" in user:
+        elif "Choose the next action" in user:
             self.calls.append("reason")
             payload = self._next(self.reason_payloads, self._reason_idx)
             self._reason_idx += 1
-        elif "Evaluate your performance" in user:
+        elif "Evaluate honestly" in user:
             self.calls.append("reflect")
             payload = self._next(self.reflection_payloads, self._reflect_idx)
             self._reflect_idx += 1

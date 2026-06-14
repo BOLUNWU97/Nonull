@@ -26,13 +26,13 @@ class CostAwareMockLLM:
 
     def chat(self, messages, tools=None, **kwargs) -> LLMResponse:
         user = messages[-1].content
-        if "Break this task into" in user:
+        if "Decompose into" in user:
             payload = {"subtasks": [{"id": "s1", "description": "d",
                         "skill_or_tool": None, "dependencies": []}],
                        "strategy": "sequential", "estimated_steps": 1}
-        elif "Decide the next action" in user:
+        elif "Choose the next action" in user:
             payload = {"next_action": "complete", "reasoning": "r", "confidence": 0.9}
-        elif "Evaluate your performance" in user:
+        elif "Evaluate honestly" in user:
             payload = {"completed": True, "summary": "done", "issues": [],
                        "improvements": [], "score": 0.9}
         else:

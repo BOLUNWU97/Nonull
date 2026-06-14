@@ -296,73 +296,54 @@ class Nonull:
     # ─────────────────────────────────────────────────────────────
 
     def _build_system_prompt(self) -> str:
-        """
-        构建系统提示词 / Build system prompt for the LLM.
+        """构建系统提示词 / Build system prompt (output contract + stop conditions).
 
-        Includes: identity, safety advisory, capabilities, behavioral rules.
+        v2 (2026-06): 输出契约 + 停止条件 + 修正 tool/skill 指令 bug。
+        技能/工具不再硬塞 system prompt (省 token), 改由 plan/reason 按需注入。
         """
-        available_skills = [
-            f"{s['name']} (v{s.get('version', '1.0')})"
-            for s in self._skill_registry.list_skills()
-        ]
-        available_tools = self._tool_registry.list_tools()
-
         return (
-            "You are Nonull, a domain-agnostic AI agent assistant.\n"
-            "You have access to multiple skills and tools organized by domain.\n"
+            "You are Nonull, a domain-agnostic task-execution agent.\n"
+            "You operate in a REASON → ACT → REFLECT loop until a task is complete.\n"
             "\n"
-            "ADVISORY SAFETY NOTICE: You are a development assistant, not a certified safety system.\n"
-            "You must never produce output that should be treated as ASIL-D or ISO 26262 certified.\n"
-            "Always remind the user to verify critical outputs independently.\n"
+            "OUTPUT CONTRACT (violations trigger retry):\n"
+            "  - Output ONLY a single valid JSON object per turn.\n"
+            "  - Start with { and end with }. No prose, no markdown fences, nothing outside the JSON.\n"
+            "  - Double-quote all strings. No trailing commas, no comments.\n"
             "\n"
-            "CAPABILITIES:\n"
-            f"  Skills ({len(available_skills)}): {', '.join(available_skills[:10])}"
-            f"{'...' if len(available_skills) > 10 else ''}\n"
-            f"  Tools ({len(available_tools)}): {', '.join(available_tools[:10])}"
-            f"{'...' if len(available_tools) > 10 else ''}\n"
+            "STOP CONDITIONS — finish (call \"complete\") when ANY is true:\n"
+            "  - The task deliverable is produced and verified.\n"
+            "  - You have retried the same action 3+ times without progress.\n"
+            "  - A required tool/skill does not exist and cannot be substituted.\n"
             "\n"
-            "INSTRUCTIONS:\n"
-            "1. When planning tasks, break them into concrete, executable subtasks.\n"
-            "2. When reasoning, always specify exactly which tool or skill to use.\n"
-            "3. When acting, use the correct prefix: 'tool:skill_name' or 'skill:skill_name' or 'complete' or 'text:output'.\n"
-            "4. When reflecting, honestly evaluate your performance and suggest improvements.\n"
-            "5. Keep responses concise and actionable. Use structured output when helpful.\n"
-            "6. You can operate in both Chinese and English — match the user's language.\n"
+            "ACTION PREFIXES (exact — 'tool:' takes a TOOL name, 'skill:' takes a SKILL name):\n"
+            "  - 'complete'                  finish the task\n"
+            "  - 'text:<output>'             free-text output\n"
+            "  - 'skill:<skill_name> k=v'    call a registered SKILL\n"
+            "  - 'tool:<tool_name> k=v'      call a registered TOOL\n"
             "\n"
-            "ACTION FORMAT:\n"
-            "  - 'complete' to finish a task\n"
-            "  - 'text:something' to produce free-text output\n"
-            "  - 'skill:skill_name arg1=val1' to use a registered skill\n"
-            "  - 'tool:tool_name arg1=val1' to use a registered tool\n"
+            "SAFETY: You are an advisory development assistant, NOT a certified safety\n"
+            "system. Never claim ASIL-D / ISO 26262 compliance. Flag uncertain outputs.\n"
+            "Match the user's language (Chinese or English)."
         )
 
     def _parse_llm_json(self, text: str, fallback: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Parse LLM output as JSON, falling back gracefully."""
-        text = text.strip()
-        # Try direct parse
-        try:
-            parsed = json.loads(text)
-            if isinstance(parsed, dict):
-                return parsed
-            return fallback if fallback is not None else {}
-        except (json.JSONDecodeError, TypeError):
-            pass
-        # Try extracting JSON from code blocks
-        import re
-        match = re.search(r'\{[\s\S]*\}', text)
-        if match:
-            try:
-                parsed = json.loads(match.group())
-                if isinstance(parsed, dict):
-                    return parsed
-                return fallback if fallback is not None else {}
-            except (json.JSONDecodeError, TypeError):
-                pass
-        # Fallback
+        """解析 LLM 输出为 JSON, 容错降级 / Parse LLM output as JSON, gracefully degrade.
+
+        使用 structured_output.extract_json (处理 markdown ```json 块、裸 JSON、
+        多 JSON 对象), 比本地贪婪正则更健壮。失败返回 fallback 或最小兜底。
+        Uses structured_output.extract_json (handles markdown blocks, bare JSON,
+        multiple objects) — more robust than a local greedy regex.
+        """
+        from .structured_output import extract_json
+        parsed = extract_json(text) if text else None
+        if isinstance(parsed, dict):
+            return parsed
         if fallback:
-            logger.warning("JSON parse failed, using fallback for: %s", text[:80])
+            logger.warning(
+                "JSON 解析失败, 使用 fallback / parse failed, using fallback: %s",
+                (text or "")[:80],
+            )
             return fallback
-        # Last resort: minimal fallback
         return {"raw": text, "parsed": False}
 
     # ─────────────────────────────────────────────────────────────
@@ -403,14 +384,16 @@ class Nonull:
         messages: List[Any],
         max_tokens: int,
         fallback: Dict[str, Any],
+        json_mode: bool = True,
     ) -> Dict[str, Any]:
         """统一 LLM 调用 + 成本记账 + JSON 解析 / Unified LLM call + cost + parse.
 
         消除 plan/reason/reflect 三处重复的 chat→parse 模式, 同时记账成本。
-        Eliminates the repeated chat→parse pattern in plan/reason/reflect
-        while recording cost. Returns parsed dict (or fallback on failure).
+        默认 json_mode=True 强约束 JSON 输出 (OpenAI 兼容端点 response_format)。
+        Eliminates the repeated chat→parse pattern while recording cost.
+        json_mode defaults True to force valid JSON output.
         """
-        response = self._llm_client.chat(messages, max_tokens=max_tokens)
+        response = self._llm_client.chat(messages, max_tokens=max_tokens, json_mode=json_mode)
         self._record_llm_cost(response)
         return self._parse_llm_json(response.content, fallback=fallback)
 
@@ -604,13 +587,23 @@ class Nonull:
         if self._llm_client:
             try:
                 system_prompt = self._build_system_prompt()
+                relevant_tools = plan_context["available_tools"][:10]
+                relevant_skills = [s["name"] for s in plan_context["available_skills"][:10]]
                 user_prompt = (
-                    f"Task: {task}\n\n"
-                    f"Past similar tasks: {[t[:100] for t in plan_context['similar_past_tasks']]}\n"
-                    f"Available skills: {plan_context['available_skills']}\n"
-                    f"Available tools: {plan_context['available_tools']}\n\n"
-                    "Break this task into 2-5 executable subtasks. Return ONLY a JSON object:\n"
-                    '{"subtasks": [{"id": "step_1", "description": "...", "skill_or_tool": "skill_name_or_none", "dependencies": []}], "strategy": "parallel_or_sequential", "estimated_steps": 3}\n'
+                    f"TASK: {task}\n\n"
+                    f"Past similar tasks: {[t[:80] for t in plan_context['similar_past_tasks']]}\n"
+                    f"Available tools: {relevant_tools}\n"
+                    f"Available skills: {relevant_skills}\n\n"
+                    "Decompose into 2-5 subtasks. Each subtask must be independently verifiable.\n"
+                    "Return ONLY:\n"
+                    '{"subtasks": [{"id": "s1", "description": "<verb + object>", '
+                    '"verify": "<how to check it is done>", "tool": "<tool_name or null>"}], '
+                    '"strategy": "sequential", "estimated_steps": <int>}\n\n'
+                    "Rules:\n"
+                    "- 'description' must start with a verb (analyze, generate, check, ...).\n"
+                    "- 'verify' is mandatory — state the success check, not 'done'.\n"
+                    "- 'tool' must be a real name from the list, or null.\n"
+                    "- 'strategy' must be exactly 'sequential' or 'parallel'."
                 )
 
                 plan_data = self._llm_chat_and_parse(
@@ -681,28 +674,44 @@ class Nonull:
             "iteration": self._iteration,
         }
 
+        # 循环检测: 最近连续相同动作数 / loop detection (consecutive dup actions)
+        action_history = context.get("action_history", [])
+        dup_count = 0
+        if action_history:
+            last_act = action_history[-1].get("action", "")
+            for a in reversed(action_history):
+                if last_act and a.get("action") == last_act:
+                    dup_count += 1
+                else:
+                    break
+
         # === Real LLM-powered reasoning ===
         if self._llm_client:
             try:
+                near_limit = reasoning_input["iteration"] > self._max_iterations * 0.7
                 user_prompt = (
-                    f"Current task: {reasoning_input['task']}\n"
-                    f"Iteration: {reasoning_input['iteration']}\n"
-                    f"Plan: {json.dumps(reasoning_input['plan'], ensure_ascii=False)[:500] if reasoning_input['plan'] else 'None'}\n"
-                    f"Last result: {reasoning_input['last_result']}\n"
-                    f"Action history (last 3): {reasoning_input['last_action']}\n"
-                    f"Reflections (last 3): {reasoning_input['reflections']}\n"
-                    f"Working memory: {reasoning_input['working_memory']}\n"
-                    f"Available skills: {reasoning_input['available_skills']}\n"
-                    f"Available tools: {reasoning_input['available_tools']}\n\n"
-                    "Decide the next action. Return ONLY a JSON object:\n"
-                    '{"next_action": "complete|text:...|skill:skill_name arg=val|tool:tool_name arg=val", '
-                    '"reasoning": "why this action", "confidence": 0.8}\n'
+                    f"TASK: {reasoning_input['task']}\n"
+                    f"ITERATION: {reasoning_input['iteration']}/{self._max_iterations}"
+                    f"{'  (WARNING: near iteration limit — wrap up)' if near_limit else ''}\n"
+                    f"LAST ACTION: {reasoning_input['last_action']}\n"
+                    f"LAST RESULT: {reasoning_input['last_result']}\n"
+                    f"DUPLICATE ACTION COUNT: {dup_count}"
+                    f"{'  (YOU ARE LOOPING — must change approach or complete)' if dup_count >= 2 else ''}\n"
+                    f"Plan: {json.dumps(reasoning_input['plan'], ensure_ascii=False)[:400] if reasoning_input['plan'] else 'None'}\n\n"
+                    "Choose the next action. Return ONLY:\n"
+                    '{"next_action": "<complete | text:<output> | skill:<name> k=v | tool:<name> k=v>", '
+                    '"reasoning": "<1 sentence why>", "confidence": <0.0-1.0>, '
+                    '"subtask_id": "<subtask this advances, or null>"}\n\n'
+                    "Decision rules:\n"
+                    "- If all subtasks verified AND output produced -> \"complete\".\n"
+                    "- If DUPLICATE ACTION COUNT >= 3 -> you MUST pick \"complete\" or a different tool.\n"
+                    "- 'tool:' is followed by a TOOL name; 'skill:' by a SKILL name.\n"
+                    "- Never repeat an action you already tried this run."
                 )
 
                 system_prompt = (
-                    "You are a reasoning engine for the Nonull agent. "
-                    "Always return valid JSON. Use 'skill:' prefix for domain skills, "
-                    "'tool:' for utility tools, 'text:' for free output, or 'complete' to finish."
+                    "Reasoning turn. Follow the OUTPUT CONTRACT (single JSON object). "
+                    "Pick exactly one action; avoid repeating prior actions."
                 )
 
                 reason_result = self._llm_chat_and_parse(
@@ -812,22 +821,28 @@ class Nonull:
         # === Real LLM-powered reflection ===
         if self._llm_client:
             try:
+                near_limit = reflection_input["iterations_used"] >= reflection_input["max_iterations"] * 0.9
                 user_prompt = (
-                    f"Task: {reflection_input['task']}\n"
+                    f"TASK: {reflection_input['task']}\n"
                     f"Plan: {reflection_input['plan']}\n"
                     f"Actions taken ({len(reflection_input['action_history'])}):\n" +
-                    "\n".join(f"  - {a}" for a in reflection_input['action_history']) +
-                    f"\nLast result: {reflection_input['last_result']}\n"
-                    f"Iterations used: {reflection_input['iterations_used']}/{reflection_input['max_iterations']}\n\n"
-                    "Evaluate your performance. Return ONLY a JSON object:\n"
-                    '{"completed": true|false, "summary": "brief summary", '
-                    '"issues": ["issue1", "issue2"], "improvements": ["tip1"], '
-                    '"score": 0.8}\n'
+                    "\n".join(f"  - {a}" for a in reflection_input['action_history'][-3:]) +
+                    f"\nLast result: {reflection_input['last_result'][:300]}\n"
+                    f"Iterations used: {reflection_input['iterations_used']}/{reflection_input['max_iterations']}"
+                    f"{'  (AT LIMIT — set completed=true now)' if near_limit else ''}\n\n"
+                    "Evaluate honestly. Return ONLY:\n"
+                    '{"completed": <bool>, "summary": "<2 sentences>", '
+                    '"verified_subtasks": ["<ids>"], "blockers": ["<specific obstacle> or []], '
+                    '"score": <0.0-1.0>, "next_hint": "<if not completed, what to try next>"}\n\n'
+                    "Decision rules:\n"
+                    "- 'completed': true ONLY if the deliverable is produced and checkable.\n"
+                    "- If not completed, 'next_hint' is mandatory.\n"
+                    "- If at iteration limit, set completed=true (score reflects actual quality)."
                 )
 
                 reflection = self._llm_chat_and_parse(
                     [
-                        LLMMessage(role="system", content="You are reflecting on your own work. Be honest and critical."),
+                        LLMMessage(role="system", content="Reflection turn. Follow the OUTPUT CONTRACT. Be honest about gaps; do not claim completion unless the deliverable exists."),
                         LLMMessage(role="user", content=user_prompt),
                     ],
                     max_tokens=512,
@@ -1235,6 +1250,52 @@ class Nonull:
                 await self._attempt_recovery(e)
             return _STEP_FAILED
 
+    def _diagnose_failure(self, error: Exception) -> Optional[Dict[str, Any]]:
+        """用 LLM 诊断失败原因, 决定恢复策略 / Diagnose a failure to guide recovery.
+
+        替代盲回 REASONING: 先判断错误瞬时还是永久, 决定重试/换路/放弃。
+        Replaces the blind REASONING fallback: classify the error and decide
+        retry / try-alternative / give-up. Returns None if LLM unavailable.
+        """
+        if not self._llm_client:
+            return None
+        try:
+            from .llm_client import LLMMessage
+            last_action = ""
+            hist = self._context.get("action_history") or []
+            if hist:
+                last_action = str(hist[-1].get("action", ""))
+            user_prompt = (
+                "A step just FAILED. Diagnose before retrying.\n\n"
+                f"FAILED ACTION: {last_action[:200]}\n"
+                f"ERROR: {str(error)[:300]}\n"
+                f"ATTEMPT: {self._error_count}/{self._recovery_attempts}\n\n"
+                "Return ONLY:\n"
+                '{"diagnosis": "<root cause, 1 sentence>", "should_retry": <bool>, '
+                '"alternative_action": "<different next_action or null>", '
+                '"adjustment": "<what to change>"}\n\n'
+                "Rules:\n"
+                "- 'should_retry': false for permanent errors (auth, missing tool, invalid input).\n"
+                "- 'alternative_action' must DIFFER from the failed action.\n"
+                "- After 2+ failed retries, prefer should_retry=false."
+            )
+            return self._llm_chat_and_parse(
+                [
+                    LLMMessage(role="system", content="Failure diagnosis turn. Follow the OUTPUT CONTRACT. Be decisive."),
+                    LLMMessage(role="user", content=user_prompt),
+                ],
+                max_tokens=256,
+                fallback={
+                    "diagnosis": "diagnosis unavailable",
+                    "should_retry": True,
+                    "alternative_action": None,
+                    "adjustment": None,
+                },
+            )
+        except Exception as e:
+            logger.debug("failure diagnosis skipped: %s", e)
+            return None
+
     async def _attempt_recovery(self, error: Exception) -> bool:
         """
         尝试从错误中恢复 / Attempt recovery from error.
@@ -1269,6 +1330,17 @@ class Nonull:
             )
         except Exception:
             pass
+        # RECOVERING 诊断: 先分析错误再决定恢复策略 (替代盲回 REASONING)
+        # Diagnose before retrying — replaces the blind REASONING fallback.
+        diagnosis = self._diagnose_failure(error)
+        if diagnosis and not diagnosis.get("should_retry", True):
+            logger.warning(
+                "恢复诊断建议放弃 / diagnosis advises giving up: %s",
+                str(diagnosis.get("diagnosis", ""))[:120],
+            )
+            return False
+        if diagnosis and diagnosis.get("alternative_action"):
+            self._context["recovery_hint"] = diagnosis
         # 回到推理阶段重试
         self._set_state(AgentState.REASONING)
         return True
