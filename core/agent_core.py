@@ -708,6 +708,9 @@ class Nonull:
                     f"LAST RESULT: {reasoning_input['last_result']}\n"
                     f"DUPLICATE ACTION COUNT: {dup_count}"
                     f"{'  (YOU ARE LOOPING — must change approach or complete)' if dup_count >= 2 else ''}\n"
+                    f"Relevant past experience (episodic memory): {reasoning_input['episodic_memory'][:2]}\n"
+                    f"Relevant knowledge (semantic memory): {reasoning_input['semantic_knowledge'][:2]}\n"
+                    f"Recent reflections: {reasoning_input['reflections'][:2]}\n"
                     f"Plan: {json.dumps(reasoning_input['plan'], ensure_ascii=False)[:400] if reasoning_input['plan'] else 'None'}\n\n"
                     "Choose the next action. Return ONLY:\n"
                     '{"next_action": "<complete | text:<output> | skill:<name> k=v | tool:<name> k=v>", '
