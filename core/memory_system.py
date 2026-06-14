@@ -573,6 +573,33 @@ class MemorySystem:
                         metadata=r.metadata,
                     ))
 
+            # recency 兜底: 语义召回稀疏 (< k) 时补充最近的 episodic。
+            # n-gram embedding 对抽象 query (如 "上次发现了什么 bug") 召回弱,
+            # 此举保证最近的 learning 经验总能到 agent 眼前, 即使词面重叠低。
+            # Recency fallback: top up sparse semantic recall with the most recent
+            # episodes so the latest learning always reaches the agent's prompt.
+            if len(grouped["episodic"]) < k:
+                try:
+                    recent_eps = sorted(
+                        self.neocortex.episodic.episodes.values(),
+                        key=lambda e: getattr(e, "timestamp", 0),
+                        reverse=True,
+                    )
+                    seen = {id(e.content) for e in grouped["episodic"]}
+                    for ep in recent_eps:
+                        if len(grouped["episodic"]) >= k:
+                            break
+                        if id(ep.content) in seen:
+                            continue
+                        grouped["episodic"].append(SimpleNamespace(
+                            content=ep.content,
+                            score=0.0,
+                            tags=getattr(ep, "tags", []),
+                            metadata=getattr(ep, "metadata", {}),
+                        ))
+                        seen.add(id(ep.content))
+                except Exception:
+                    pass
             return grouped
         except Exception as e:
             logger.warning("上下文获取失败 / Context fetch failed: %s", e)
