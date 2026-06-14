@@ -553,6 +553,57 @@ class Nonull:
     # 主入口 / Main Entry Point
     # ─────────────────────────────────────────────────────────────
 
+    async def run_react(
+        self,
+        task: str,
+        tools: Optional[List[Any]] = None,
+        max_steps: int = 10,
+    ) -> Dict[str, Any]:
+        """ReAct agent loop 模式 / ReAct agentic-loop mode.
+
+        与 run() 的结构化五阶段互补: LLM 完全控制流的 while 循环 (工具为中心,
+        ReAct: Reason→Act→Observe)。复用同一 Nonull 实例的 LLM 与成本追踪,
+        返回与 run() 兼容的格式 (status/output/steps/iterations/duration/cost),
+        只是多了 mode="react" 和 loop_steps 字段。两种模式可对同一 agent 实例
+        互换使用 —— 同一套 LLM/成本/记忆, 不同循环哲学。
+
+        Complementary to run()'s structured 5-phase loop: a pure ReAct while
+        loop where the LLM owns control flow. Shares this Nonull's LLM + cost
+        tracker; returns a run()-compatible dict so the two modes are
+        interchangeable on the same agent instance.
+        """
+        from .agent_loop import AgentLoop
+
+        if self._llm_client is None:
+            return {
+                "status": "error", "output": None, "error": "no LLM client",
+                "iterations": 0, "duration": 0.0, "mode": "react",
+                "steps": 0, "tool_calls": 0,
+                "cost": self._cost_tracker.summary(),
+            }
+
+        start = time.time()
+        loop = AgentLoop(
+            llm_client=self._llm_client,
+            tools=tools or [],
+            max_steps=max_steps,
+            cost_tracker=self._cost_tracker,
+        )
+        result = await loop.run(task)
+
+        return {
+            "status": "completed" if result.completed else "max_steps_reached",
+            "output": result.output,
+            "steps": result.total_steps,
+            "tool_calls": result.tool_calls,
+            "iterations": result.total_steps,
+            "duration": time.time() - start,
+            "error": result.error,
+            "mode": "react",
+            "loop_steps": [s.to_dict() for s in result.steps],
+            "cost": self._cost_tracker.summary(),
+        }
+
     async def run(
         self,
         task_input: str,

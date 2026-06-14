@@ -103,11 +103,14 @@ class AgentLoop:
         tools: Optional[List[Union[Callable, Any]]] = None,
         system_prompt: str = "",
         max_steps: int = 10,
+        cost_tracker: Any = None,
     ):
         self.llm = llm_client
         self.tools = tools or []
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
         self.max_steps = max_steps
+        # 可选成本追踪器: 与 Nonull 共享时注入, 让两种循环模式成本统一记账。
+        self.cost_tracker = cost_tracker
 
     # ── 工具定义 (转 OpenAI tool schema) ──────────────────────────
 
@@ -203,6 +206,16 @@ class AgentLoop:
                     tools=tool_defs or None,
                     **llm_kwargs,
                 )
+                # 成本追踪: 与 Nonull 共享 cost_tracker 时, 两种循环模式统一记账
+                if self.cost_tracker is not None:
+                    try:
+                        self.cost_tracker.record(
+                            getattr(response, "model", None) or "unknown",
+                            getattr(response, "prompt_tokens", 0),
+                            getattr(response, "completion_tokens", 0),
+                        )
+                    except Exception:
+                        pass
                 thought = response.content or ""
 
                 # 2) 无 tool_call → 最终答案 → 自然终止

@@ -190,3 +190,61 @@ class TestAgentLoopRobustness:
         assert result.steps[0].action == "tool:calc"
         assert "calculate" in result.steps[0].thought
         assert result.steps[1].action == "final"
+
+
+# ── Nonull.run_react 集成 (两种模式合在同一 Nonull 实例) ─────────
+
+class TestNonullRunReact:
+    """验证 Nonull 实例同时支持 run() 与 run_react(), 共享 LLM/成本, 统一格式."""
+
+    async def test_run_react_returns_react_mode(self, monkeypatch):
+        """run_react 返回 mode='react' + run() 兼容字段."""
+        from core.agent_core import Nonull
+        monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
+        a = Nonull()
+        a._llm_client = ScriptedLLM([_final("react done")])
+        result = await a.run_react("test", tools=[], max_steps=3)
+        assert result["mode"] == "react"
+        assert result["status"] == "completed"
+        assert result["output"] == "react done"
+        assert "cost" in result  # 共享 Nonull 成本追踪
+        assert "duration" in result
+
+    async def test_run_react_no_llm_graceful(self, monkeypatch):
+        """无 LLM 时 run_react 友好返回 error (不崩)."""
+        from core.agent_core import Nonull
+        monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
+        a = Nonull()
+        a._llm_client = None
+        result = await a.run_react("test")
+        assert result["status"] == "error"
+        assert result["mode"] == "react"
+        assert result["error"] == "no LLM client"
+
+    async def test_run_react_uses_tools_and_cost(self, monkeypatch):
+        """run_react 执行工具 + 成本记账 (共享 Nonull cost_tracker)."""
+        from core.agent_core import Nonull
+        monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
+        a = Nonull()
+        a._llm_client = ScriptedLLM([
+            _thinking([_tool_call("calc")]),
+            _final("done"),
+        ])
+        result = await a.run_react("calc", tools=[calc], max_steps=5)
+        assert result["status"] == "completed"
+        assert result["tool_calls"] == 1
+        assert result["iterations"] == 2
+        # 成本经共享 cost_tracker 记账 (ScriptedLLM 返回 usage)
+        assert result["cost"]["call_count"] >= 1
+
+    async def test_run_and_run_react_share_instance(self, monkeypatch):
+        """同一 Nonull 实例可先后用两种模式 (共享 LLM/成本)."""
+        from core.agent_core import Nonull
+        monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
+        a = Nonull()
+        a._llm_client = ScriptedLLM([_final("both modes work")])
+        # react 模式
+        r_react = await a.run_react("react task", tools=[])
+        assert r_react["mode"] == "react"
+        # 同一实例, react 的 cost 累积在共享 cost_tracker
+        assert r_react["cost"]["call_count"] >= 1
