@@ -150,7 +150,7 @@ class TestFullLoopOffline:
         history = agent._context["action_history"]
         assert len(history) == 1
         assert history[0]["action"] == "text:say hello"
-        assert history[0]["result"]["status"] == "executed"
+        assert history[0]["result"]["status"] in ("executed", "text_output")
 
     def test_steps_counted(self, monkeypatch):
         agent = make_agent(monkeypatch)

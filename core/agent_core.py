@@ -199,20 +199,31 @@ class Nonull:
         # ── LLM Client (optional, for real agent mode) ──
         # 本地导入 LLM client（不在顶层导入以避免不必要的依赖）
         from .llm_client import LLMClient, LLMConfig, LLMMessage
-        api_key = (
-            self._config.get("llm.api_key", "")
-            or os.environ.get("NONULL_LLM_API_KEY", "")
-        )
-        if api_key:
-            self._llm_client: Optional[LLMClient] = LLMClient(
-                LLMConfig(
-                    api_key=api_key,
-                    base_url=self._config.get("llm.base_url", ""),
-                    model=self._config.get("llm.model", "gpt-4o"),
-                    max_tokens=int(self._config.get("llm.max_tokens", "4096")),
-                    temperature=float(self._config.get("agent.temperature", "0.2")),
-                )
-            )
+        # 用 LLMConfig.from_env() 加载 .env + NONULL_LLM_* 环境变量。
+        # 它正确处理 NONULL_LLM_API_BASE 等 (NonullConfig 不自动加载 .env,
+        # 且用不同的 env 变量名后缀, 导致 Nonull() 拿不到 key)。
+        # NonullConfig 的显式设置可覆盖。
+        # Load via LLMConfig.from_env() (auto-loads .env + NONULL_LLM_* vars);
+        # NonullConfig does not auto-load .env. Explicit config overrides.
+        llm_cfg = LLMConfig.from_env()
+        if self._config.get("llm.api_key", ""):
+            llm_cfg.api_key = self._config.get("llm.api_key")
+        if self._config.get("llm.base_url", ""):
+            llm_cfg.base_url = self._config.get("llm.base_url")
+        # 仅当 NonullConfig 显式配置了非默认模型时才覆盖 from_env() 的结果。
+        # NonullConfig 不区分 "显式设置" 与 "schema 默认值" (llm.model 默认 'gpt-4o'),
+        # 若无条件覆盖会把 from_env() 从 .env 加载的正确模型 (如 MiniMax-M3)
+        # 回写为过时默认 'gpt-4o'。
+        # Only override the model when NonullConfig was explicitly given a
+        # non-default model; NonullConfig does not distinguish explicit values
+        # from schema defaults (llm.model defaults to 'gpt-4o'), so a blind
+        # override would clobber the correct model loaded from .env by from_env().
+        _DEFAULT_LLM_MODEL = "gpt-4o"
+        _cfg_model = self._config.get("llm.model", "")
+        if _cfg_model and _cfg_model != _DEFAULT_LLM_MODEL:
+            llm_cfg.model = _cfg_model
+        if llm_cfg.api_key:
+            self._llm_client: Optional[LLMClient] = LLMClient(llm_cfg)
         else:
             self._llm_client = None
         # ── Enhancements (optional, for consciousness/evolution integration) ──
@@ -719,7 +730,7 @@ class Nonull:
                         LLMMessage(role="system", content=system_prompt),
                         LLMMessage(role="user", content=user_prompt),
                     ],
-                    max_tokens=512,
+                    max_tokens=1024,
                     fallback={
                         "next_action": "text:Proceeding with analysis step.",
                         "reasoning": "Fallback reasoning",
@@ -845,7 +856,7 @@ class Nonull:
                         LLMMessage(role="system", content="Reflection turn. Follow the OUTPUT CONTRACT. Be honest about gaps; do not claim completion unless the deliverable exists."),
                         LLMMessage(role="user", content=user_prompt),
                     ],
-                    max_tokens=512,
+                    max_tokens=1024,
                     fallback={
                         "completed": len(action_history) >= 3,
                         "summary": f"Executed {len(action_history)} actions.",
@@ -1401,6 +1412,18 @@ class Nonull:
                         k, v = arg_part.split("=", 1)
                         tool_args[k] = v
             return await self._tool_registry.execute(tool_name, **tool_args)
+
+        elif action.startswith("text:"):
+            # 文本输出: text:<自由文本> — 这是智能体产出最终交付物的主要途径。
+            # 之前 text: 动作落入通用 else 分支, 文本从未写入 context["output"],
+            # 导致 run() 返回的 output 永远为空。
+            # text:<free text> — the primary way the agent emits a deliverable.
+            # Previously text: actions fell through to the generic else and the
+            # text was never written to context["output"], so run() always
+            # returned output=None.
+            output_text = action[len("text:"):].strip()
+            self._context["output"] = output_text
+            return {"status": "text_output", "output": output_text}
 
         elif action.startswith("skill:"):
             # 技能调用: skill:skill_name key=val ...

@@ -150,6 +150,19 @@ def extract_json(text: str) -> Optional[Dict[str, Any]]:
     """
     if not text:
         return None
+    import re
+    # strip 模型推理块 (MiniMax-M3 / DeepSeek-R1 等在 JSON 前缀 <think>...</think>)
+    # Strip model reasoning blocks prefixed before the JSON payload.
+    text = re.sub(r'<think>.*?</think>\s*', '', text, flags=re.DOTALL)
+    # 防御: 若 <think> 从未被关闭 (推理超过 max_tokens 被截断), 则剥掉开头的
+    # <think> 及其之后所有内容直到第一个 '{' 或 '[' (保留可能存在的部分 JSON)。
+    # Defense: if <think> was never closed (reasoning truncated by max_tokens),
+    # drop the opening <think> and everything up to the first '{' / '[' so any
+    # partial JSON that followed can still be recovered.
+    if '<think>' in text:
+        m = re.search(r'[\[{]', text)
+        if m:
+            text = text[m.start():]
     # Try direct parse first
     try:
         return json.loads(text.strip())
@@ -157,7 +170,6 @@ def extract_json(text: str) -> Optional[Dict[str, Any]]:
         pass
 
     # Try extracting from markdown code block
-    import re
     patterns = [
         r'```json\s*\n(.*?)\n\s*```',
         r'```\s*\n(.*?)\n\s*```',
