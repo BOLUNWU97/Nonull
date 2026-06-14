@@ -1045,6 +1045,19 @@ class Nonull:
         )
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
+        # 记忆持久化: 优先用 Neocortex 完整序列化 (working/episodic/semantic/procedural)
+        # 注意: 必须用 neocortex.to_dict() (完整四层), 而非 self._memory.to_dict()
+        # (后者只返回 stats)。之前用错了, 导致记忆从未真正持久化。
+        # Memory: use full Neocortex serialization (4 layers), NOT
+        # MemorySystem.to_dict() (which only returns stats).
+        memory_data = None
+        neocortex = getattr(self._memory, "neocortex", None)
+        if neocortex is not None and hasattr(neocortex, "to_dict"):
+            try:
+                memory_data = neocortex.to_dict()
+            except Exception as e:
+                logger.warning("Neocortex 序列化失败, 跳过记忆持久化 / serialize failed: %s", e)
+
         state_data = {
             "version": "0.1.0",
             "session_id": self._session_id,
@@ -1057,7 +1070,7 @@ class Nonull:
             "started_at": self._started_at,
             "context": self._sanitize_for_serialization(self._context),
             "steps": self._sanitize_for_serialization(self._steps),
-            "memory": self._memory.to_dict(),
+            "memory": memory_data,
             "saved_at": time.time(),
         }
 
@@ -1096,22 +1109,32 @@ class Nonull:
             self._context = state_data.get("context", self._context)
             self._steps = state_data.get("steps", [])
 
-            # 恢复记忆
-            memory_data = state_data.get("memory", {})
-            for entry_data in memory_data.get("working", []):
-                self._memory.store(
-                    entry_data["content"],
-                    memory_type="working",
-                    metadata=entry_data.get("metadata"),
-                    importance=entry_data.get("importance", 0.5),
-                )
-            for entry_data in memory_data.get("episodic", []):
-                self._memory.store(
-                    entry_data["content"],
-                    memory_type="episodic",
-                    metadata=entry_data.get("metadata"),
-                    importance=entry_data.get("importance", 0.5),
-                )
+            # 恢复记忆: 优先用 Neocortex 完整重建 (含索引), 兼容旧格式逐条 store
+            # Restore memory: prefer full Neocortex rebuild (with index);
+            # fall back to legacy per-entry store for old save formats.
+            memory_data = state_data.get("memory")
+            if isinstance(memory_data, dict) and "working" in memory_data and "episodic" in memory_data:
+                try:
+                    from memory import Neocortex
+                    restored = Neocortex.from_dict(memory_data)
+                    if hasattr(self._memory, "neocortex"):
+                        self._memory.neocortex = restored
+                        logger.info("Neocortex 记忆已恢复 (完整重建) / memory restored (full rebuild)")
+                except Exception as e:
+                    logger.warning("Neocortex 恢复失败, 记忆可能不完整 / restore failed: %s", e)
+            elif isinstance(memory_data, dict):
+                # 旧格式兼容: 逐条 store / legacy format: per-entry store
+                for layer in ("working", "episodic"):
+                    for entry_data in memory_data.get(layer, []):
+                        try:
+                            self._memory.store(
+                                entry_data["content"],
+                                memory_type=layer,
+                                metadata=entry_data.get("metadata"),
+                                importance=entry_data.get("importance", 0.5),
+                            )
+                        except Exception:
+                            pass
 
             logger.info("状态已加载: %s (session=%s)", path, self._session_id)
             return True
