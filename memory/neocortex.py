@@ -572,8 +572,19 @@ class Neocortex:
                 strength=ep.strength,
             )
             if score.combined >= query.min_score:
+                # 用完整 content 而非 summary: summary 默认截断到 120 字符,
+                # 对 store_experience 存的 {'task','action','result'} dict 来说,
+                # 这 120 字符往往只覆盖 task preamble, 把真正的发现 (result) 切掉。
+                # 下游 _extract_memory_finding 会从 content 抽取 result 字段并限长,
+                # 所以这里传全文是安全的, 也保证 agent 能看到真正的结论。
+                # Use full content, not summary: summary defaults to the first 120
+                # chars, which for store_experience's {'task','action','result'}
+                # dict covers only the task preamble and truncates the actual
+                # finding (result). _extract_memory_finding downstream extracts
+                # the result field and caps its length, so passing full content
+                # here is safe and lets the agent see the real conclusion.
                 results.append(MemoryResult(
-                    content=f"[{ep.episode_type.value}] {ep.summary}",
+                    content=f"[{ep.episode_type.value}] {ep.content}",
                     source=MemorySource.EPISODIC,
                     source_name=self.episodic.name,
                     source_id=ep.episode_id,

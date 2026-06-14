@@ -114,8 +114,18 @@ def _extract_memory_finding(content: Any, limit: int = 600) -> str:
         return text_val
 
     text = str(content)
+    # 剥离 neocortex._query_* 加的 '[type] ' / '[source] ' 前缀, 否则
+    # ast.literal_eval 会因前缀失效, 退回到整段 dict-repr 截断, 把发现
+    # 埋在 task preamble 后面。前缀形如 "[learning] {...}" / "[other] {...}"。
+    # Strip the '[type] ' prefix added by neocortex._query_*: otherwise
+    # ast.literal_eval fails on the prefix, falls back to truncating the whole
+    # dict-repr, and buries the finding behind the task preamble.
+    import re
+    prefix_match = re.match(r"^\[[^\]]+\]\s*", text)
+    prefix = prefix_match.group(0) if prefix_match else ""
+    body = text[len(prefix):] if prefix else text
     try:
-        parsed = ast.literal_eval(text)
+        parsed = ast.literal_eval(body)
         if isinstance(parsed, dict):
             finding = (
                 parsed.get("result")
@@ -127,6 +137,74 @@ def _extract_memory_finding(content: Any, limit: int = 600) -> str:
     except Exception:
         pass
     return text[:limit]
+
+
+def _best_memory_findings(findings: list, n: int = 2) -> list:
+    """选择最具信息量的记忆条目注入推理上下文 / Pick the most informative findings.
+
+    recall() 按词面相关度排序, 容易把 'task_start' 之类的元数据 preamble
+    (短字符串、只有任务描述) 排在前面, 把真正含发现的 'learning' 条目挤到
+    [:n] 窗口之外。本函数:
+
+      1. 去重 (query 召回 + recency 兜底常会返回同一条 episode 的两份拷贝)。
+      2. 把"发现丰富"的条目 (长度 > 阈值, 即含真实结论而非纯 preamble)
+         排在前面——LLM 有首位锚定倾向, 若第一眼读到 task_start 元数据,
+         容易误判整段记忆"只有任务描述"。把真正的 review 放第一位可避免。
+      3. 总数 <= n, 尊重 token 预算。
+
+    Recall ranks by lexical overlap, so short 'task_start' metadata preambles
+    often outrank the actual 'learning' episode that carries the findings,
+    pushing the real content past the [:n] window. This function:
+
+      1. Dedupes (query recall + recency fallback often return two copies of
+         the same episode).
+      2. Puts finding-rich entries (length above threshold = real conclusion,
+         not just preamble) FIRST — the LLM anchors on the first item it sees,
+         so if it reads a task_start metadata wrapper first it may misjudge the
+         whole memory as "only task descriptions". Leading with the real review
+         avoids that.
+      3. Caps the total at n to respect the token budget.
+    """
+    if not findings:
+        return []
+    # 阈值: 200 字符以上视为"有发现" / threshold: > 200 chars = real finding
+    RICH = 200
+
+    def _is_metadata_preamble(s: str) -> bool:
+        # task_start / task 元数据包装: 以 '[other]' 开头, 或是 dict-repr 且
+        # 第一个键是 'event' (如 {'event': 'task_start', ...})。这些条目即便
+        # 长度 > RICH 也只是任务描述 preamble, 不是真正的发现, 应降权排在后面。
+        # task_start / task metadata wrapper: starts with '[other]', or is a
+        # dict-repr whose first key is 'event' (e.g. {'event': 'task_start', ...}).
+        # Such entries exceed RICH length yet are only task-description preamble,
+        # not real findings — demote them.
+        t = s.lstrip()
+        if t.startswith("[other]"):
+            return True
+        if t.startswith("{'event':") or t.startswith('{"event":'):
+            return True
+        return False
+
+    # 去重: 按 前 80 字符 去重 (同一条 episode 经不同路径召回时前缀一致)
+    # Dedupe by first-80-char prefix (same episode via different recall paths
+    # shares its prefix).
+    seen_prefix = set()
+    unique = []
+    for f in findings:
+        key = str(f)[:80]
+        if key in seen_prefix:
+            continue
+        seen_prefix.add(key)
+        unique.append(f)
+    # 排序: (1) 发现丰富且非 preamble 的最优先; (2) 发现丰富但属 preamble;
+    # (3) 短条目。LLM 首位锚定 → 真正的 review 必须排第一。
+    # Order: (1) rich AND not preamble first; (2) rich but preamble;
+    # (3) short entries. LLM first-item anchoring => the real review must lead.
+    rich_real = [f for f in unique if len(str(f)) > RICH and not _is_metadata_preamble(str(f))]
+    rich_meta = [f for f in unique if len(str(f)) > RICH and _is_metadata_preamble(str(f))]
+    poor = [f for f in unique if len(str(f)) <= RICH]
+    ordered = rich_real + poor + rich_meta
+    return ordered[:n]
 
 
 # ===================================================================
@@ -771,8 +849,15 @@ class Nonull:
                     f"LAST RESULT: {reasoning_input['last_result']}\n"
                     f"DUPLICATE ACTION COUNT: {dup_count}"
                     f"{'  (YOU ARE LOOPING — must change approach or complete)' if dup_count >= 2 else ''}\n"
-                    f"Relevant past experience (episodic memory): {reasoning_input['episodic_memory'][:2]}\n"
-                    f"Relevant knowledge (semantic memory): {reasoning_input['semantic_knowledge'][:2]}\n"
+                    f"Relevant past experience (episodic memory):\n"
+                    + "".join(
+                        f"  [{i}] {f}\n"
+                        for i, f in enumerate(
+                            _best_memory_findings(reasoning_input['episodic_memory'], 2),
+                            start=1,
+                        )
+                    )
+                    + f"Relevant knowledge (semantic memory): {reasoning_input['semantic_knowledge'][:2]}\n"
                     f"Recent reflections: {reasoning_input['reflections'][:2]}\n"
                     f"Plan: {json.dumps(reasoning_input['plan'], ensure_ascii=False)[:400] if reasoning_input['plan'] else 'None'}\n\n"
                     "Choose the next action. Return ONLY:\n"
