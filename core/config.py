@@ -303,6 +303,13 @@ _CONFIG_SCHEMA: Dict[str, Dict[str, Any]] = {
 _SENSITIVE_KEYS: Set[str] = {
     key for key, meta in _CONFIG_SCHEMA.items()
     if meta.get("sensitive")
+} | {
+    # 通用敏感词兜底: env var 形式 (如 llm_api_key) 用下划线, 与 schema 的
+    # 点号键名 (如 llm.api_key) 不匹配, 导致 _mask_sensitive 漏判、key 明文进日志。
+    # Generic sensitive substrings: env-var forms (e.g. llm_api_key) use
+    # underscores and don't match schema's dotted keys, so without these the
+    # key would leak into logs in cleartext.
+    "api_key", "secret", "password", "token", "credential", "private_key",
 }
 
 
