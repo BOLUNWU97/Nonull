@@ -578,11 +578,16 @@ class Nonull:
             return {
                 "status": "error", "output": None, "error": "no LLM client",
                 "iterations": 0, "duration": 0.0, "mode": "react",
-                "steps": 0, "tool_calls": 0,
+                "steps": 0, "tool_calls": 0, "plan": None, "truncated": False,
                 "cost": self._cost_tracker.summary(),
             }
 
         start = time.time()
+        # 状态/任务一致性: 与 run() 一样更新 _current_task / _state,
+        # 让 get_status() / agent.state 在 react 模式也反映活动。
+        self._current_task = task
+        self._started_at = start
+        self._set_state(AgentState.REASONING)
 
         # 记忆注入: 召回相关经验, 让 react 模式也有记忆连续性 (与 run() 的
         # reason 阶段注入对等)。react 模式把记忆拼进 system_prompt。
@@ -615,15 +620,27 @@ class Nonull:
         except Exception:
             pass
 
+        # 状态更新: react 完成/截断/错误 (与 run() 的状态机对齐)
+        if result.error:
+            self._set_state(AgentState.ERROR)
+        else:
+            self._set_state(AgentState.COMPLETED)
+        self._iteration = result.total_steps
+
+        # 返回格式与 run() 完全兼容 (统一字段集 + 词表):
+        # status 用 completed/error (run() 的 AgentState 词表), truncated 标注
+        # 是否因 max_steps 截断, plan=None (react 不规划)。调用方可互换两种模式。
         return {
-            "status": "completed" if result.completed else "max_steps_reached",
+            "status": "error" if result.error else "completed",
             "output": result.output,
+            "plan": None,
             "steps": result.total_steps,
             "tool_calls": result.tool_calls,
             "iterations": result.total_steps,
             "duration": time.time() - start,
             "error": result.error,
             "mode": "react",
+            "truncated": not result.completed,
             "loop_steps": [s.to_dict() for s in result.steps],
             "cost": self._cost_tracker.summary(),
         }
@@ -780,6 +797,11 @@ class Nonull:
             "iterations": self._iteration,
             "duration": duration,
             "error": self._context.get("error"),
+            # 兼容字段: 与 run_react() 统一, 让调用方可互换两种模式
+            "mode": "structured",
+            "cost": self._cost_tracker.summary(),
+            "truncated": self._iteration >= self._max_iterations and self._state != AgentState.ERROR,
+            "tool_calls": sum(1 for s in self._steps if "tool:" in str(s.get("action", ""))),
         }
 
     # ─────────────────────────────────────────────────────────────

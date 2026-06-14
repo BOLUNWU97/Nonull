@@ -248,3 +248,30 @@ class TestNonullRunReact:
         assert r_react["mode"] == "react"
         # 同一实例, react 的 cost 累积在共享 cost_tracker
         assert r_react["cost"]["call_count"] >= 1
+
+    async def test_run_react_has_unified_fields(self, monkeypatch):
+        """run_react 返回字段集与 run() 统一 (含 plan/mode/cost/truncated)."""
+        from core.agent_core import Nonull
+        monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
+        a = Nonull()
+        a._llm_client = ScriptedLLM([_final("done")])
+        result = await a.run_react("test", tools=[])
+        # 两种模式共享的统一字段集
+        unified = {"status", "output", "plan", "steps", "iterations",
+                   "duration", "error", "mode", "cost", "truncated"}
+        assert unified.issubset(result.keys()), \
+            f"missing unified fields: {unified - result.keys()}"
+        assert result["plan"] is None  # react 不规划
+        assert result["mode"] == "react"
+        assert result["truncated"] is False  # 自然完成
+
+    async def test_run_react_updates_agent_state(self, monkeypatch):
+        """run_react 更新 self._state (与 run() 一致, get_status 反映 react)."""
+        from core.agent_core import Nonull
+        from core.agent_core import AgentState
+        monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
+        a = Nonull()
+        a._llm_client = ScriptedLLM([_final("done")])
+        assert a.state == AgentState.IDLE  # 初始
+        await a.run_react("test", tools=[])
+        assert a.state == AgentState.COMPLETED  # react 完成后状态更新
