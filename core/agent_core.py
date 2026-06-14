@@ -37,6 +37,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 # 本地导入
 from .config import NonullConfig
+from .cost_tracker import CostTracker, BudgetExceeded
 
 logger = logging.getLogger("Nonull.agent")
 
@@ -191,6 +192,9 @@ class Nonull:
 
         # ── 钩子 / Hooks ──
         self._hooks: HookRegistry = HookRegistry()
+
+        # ── 成本追踪 / Cost tracking ──
+        self._cost_tracker: CostTracker = CostTracker()
 
         # ── LLM Client (optional, for real agent mode) ──
         # 本地导入 LLM client（不在顶层导入以避免不必要的依赖）
@@ -360,6 +364,55 @@ class Nonull:
             return fallback
         # Last resort: minimal fallback
         return {"raw": text, "parsed": False}
+
+    # ─────────────────────────────────────────────────────────────
+    # LLM 调用辅助 / LLM call helpers (unified chat + cost + parse)
+    # ─────────────────────────────────────────────────────────────
+
+    @property
+    def cost_tracker(self) -> CostTracker:
+        """成本追踪器（只读）/ The cost tracker (read-only)."""
+        return self._cost_tracker
+
+    def _record_llm_cost(self, response: Any) -> None:
+        """记录一次 LLM 调用成本 (best-effort) / Record an LLM call's cost.
+
+        记账失败绝不影响 agent 主流程; 预算超限只告警不中断。
+        Cost tracking never breaks the main loop; budget breach only warns.
+        """
+        try:
+            usage = getattr(response, "usage", None)
+            if not usage:
+                return
+            # response.model 是权威来源 (LLMClient 的 config 存于私有 _config)
+            # response.model is authoritative; LLMClient holds config privately
+            model = getattr(response, "model", None) or "unknown"
+            self._cost_tracker.record(
+                model,
+                getattr(response, "prompt_tokens", 0),
+                getattr(response, "completion_tokens", 0),
+            )
+        except BudgetExceeded:
+            logger.warning("LLM 成本预算超限 / cost budget exceeded")
+        except Exception:
+            # 记账失败绝不上抛 / never let cost tracking break the loop
+            logger.debug("cost tracking skipped", exc_info=True)
+
+    def _llm_chat_and_parse(
+        self,
+        messages: List[Any],
+        max_tokens: int,
+        fallback: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """统一 LLM 调用 + 成本记账 + JSON 解析 / Unified LLM call + cost + parse.
+
+        消除 plan/reason/reflect 三处重复的 chat→parse 模式, 同时记账成本。
+        Eliminates the repeated chat→parse pattern in plan/reason/reflect
+        while recording cost. Returns parsed dict (or fallback on failure).
+        """
+        response = self._llm_client.chat(messages, max_tokens=max_tokens)
+        self._record_llm_cost(response)
+        return self._parse_llm_json(response.content, fallback=fallback)
 
     # ─────────────────────────────────────────────────────────────
     # 主入口 / Main Entry Point
@@ -560,13 +613,12 @@ class Nonull:
                     '{"subtasks": [{"id": "step_1", "description": "...", "skill_or_tool": "skill_name_or_none", "dependencies": []}], "strategy": "parallel_or_sequential", "estimated_steps": 3}\n'
                 )
 
-                response = self._llm_client.chat([
-                    LLMMessage(role="system", content=system_prompt),
-                    LLMMessage(role="user", content=user_prompt),
-                ], max_tokens=2048)
-
-                plan_data = self._parse_llm_json(
-                    response.content,
+                plan_data = self._llm_chat_and_parse(
+                    [
+                        LLMMessage(role="system", content=system_prompt),
+                        LLMMessage(role="user", content=user_prompt),
+                    ],
+                    max_tokens=2048,
                     fallback={"subtasks": [], "strategy": "sequential", "estimated_steps": 1},
                 )
 
@@ -653,13 +705,12 @@ class Nonull:
                     "'tool:' for utility tools, 'text:' for free output, or 'complete' to finish."
                 )
 
-                response = self._llm_client.chat([
-                    LLMMessage(role="system", content=system_prompt),
-                    LLMMessage(role="user", content=user_prompt),
-                ], max_tokens=512)
-
-                reason_result = self._parse_llm_json(
-                    response.content,
+                reason_result = self._llm_chat_and_parse(
+                    [
+                        LLMMessage(role="system", content=system_prompt),
+                        LLMMessage(role="user", content=user_prompt),
+                    ],
+                    max_tokens=512,
                     fallback={
                         "next_action": "text:Proceeding with analysis step.",
                         "reasoning": "Fallback reasoning",
@@ -774,13 +825,12 @@ class Nonull:
                     '"score": 0.8}\n'
                 )
 
-                response = self._llm_client.chat([
-                    LLMMessage(role="system", content="You are reflecting on your own work. Be honest and critical."),
-                    LLMMessage(role="user", content=user_prompt),
-                ], max_tokens=512)
-
-                reflection = self._parse_llm_json(
-                    response.content,
+                reflection = self._llm_chat_and_parse(
+                    [
+                        LLMMessage(role="system", content="You are reflecting on your own work. Be honest and critical."),
+                        LLMMessage(role="user", content=user_prompt),
+                    ],
+                    max_tokens=512,
                     fallback={
                         "completed": len(action_history) >= 3,
                         "summary": f"Executed {len(action_history)} actions.",
@@ -926,6 +976,7 @@ class Nonull:
             ),
             "safety_violations": self._safety.violation_count,
             "backend_memory": getattr(self._memory, "backend_name", "unknown"),
+            "cost": self._cost_tracker.summary(),
         }
 
     def _set_state(self, new_state: AgentState) -> None:
