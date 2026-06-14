@@ -125,8 +125,8 @@ _CONFIG_SCHEMA: Dict[str, Dict[str, Any]] = {
     },
     "memory.backend": {
         "type": str,
-        "default": "local",
-        "description": "记忆后端 (local / redis / postgres / chroma)",
+        "default": "in_memory",
+        "description": "记忆后端 (in_memory / redis / postgres / chroma; 'local' 等价 in_memory)",
     },
     "memory.working_capacity": {
         "type": int,
