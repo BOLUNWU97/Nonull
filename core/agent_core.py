@@ -66,6 +66,32 @@ class _StepFailed:
 
 _STEP_FAILED = _StepFailed()
 
+
+def _extract_memory_finding(content: Any, limit: int = 600) -> str:
+    """从记忆条目提取关键发现文本 / Extract the finding text from a memory entry.
+
+    记忆 content 可能是 dict-as-string (如 store_experience 存的
+    {'task':..., 'action':..., 'result':...}); 直接 str() 注入会让 LLM 先
+    读到 task preamble (代码片段) 再读到发现, 容易误判 "只有截断代码"。
+    本函数优先提取 result/action/summary 字段 (真正的发现), 跳过 preamble。
+
+    Memory content may be a dict-as-string; injecting it raw buries the
+    findings behind task metadata, so the LLM fixates on the preamble.
+    This extracts result/action/summary first (the actual finding).
+    """
+    text = str(content)
+    try:
+        import ast
+        parsed = ast.literal_eval(text)
+        if isinstance(parsed, dict):
+            finding = parsed.get("result") or parsed.get("action") or parsed.get("summary")
+            if finding:
+                return str(finding)[:limit]
+    except Exception:
+        pass
+    return text[:limit]
+
+
 # ===================================================================
 # 模块化重构 / Modular refactor (2026-06)
 # 以下类已抽取到独立模块，此处 re-export 保持向后兼容。
@@ -678,8 +704,8 @@ class Nonull:
             "last_action": str(context.get("action_history", [None])[-1])[-200:] if context.get("action_history") else None,
             "reflections": [str(r.get("reflection", ""))[-200:] for r in context.get("reflection_history", [])[-3:]],
             "working_memory": [str(e.content)[:100] for e in mem_context.get("working", [])],
-            "episodic_memory": [str(e.content)[:500] for e in mem_context.get("episodic", [])],
-            "semantic_knowledge": [str(e.content)[:500] for e in mem_context.get("semantic", [])],
+            "episodic_memory": [_extract_memory_finding(e.content) for e in mem_context.get("episodic", [])],
+            "semantic_knowledge": [_extract_memory_finding(e.content) for e in mem_context.get("semantic", [])],
             "available_skills": self._skill_registry.list_skills(),
             "available_tools": self._tool_registry.list_tools(),
             "iteration": self._iteration,
