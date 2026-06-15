@@ -105,6 +105,7 @@ class AgentLoop:
         system_prompt: str = "",
         max_steps: int = 10,
         cost_tracker: Any = None,
+        max_context_messages: int = 20,
     ):
         self.llm = llm_client
         self.tools = tools or []
@@ -112,6 +113,9 @@ class AgentLoop:
         self.max_steps = max_steps
         # 可选成本追踪器: 与 Nonull 共享时注入, 让两种循环模式成本统一记账。
         self.cost_tracker = cost_tracker
+        # context trimming: messages 超此数时丢弃中间轮 (保留首 system+user
+        # + 末尾最近几轮), 防 verbose tool 结果撑爆 context window。
+        self.max_context_messages = max_context_messages
 
     # ── 工具定义 (转 OpenAI tool schema) ──────────────────────────
 
@@ -270,6 +274,21 @@ class AgentLoop:
                         content=obs, tool_call_id=tc.get("id", f"call_{step_num}"), name=name,
                     ))
                 logger.info("AgentLoop step %d: 执行 %d 个工具", step_num, len(response.tool_calls))
+
+                # context trimming: messages 超阈值时丢弃中间轮, 保留首 (system+user)
+                # + 末尾最近几轮。防 verbose tool 结果撑爆 context window。
+                # 末尾从第一个 assistant 开始, 保证 tool results 有对应 tool_calls。
+                if len(messages) > self.max_context_messages:
+                    tail = messages[-self.max_context_messages:]
+                    for i, m in enumerate(tail):
+                        if getattr(m, "role", "") == "assistant":
+                            tail = tail[i:]
+                            break
+                    messages = messages[:2] + tail
+                    logger.info(
+                        "AgentLoop context trim: %d -> %d messages",
+                        self.max_context_messages + 2, len(messages),
+                    )
 
         except Exception as e:
             logger.exception("AgentLoop 异常终止")

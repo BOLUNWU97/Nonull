@@ -347,3 +347,39 @@ class TestAgentLoopCircuitBreaker:
         # 关键: 第 3 步成功 (observation "ok")
         assert any(s.observation == "ok" for s in result.steps)
         assert result.completed
+
+
+# ── AgentLoop context trimming (防 verbose tool 结果撑爆 context) ──
+
+class TestAgentLoopContextTrimming:
+    """messages 超阈值时丢弃中间轮, 保留首 system+user + 末尾最近几轮."""
+
+    async def test_trim_keeps_system_and_user(self):
+        """trim 后仍保留首 system + user (任务不丢)."""
+        # max_context_messages=4 → 第 3 步后 messages > 4, 触发 trim
+        llm = ScriptedLLM([
+            _thinking([_tool_call("calc")]),
+            _thinking([_tool_call("calc")]),
+            _thinking([_tool_call("calc")]),
+            _final("done"),
+        ])
+        loop = AgentLoop(llm, tools=[calc], max_steps=6, max_context_messages=4)
+        result = await loop.run("trim test")
+        assert result.completed
+        # 即使 trim, 仍完成 (首 system+user 保留, LLM 知道任务)
+
+    async def test_trim_does_not_crash(self):
+        """trim 不崩, loop 正常完成."""
+        llm = ScriptedLLM([_thinking([_tool_call("calc")])] * 8 + [_final("done")])
+        loop = AgentLoop(llm, tools=[calc], max_steps=10, max_context_messages=6)
+        result = await loop.run("many steps")
+        assert result.completed
+        assert result.total_steps <= 10
+
+    async def test_no_trim_when_under_limit(self):
+        """messages 未超阈值时不 trim (正常短任务)."""
+        llm = ScriptedLLM([_final("quick")])
+        loop = AgentLoop(llm, tools=[calc], max_steps=3, max_context_messages=20)
+        result = await loop.run("short")
+        assert result.completed
+        assert result.total_steps == 1
