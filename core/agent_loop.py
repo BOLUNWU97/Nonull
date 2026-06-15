@@ -20,6 +20,7 @@ ReAct loop where the LLM fully owns control flow.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
@@ -200,6 +201,10 @@ class AgentLoop:
 
         try:
             for step_num in range(1, self.max_steps + 1):
+                # 让出 event loop: chat 是同步阻塞调用, 不让出则外层
+                # asyncio.wait_for 的 timeout 无法抢占 (event loop 被阻塞)。
+                # Yield so asyncio.wait_for's timeout can fire between steps.
+                await asyncio.sleep(0)
                 # 1) LLM 决策 (推理 + 选工具或给答案)
                 response = self.llm.chat(
                     messages,

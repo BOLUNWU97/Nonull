@@ -609,7 +609,21 @@ class Nonull:
             max_steps=max_steps,
             cost_tracker=self._cost_tracker,
         )
-        result = await loop.run(task)
+        # timeout 保护: 与 run() 一样尊重 self._timeout, 防 LLM 挂起导致 react 无限等
+        try:
+            result = await asyncio.wait_for(loop.run(task), timeout=self._timeout)
+        except asyncio.TimeoutError:
+            logger.warning("run_react 超时 (%.1fs) / timed out", self._timeout)
+            self._set_state(AgentState.ERROR)
+            await self._hooks.execute(HookPoint.ON_SHUTDOWN, context={"task": task, "timeout": True})
+            return {
+                "status": "error", "output": "", "plan": None,
+                "error": f"timeout after {self._timeout}s",
+                "mode": "react", "truncated": True,
+                "steps": 0, "tool_calls": 0, "iterations": 0,
+                "duration": time.time() - start, "loop_steps": [],
+                "cost": self._cost_tracker.summary(),
+            }
 
         # 经验存储: 让 react 模式也学习 (与 run() 的 store_experience 对等),
         # 后续 run()/run_react() 都能召回本次经验。
@@ -626,6 +640,9 @@ class Nonull:
         else:
             self._set_state(AgentState.COMPLETED)
         self._iteration = result.total_steps
+
+        # ON_SHUTDOWN hook: 与 run() 的 finally 一致, 让注册 hook 的用户在 react 也触发
+        await self._hooks.execute(HookPoint.ON_SHUTDOWN, context={"task": task, "mode": "react"})
 
         # 返回格式与 run() 完全兼容 (统一字段集 + 词表):
         # status 用 completed/error (run() 的 AgentState 词表), truncated 标注

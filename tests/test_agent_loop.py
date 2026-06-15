@@ -275,3 +275,35 @@ class TestNonullRunReact:
         assert a.state == AgentState.IDLE  # 初始
         await a.run_react("test", tools=[])
         assert a.state == AgentState.COMPLETED  # react 完成后状态更新
+
+    async def test_run_react_timeout_protection(self, monkeypatch):
+        """run_react 尊重 self._timeout (LLM 挂起时不无限等)."""
+        import time as _time
+        from core.agent_core import Nonull
+
+        class SlowLLM:
+            """每次 chat 阻塞 0.3s, 模拟慢/挂起的 LLM."""
+            def chat(self, *a, **k):
+                _time.sleep(0.3)
+                return _thinking([_tool_call("calc")])  # 永远调工具, 不终止
+
+        monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
+        a = Nonull()
+        a._llm_client = SlowLLM()
+        a._timeout = 0.1  # 小 timeout
+        result = await a.run_react("slow task", tools=[calc], max_steps=10)
+        assert result["status"] == "error"
+        assert "timeout" in (result["error"] or "")
+        assert result["truncated"] is True
+        assert result["mode"] == "react"
+
+    async def test_run_react_triggers_shutdown_hook(self, monkeypatch):
+        """run_react 触发 ON_SHUTDOWN hook (与 run() 的 finally 一致)."""
+        from core.agent_core import Nonull, HookPoint
+        monkeypatch.delenv("NONULL_LLM_API_KEY", raising=False)
+        a = Nonull()
+        a._llm_client = ScriptedLLM([_final("done")])
+        triggered = []
+        a.register_hook(HookPoint.ON_SHUTDOWN, lambda **kw: triggered.append("shutdown"))
+        await a.run_react("hook test", tools=[])
+        assert "shutdown" in triggered
