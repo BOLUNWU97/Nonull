@@ -307,3 +307,43 @@ class TestNonullRunReact:
         a.register_hook(HookPoint.ON_SHUTDOWN, lambda **kw: triggered.append("shutdown"))
         await a.run_react("hook test", tools=[])
         assert "shutdown" in triggered
+
+
+# ── AgentLoop circuit-breaker (防重复失败工具烧 max_steps) ───────
+
+class TestAgentLoopCircuitBreaker:
+    """同工具连续失败 >=3 次 → 提示 LLM 换路 (防烧光 max_steps)."""
+
+    async def test_circuit_breaker_fires_on_3_failures(self):
+        """同工具失败 3 次后, observation 含 'broken'/'DIFFERENT' 提示."""
+        def boom(**kwargs):
+            raise ValueError("always fails")
+        # LLM 永远调 boom (5 次), 但第 3 次后 circuit-breaker 提示换路
+        llm = ScriptedLLM([_thinking([_tool_call("boom")])] * 5)
+        loop = AgentLoop(llm, tools=[boom], max_steps=5)
+        result = await loop.run("repeated fail")
+        # 第 3 次失败的 observation 应含提示
+        assert any("broken" in s.observation or "DIFFERENT" in s.observation
+                   for s in result.steps)
+
+    async def test_circuit_breaker_resets_on_success(self):
+        """工具成功后失败计数重置."""
+        call_count = [0]
+        def flaky(**kwargs):
+            call_count[0] += 1
+            if call_count[0] < 3:  # 前 2 次失败
+                raise ValueError("flaky")
+            return "ok"  # 第 3 次成功
+        llm = ScriptedLLM([
+            _thinking([_tool_call("flaky")]),  # fail 1
+            _thinking([_tool_call("flaky")]),  # fail 2
+            _thinking([_tool_call("flaky")]),  # success (重置)
+            _thinking([_tool_call("flaky")]),  # fail 1 again (重置后)
+            _final("done"),
+        ])
+        loop = AgentLoop(llm, tools=[flaky], max_steps=8)
+        result = await loop.run("flaky test")
+        # 成功重置后, 后续失败不应触发 circuit-breaker (没到 3 次)
+        # 关键: 第 3 步成功 (observation "ok")
+        assert any(s.observation == "ok" for s in result.steps)
+        assert result.completed

@@ -198,6 +198,9 @@ class AgentLoop:
         tool_defs = self._tool_definitions()
         completed = False
         error: Optional[str] = None
+        # circuit-breaker: 跟踪每个工具的连续失败次数, 防止 LLM 重复调同一个
+        # 失败工具烧光 max_steps (如 calc 坏参数 → error → LLM 重试同样参数 → error)。
+        tool_fail_counts: Dict[str, int] = {}
 
         try:
             for step_num in range(1, self.max_steps + 1):
@@ -246,6 +249,19 @@ class AgentLoop:
                     except json.JSONDecodeError:
                         args = {"_raw": args_raw}
                     obs = self._execute_tool(name, args)
+                    # circuit-breaker: 同工具连续失败 >=3 次 → 提示 LLM 换路
+                    # (防烧光 max_steps 重试同一个坏工具调用)
+                    if obs.startswith("Error:"):
+                        tool_fail_counts[name] = tool_fail_counts.get(name, 0) + 1
+                        if tool_fail_counts[name] >= 3:
+                            obs = (
+                                f"Error: tool '{name}' has failed "
+                                f"{tool_fail_counts[name]} times consecutively — it appears "
+                                f"broken or misused. Try a DIFFERENT approach or give your "
+                                f"final answer without this tool."
+                            )
+                    else:
+                        tool_fail_counts[name] = 0  # 成功则重置
                     steps.append(LoopStep(
                         step=step_num, thought=thought,
                         action=f"tool:{name}", observation=obs,
