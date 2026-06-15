@@ -112,6 +112,18 @@ class SafetyGuardian:
                 self._log_violation(action, reason, risk_score)
                 return False, risk_score, reason
 
+        # text: 是纯文本输出 (agent 的回答), 黑名单检查后直接放行 —— 不评估其内容
+        # 风险。否则 agent 在回答里讨论 "write"/"delete"/"http" 等概念时,
+        # _evaluate_context_risk 会误判为危险动作而拦截 (深度测评 Run2 多花 2 迭代)。
+        # 注意: 黑名单检查 (上) 仍在 text: 之前, 所以 block_pattern("dangerous") 仍
+        # 能拦截 text:dangerous。只跳过内容风险评分 (write/delete/http 关键词)。
+        # text: is pure text output; AFTER blocklist check, skip content risk-scoring
+        # (an answer discussing "write"/"delete" isn't a dangerous action). Blocklist
+        # still applies — block_pattern("danger") still blocks text:danger.
+        _atype = action.split(":")[0] if ":" in action else action
+        if _atype == "text":
+            return True, 0.0, "text output (advisory: passed blocklist, not scored)"
+
         # 2) 命令白名单检查
         action_type = action.split(":")[0] if ":" in action else action
         if self._allowed_commands and action_type not in self._allowed_commands:

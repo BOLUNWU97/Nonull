@@ -153,3 +153,47 @@ class TestParseLLMJsonRobustness:
         a = Nonull()
         fb = {"default": True}
         assert a._parse_llm_json("", fallback=fb) == fb
+
+
+# ── text: 输出安全 (测评发现的 P1 修复) ──────────────────────────
+
+class TestTextOutputSafety:
+    """text: 是 agent 的文本输出 (非可执行动作), 不该按内容风险评分拦截。
+
+    深度测评 Run2 发现: agent 的 code-review 文本 (text: action) 讨论
+    'write'/'delete'/'http' 概念时, _evaluate_context_risk 误判为危险动作
+    (0.8 > 0.7) 拦截, 浪费 2 迭代。修复: text: 直接放行。"""
+
+    def test_text_output_not_blocked_by_write_keyword(self):
+        """text: 含 'write' 不拦截 (是输出讨论, 非 write 动作)."""
+        from core.safety import SafetyGuardian
+        g = SafetyGuardian()
+        safe, risk, reason = g.validate("text:The code has a write bug here")
+        assert safe is True
+        assert risk == 0.0
+
+    def test_text_output_not_blocked_by_multiple_keywords(self):
+        """text: 含 write/delete/http 多关键词仍放行."""
+        from core.safety import SafetyGuardian
+        g = SafetyGuardian()
+        safe, risk, _ = g.validate(
+            "text:Found write/delete issues and http network calls in code"
+        )
+        assert safe is True
+        assert risk == 0.0
+
+    def test_exec_still_blocked(self):
+        """exec: 仍正常评分 (text: 放行不影响真实危险动作)."""
+        from core.safety import SafetyGuardian
+        g = SafetyGuardian()
+        # exec:rm -rf 是真实危险动作, 应拦截
+        safe, risk, _ = g.validate("exec:rm -rf /")
+        assert safe is False
+
+    def test_skill_action_still_evaluated(self):
+        """skill: 仍正常评分 (text: 放行只针对 text:, 不影响其他 action)."""
+        from core.safety import SafetyGuardian
+        g = SafetyGuardian()
+        # skill: deny-first 0.5, 正常评分 (非 text: 的 0.0 直接放行)
+        safe, risk, _ = g.validate("skill:some_skill")
+        assert risk > 0.0  # 仍评分 (text: 才是 0.0 放行)
