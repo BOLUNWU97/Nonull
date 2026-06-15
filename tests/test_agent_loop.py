@@ -383,3 +383,45 @@ class TestAgentLoopContextTrimming:
         result = await loop.run("short")
         assert result.completed
         assert result.total_steps == 1
+
+
+# ── AgentLoop async 工具支持 (HTTP/DB 等异步工具) ────────────────
+
+class TestAgentLoopAsyncTools:
+    """AgentLoop 支持 async 工具 (真实场景: HTTP 请求、DB 查询都是 async)."""
+
+    async def test_async_tool_executed_correctly(self):
+        """async 工具被 await 执行 (而非返回 coroutine 对象)."""
+        async def async_fetch(url=""):
+            """异步获取 URL."""
+            return f"fetched:{url}"
+
+        llm = ScriptedLLM([
+            _thinking([_tool_call("async_fetch", '{"url": "http://api.x"}')]),
+            _final("done"),
+        ])
+        loop = AgentLoop(llm, tools=[async_fetch], max_steps=5)
+        result = await loop.run("fetch data")
+        # async 工具结果应进入 observation (而非 coroutine repr)
+        assert any("fetched:http://api.x" in s.observation for s in result.steps)
+        # 不应出现 coroutine 对象的 repr
+        assert not any("coroutine" in s.observation for s in result.steps)
+
+    async def test_mixed_sync_async_tools(self):
+        """混合 sync + async 工具都能执行."""
+        async def async_db(query=""):
+            """异步 DB 查询."""
+            return f"db:{query}"
+
+        llm = ScriptedLLM([
+            _thinking([_tool_call("calc")]),               # sync
+            _thinking([_tool_call("async_db", '{"query": "SELECT 1"}')]),  # async
+            _final("done"),
+        ])
+        loop = AgentLoop(llm, tools=[calc, async_db], max_steps=6)
+        result = await loop.run("mixed")
+        assert result.completed
+        assert result.tool_calls == 2
+        # 两种工具都执行了
+        assert any("42" in s.observation for s in result.steps)  # calc → 42
+        assert any("db:SELECT 1" in s.observation for s in result.steps)

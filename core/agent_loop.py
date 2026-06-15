@@ -166,8 +166,9 @@ class AgentLoop:
             schema["required"] = required
         return schema
 
-    def _execute_tool(self, name: str, args: Dict[str, Any]) -> str:
-        """执行一个工具, 返回结果字符串 / Execute a tool, return result string."""
+    async def _execute_tool(self, name: str, args: Dict[str, Any]) -> str:
+        """执行一个工具 (sync 或 async), 返回结果字符串 / Execute a tool (sync or async)."""
+        import inspect
         tool = None
         for t in self.tools:
             tname = getattr(t, "name", None) or getattr(t, "__name__", None)
@@ -178,9 +179,15 @@ class AgentLoop:
             return f"Error: tool '{name}' not found"
         try:
             if callable(tool):
-                result = tool(**args)
+                if inspect.iscoroutinefunction(tool):
+                    result = await tool(**args)
+                else:
+                    result = tool(**args)
             elif hasattr(tool, "execute"):
-                result = tool.execute(**args)
+                if inspect.iscoroutinefunction(tool.execute):
+                    result = await tool.execute(**args)
+                else:
+                    result = tool.execute(**args)
             else:
                 return f"Error: tool '{name}' is not callable"
             return str(result)
@@ -252,7 +259,7 @@ class AgentLoop:
                         args = json.loads(args_raw) if isinstance(args_raw, str) else (args_raw or {})
                     except json.JSONDecodeError:
                         args = {"_raw": args_raw}
-                    obs = self._execute_tool(name, args)
+                    obs = await self._execute_tool(name, args)
                     # circuit-breaker: 同工具连续失败 >=3 次 → 提示 LLM 换路
                     # (防烧光 max_steps 重试同一个坏工具调用)
                     if obs.startswith("Error:"):
