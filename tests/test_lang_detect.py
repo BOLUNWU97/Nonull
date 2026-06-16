@@ -74,6 +74,30 @@ class TestLatinLanguages:
         r = detect_language("I have been working on this project for a long time with great results.")
         assert r["language"] == "en"
 
+    def test_portuguese(self):
+        r = detect_language("O gato está na mesa e o cachorro não quer comer a comida agora.")
+        assert r["language"] == "pt"
+
+    def test_italian(self):
+        r = detect_language("Il gatto è sulla tavola e il cane non vuole mangiare il cibo che è qui.")
+        assert r["language"] == "it"
+
+    def test_dutch(self):
+        r = detect_language("De kat is op de tafel en de hond wil het eten niet dat hier is met een bal.")
+        assert r["language"] == "nl"
+
+    def test_spanish_inverted_punctuation(self):
+        """西班牙语倒问号/感叹号 ¿¡ 是强信号。"""
+        r = detect_language("¿Cómo estás? ¡Qué buen día para salir con los niños al parque!")
+        assert r["language"] == "es"
+
+    def test_candidates_ranked(self):
+        """拉丁系返回候选分布, 主语言在前。"""
+        r = detect_language("Der Hund und die Katze sind nicht hier mit dem Ball")
+        assert "candidates" in r
+        # 候选 dict 非空, 含 de
+        assert "de" in r["candidates"]
+
 
 class TestEdgeCases:
     def test_empty(self):

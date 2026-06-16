@@ -115,6 +115,35 @@ class TestTokenManagement:
         with pytest.raises(RuntimeError, match="未配置"):
             client.get_tenant_access_token()
 
+    def test_expired_token_refreshes(self, monkeypatch):
+        """token 临近过期 → 重新请求 (不用过期缓存)。"""
+        import channels.feishu_client as fc
+        calls = []
+        def mk(*a, **k):
+            calls.append(1)
+            return _MockClient({"code": 0, "tenant_access_token": f"t{len(calls)}", "expire": 7200})
+        monkeypatch.setattr(fc.httpx, "Client", mk)
+        client = FeishuClient(app_id="x", app_secret="y")
+        client._token = "old-token"
+        client._token_expire_at = 100.0  # 已过期 (远早于 now)
+        token = client.get_tenant_access_token()
+        assert token == "t1"  # 重新请求了, 不是 old-token
+        assert len(calls) == 1
+
+    def test_force_refresh(self, monkeypatch):
+        """force=True 强制刷新, 即便缓存有效。"""
+        import channels.feishu_client as fc
+        calls = []
+        def mk(*a, **k):
+            calls.append(1)
+            return _MockClient({"code": 0, "tenant_access_token": "fresh", "expire": 7200})
+        monkeypatch.setattr(fc.httpx, "Client", mk)
+        client = FeishuClient(app_id="x", app_secret="y")
+        client._token = "valid"; client._token_expire_at = 9_999_999_999
+        token = client.get_tenant_access_token(force=True)
+        assert token == "fresh"
+        assert len(calls) == 1
+
 
 # ── 发消息 (mock httpx) ──────────────────────────────────────────
 
@@ -158,6 +187,27 @@ class TestSendMessage:
         result = client.send_card("oc_chat", card, receive_id_type="chat_id")
         assert result.success
         assert capture[0]["json"]["msg_type"] == "interactive"
+
+    def test_send_post(self, monkeypatch):
+        """发富文本 post 消息。"""
+        capture = []
+        client = self._client_with_token(
+            monkeypatch, {"code": 0, "data": {"message_id": "om_p"}}, capture)
+        post = {"zh_cn": {"title": "标题", "content": [[{"tag": "text", "text": "正文"}]]}}
+        result = client.send_post("ou_user", post)
+        assert result.success
+        assert capture[0]["json"]["msg_type"] == "post"
+        assert "标题" in capture[0]["json"]["content"]
+
+    def test_reply_message(self, monkeypatch):
+        """回复指定消息。"""
+        capture = []
+        client = self._client_with_token(
+            monkeypatch, {"code": 0, "data": {"message_id": "om_r"}}, capture)
+        result = client.reply("om_original", "这是回复")
+        assert result.success
+        assert "om_original" in capture[0]["url"]
+        assert "这是回复" in capture[0]["json"]["content"]
 
     def test_send_network_error(self, monkeypatch):
         import channels.feishu_client as fc

@@ -154,6 +154,66 @@ class TestDDGParsing:
         assert resp.results == []
 
 
+# ── Brave / SerpAPI 后端 (mock JSON) ─────────────────────────────
+
+class _MockJSONClient:
+    def __init__(self, payload, *a, **k):
+        self._p = payload
+    def __enter__(self): return self
+    def __exit__(self, *a): pass
+    def get(self, url, params=None, headers=None):
+        class _R:
+            def __init__(self, p): self._p = p
+            def raise_for_status(self): pass
+            def json(self): return self._p
+        return _R(self._p)
+
+
+class TestBraveBackend:
+    def test_brave_parses_results(self, monkeypatch):
+        from skills.core.web_search_backend import search_brave
+        import skills.core.web_search_backend as be
+        payload = {"web": {"results": [
+            {"title": "Python", "url": "https://python.org", "description": "<b>Lang</b>"},
+            {"title": "Docs", "url": "https://docs.python.org", "description": "Docs"},
+        ]}}
+        monkeypatch.setattr(be.httpx, "Client",
+                            lambda *a, **k: _MockJSONClient(payload))
+        resp = search_brave("python", max_results=5, timeout=10.0, api_key="k")
+        assert resp.backend == "brave"
+        assert len(resp.results) == 2
+        assert resp.results[0].url == "https://python.org"
+        assert resp.results[0].snippet == "Lang"  # HTML 标签被 strip
+
+    def test_brave_error(self, monkeypatch):
+        from skills.core.web_search_backend import search_brave
+        import skills.core.web_search_backend as be
+        class _Boom:
+            def __enter__(self): return self
+            def __exit__(self, *a): pass
+            def get(self, *a, **k): raise be.httpx.HTTPError("401")
+        monkeypatch.setattr(be.httpx, "Client", lambda *a, **k: _Boom())
+        resp = search_brave("x", 5, 10.0, "badkey")
+        assert resp.error is not None
+        assert resp.results == []
+
+
+class TestSerpapiBackend:
+    def test_serpapi_parses_results(self, monkeypatch):
+        from skills.core.web_search_backend import search_serpapi
+        import skills.core.web_search_backend as be
+        payload = {"organic_results": [
+            {"title": "R1", "link": "https://a.com", "snippet": "snip a"},
+            {"title": "R2", "link": "https://b.com", "snippet": "snip b"},
+        ]}
+        monkeypatch.setattr(be.httpx, "Client",
+                            lambda *a, **k: _MockJSONClient(payload))
+        resp = search_serpapi("query", max_results=5, timeout=10.0, api_key="k")
+        assert resp.backend == "serpapi"
+        assert len(resp.results) == 2
+        assert resp.results[1].url == "https://b.com"
+
+
 # ── Skill 集成 ───────────────────────────────────────────────────
 
 class TestWebSearchSkill:

@@ -117,6 +117,45 @@ class TestLocalEmbedder:
         v = emb.encode("户外活动")  # 共现扩散不应使 encode 崩溃
         assert v.shape == (256,)
 
+    def test_typo_robustness(self):
+        """字符 n-gram 抗错字: 'algorithm' vs 'algoritm' 仍较高相似。
+
+        漏一个字母会让词级特征完全错位 (算两个不同词), 但字符 n-gram 大量重叠,
+        所以相似度仍显著高于无关文本 (实测 ~0.74), 不会因一个错字就召回失败。
+        """
+        emb = LocalSemanticEmbedder(dim=512)
+        sim = emb.similarity("the sorting algorithm is fast",
+                             "the sorting algoritm is fast")  # 漏一个 h
+        unrelated = emb.similarity("the sorting algorithm is fast",
+                                   "i had pizza for dinner yesterday")
+        # 错字版相似度应远高于无关文本 (字符级特征鲁棒)
+        assert sim > 0.6
+        assert sim > unrelated * 3
+
+    def test_word_order_some_sensitivity(self):
+        """词级 bigram 让词序有一定区分度 (同词不同序相似但非完全相同)。"""
+        emb = LocalSemanticEmbedder(dim=512)
+        a = emb.encode("dog bites man")
+        b = emb.encode("man bites dog")
+        import numpy as np
+        sim = float(np.dot(a, b))
+        # 同词集 → 高相似, 但 bigram 不同 → 不完全等于 1
+        assert 0.5 < sim < 1.0
+
+    def test_long_text_normalized(self):
+        """长文本仍 L2 归一化 (范数≈1)。"""
+        import numpy as np
+        emb = LocalSemanticEmbedder(dim=256)
+        v = emb.encode("word " * 500)
+        assert abs(np.linalg.norm(v) - 1.0) < 1e-4
+
+    def test_repr_shows_state(self):
+        emb = LocalSemanticEmbedder(dim=128)
+        assert "dim=128" in repr(emb)
+        assert "fitted=False" in repr(emb)
+        emb.fit(["a b c", "d e f"])
+        assert "fitted=True" in repr(emb)
+
 
 # ── SemanticIndex ────────────────────────────────────────────────
 
