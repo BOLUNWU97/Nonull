@@ -424,6 +424,40 @@ python -m nonull skill remove my-skill
 
 ---
 
+## / Agent 模式 / Agent Modes
+
+Nonull 支持两种 agent 循环模式, 可在同一实例上互换:
+
+### 模式 1: 结构化认知循环 `agent.run(task)`
+- 五阶段状态机: IDLE → PLANNING → REASONING → ACTING → REFLECTING → COMPLETED
+- 融合 ReAct + Plan-and-Execute + Reflexion
+- 适用: 复杂多步任务 (需规划/反思/记忆召回)
+- 特性: 记忆注入 + 经验存储 + 恢复机制 + 成本追踪 + 安全校验 + prompt 硬化 (json_mode + 循环检测 + RECOVERING 诊断)
+
+### 模式 2: ReAct 循环 `agent.run_react(task, tools, max_steps)`
+- 标准 agentic loop: while 循环 + LLM 完全控制流 (工具为中心, Reason→Act→Observe)
+- 适用: 工具驱动的快速任务 (LLM 自主选工具)
+- 特性: sync + **async 工具支持** + circuit-breaker (防重复失败烧步数) + context trimming + timeout + 成本追踪 + 记忆 (召回+存储)
+
+两种模式共享同一 Nonull 实例的: LLM 客户端 / 成本追踪 / 记忆 (召回+存储) / ON_SHUTDOWN hook。返回格式统一: `{status, output, plan, steps, iterations, duration, error, mode, cost, truncated}`。
+
+独立使用 AgentLoop (不经 Nonull):
+```python
+from core import AgentLoop
+loop = AgentLoop(llm_client, tools=[my_tool], max_steps=8)
+result = await loop.run("task")
+```
+
+### 其他新功能 (本轮 session 新增)
+- **CostTracker** (`core/cost_tracker.py`): LLM 成本/token 追踪, 按模型聚合, 预算上限, 原子化持久化
+- **持久化** (`core/persistence.py`): 原子化 JSON 写 (temp + os.replace), SessionMemory/KnowledgeGraph/PromptRegistry save/load
+- **记忆跨会话**: save_state/load_state 用 Neocortex.to_dict/from_dict (记忆真正持久化, 不再失忆)
+- **安全 text: 修复**: text: 输出不按内容误评分 (讨论 write/delete 不再被误拦)
+- **LLM 加固**: 错误分类 (auth/rate-limit/server/request) + 429 Retry-After + 模型 fallback 链 + streaming+tools
+- **prompt 工程**: json_mode 强约束 + `<think>` 块 strip + dup_count 循环检测 + RECOVERING 诊断 prompt
+
+---
+
 ## / 工作流模式 / Workflow Patterns
 
 Use the appropriate pattern based on task complexity:

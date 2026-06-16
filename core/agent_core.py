@@ -370,6 +370,9 @@ class Nonull:
         # ── Enhancements (optional, for consciousness/evolution integration) ──
         self._enhancements: Optional[Any] = None
 
+        # ── 多模型混合调度器 (惰性构建, 见 hybrid_scheduler property) ──
+        self._hybrid_scheduler: Optional[Any] = None
+
         # ── 运行上下文 / Execution context ──
         self._context: Dict[str, Any] = {
             "session_id": self._session_id,
@@ -574,6 +577,16 @@ class Nonull:
         """
         from .agent_loop import AgentLoop
 
+        # 空任务守卫: 与 run() 一致, 空/纯空白任务直接返回 error。
+        # Empty-task guard: consistent with run().
+        if not task or not str(task).strip():
+            return {
+                "status": "error", "output": None, "error": "empty task",
+                "iterations": 0, "duration": 0.0, "mode": "react",
+                "steps": 0, "tool_calls": 0, "plan": None, "truncated": False,
+                "cost": self._cost_tracker.summary(),
+            }
+
         if self._llm_client is None:
             return {
                 "status": "error", "output": None, "error": "no LLM client",
@@ -662,6 +675,121 @@ class Nonull:
             "cost": self._cost_tracker.summary(),
         }
 
+    # ─────────────────────────────────────────────────────────────
+    # 多模型混合调度 / Hybrid multi-model scheduling
+    # ─────────────────────────────────────────────────────────────
+
+    @property
+    def hybrid_scheduler(self):
+        """惰性构建 HybridScheduler / Lazily-built hybrid scheduler.
+
+        从 NonullConfig 的 models.* 段构建多模型注册表 + 路由器 + 分发器 +
+        协作器, 复用本实例的 CostTracker。需在 config 里配置 models 段
+        (见 multimodel/nonull_models.yaml)。
+        """
+        if getattr(self, "_hybrid_scheduler", None) is None:
+            from multimodel import HybridScheduler
+            self._hybrid_scheduler = HybridScheduler.from_config(
+                self._config, cost_tracker=self._cost_tracker,
+            )
+        return self._hybrid_scheduler
+
+    async def run_hybrid(
+        self,
+        task: str,
+        *,
+        strategy: Optional[str] = None,
+        privacy: Optional[str] = None,
+        force_single: bool = False,
+    ) -> Dict[str, Any]:
+        """多模型混合调度模式 / Hybrid multi-model scheduling mode.
+
+        第三种执行模式 (继 run 结构化循环 / run_react ReAct 循环之后): 把任务交给
+        HybridScheduler —— 自动分类路由 (简单→小模型, 复杂→强模型, 隐私→本地),
+        超复杂任务自动多模型协作 (拆解+并行+交叉校验+汇总)。复用同一实例的
+        CostTracker, 返回与 run()/run_react() 统一的格式 (+ mode="hybrid")。
+
+        Third execution mode after run()/run_react(): delegates to the
+        HybridScheduler for automatic model routing + multi-model collaboration.
+
+        Args:
+            task: 任务文本
+            strategy: 路由策略 "quality"|"cost"|"speed"|"balanced" (覆盖默认)
+            privacy: 隐私级别 "public"|"internal"|"confidential" (覆盖自动检测)
+            force_single: 强制单模型, 跳过协作
+        """
+        from multimodel import RoutingStrategy, PrivacyLevel
+
+        # 空任务守卫 (与 run/run_react 一致)
+        if not task or not str(task).strip():
+            return {
+                "status": "error", "output": None, "error": "empty task",
+                "mode": "hybrid", "iterations": 0, "duration": 0.0,
+                "truncated": False, "cost": self._cost_tracker.summary(),
+            }
+
+        start = time.time()
+        self._current_task = task
+        self._started_at = start   # 与 run_react 一致, 让 get_status 反映 hybrid 活动
+        self._set_state(AgentState.REASONING)
+
+        # 记忆注入: 召回相关经验拼进任务 (与 run_react 对等)
+        enriched = task
+        try:
+            mem_context = self._memory.get_context(query=task, k=2)
+            episodic = [_extract_memory_finding(e.content)
+                        for e in mem_context.get("episodic", [])]
+            if episodic:
+                enriched = (task + "\n\n[Relevant past experience]\n"
+                            + "\n".join(f"- {e[:200]}" for e in episodic[:2]))
+        except Exception:
+            logger.debug("hybrid 记忆注入失败", exc_info=True)
+
+        try:
+            strat = RoutingStrategy(strategy) if strategy else None
+            priv = PrivacyLevel(privacy) if privacy else None
+            result = await self.hybrid_scheduler.aschedule(
+                enriched, strategy=strat, privacy_override=priv,
+                force_single=force_single,
+            )
+        except Exception as e:
+            logger.exception("hybrid 调度失败 / hybrid scheduling failed")
+            self._set_state(AgentState.ERROR)
+            return {
+                "status": "error", "output": None, "error": str(e),
+                "mode": "hybrid", "iterations": 0,
+                "duration": time.time() - start,
+                "truncated": False, "cost": self._cost_tracker.summary(),
+            }
+
+        # 经验存储 (与 run/run_react 对等)
+        try:
+            self._memory.store_experience(
+                task, f"hybrid_{result.mode}", result.output, success=result.success,
+            )
+        except Exception:
+            logger.debug("hybrid 经验存储失败", exc_info=True)
+
+        self._set_state(AgentState.COMPLETED if result.success else AgentState.ERROR)
+
+        return {
+            "status": "completed" if result.success else "error",
+            "output": result.output,
+            "plan": None,
+            "steps": result.detail.get("subtask_count", 1) if isinstance(result.detail, dict) else 1,
+            "iterations": 1,
+            "duration": time.time() - start,
+            "error": None if result.success else "scheduling failed",
+            "mode": "hybrid",
+            "truncated": False,
+            "schedule_mode": result.mode,          # "single" | "collaboration"
+            "model_used": result.model_used,
+            "complexity": result.complexity,
+            "privacy": result.privacy,
+            "detail": result.detail,
+            "cost": self._cost_tracker.summary(),
+        }
+
     async def run(
         self,
         task_input: str,
@@ -691,6 +819,17 @@ class Nonull:
                 "error":      错误信息（如有）
             }
         """
+        # 空任务守卫: 空/纯空白任务直接返回 error, 不浪费迭代 (与 run_react 一致)。
+        # Empty-task guard: don't waste iterations planning an empty task.
+        if not task_input or not str(task_input).strip():
+            return {
+                "status": "error", "output": None, "plan": None,
+                "error": "empty task", "mode": "structured",
+                "steps": 0, "iterations": 0, "duration": 0.0,
+                "truncated": False, "tool_calls": 0,
+                "cost": self._cost_tracker.summary(),
+            }
+
         async with self._lock:
             if self._state not in (AgentState.IDLE, AgentState.COMPLETED, AgentState.ERROR):
                 return {
@@ -805,6 +944,49 @@ class Nonull:
                 "任务完成 | state=%s iterations=%d duration=%.2fs",
                 self._state.value, self._iteration, duration,
             )
+
+        # output 兜底: 当任务以 "complete" 动作结束 (文档化的 happy path) 时,
+        # _execute_action 不写 _context["output"], 否则 run() 返回 output=None ——
+        # 与 run_react() (总返回 output) 不一致, 也是主循环的真实正确性 bug。
+        # 回退顺序: 最后一次 reflection 的 summary → 最后一次 action 结果。
+        # Fallback: if a task finishes via the "complete" action, output stays
+        # None (only text: actions set it). Backfill from the last reflection
+        # summary, then the last action result, so output is never silently None.
+        if self._context.get("output") is None:
+            rh = self._context.get("reflection_history") or []
+            if rh:
+                last_refl = rh[-1].get("reflection") or {}
+                summary = last_refl.get("summary") if isinstance(last_refl, dict) else None
+                if summary:
+                    self._context["output"] = summary
+            if self._context.get("output") is None:
+                last_result = self._context.get("last_result")
+                if isinstance(last_result, dict):
+                    self._context["output"] = (
+                        last_result.get("output")
+                        or last_result.get("message")
+                        or last_result.get("summary")
+                    )
+
+        # 记忆裁剪: 防无界增长。每个 run() 都 store_experience + task_start episode,
+        # Neocortex 记忆会跨任务持续累积。run() 结束时裁剪一次 (Ebbinghaus 遗忘 +
+        # 低重要性淘汰)。失败不影响任务结果。
+        # 注意 prune 返回值不统一: core.memory_system.prune 返回 int, 而
+        # core.memory_legacy.MemorySystem.prune 返回 {layer: count} dict —— 归一化
+        # 为总数, 否则 %d 格式化 dict 会崩。
+        # Prune memory at end of run() to prevent unbounded growth. prune() may
+        # return an int (memory_system) or a {layer: count} dict (memory_legacy);
+        # normalize to a total count.
+        try:
+            if hasattr(self._memory, "prune"):
+                pruned = self._memory.prune()
+                if isinstance(pruned, dict):
+                    pruned = sum(int(v) for v in pruned.values())
+                pruned = int(pruned or 0)
+                if pruned:
+                    logger.debug("记忆裁剪 %d 条 / pruned %d entries", pruned, pruned)
+        except Exception:
+            logger.debug("记忆裁剪失败 / prune failed", exc_info=True)
 
         return {
             "status": self._state.value,
@@ -1224,6 +1406,54 @@ class Nonull:
 
         finally:
             self._set_state(prev_state if prev_state != AgentState.SPAWNING else AgentState.REASONING)
+
+    # ─────────────────────────────────────────────────────────────
+    # 生命周期 / Lifecycle
+    # ─────────────────────────────────────────────────────────────
+
+    def close(self) -> None:
+        """释放后台资源 / Release background resources. 幂等 / idempotent.
+
+        关闭两类长生命周期资源, 否则每个 Nonull() 实例会泄漏:
+          1. MemorySystem 的 SubconsciousLoop 守护线程 (默认 60s 轮询);
+          2. LLMClient 的持久 httpx.Client (连接/套接字)。
+        重复实例化 (测试/CLI 循环/多 agent 池) 不释放会累积泄漏。
+        建议用 `async with Nonull() as agent:` 或显式 `agent.close()`。
+
+        Closes the SubconsciousLoop daemon thread and the persistent httpx
+        client. Prefer `async with Nonull() as agent:` or call close() explicitly.
+        """
+        mem = getattr(self, "_memory", None)
+        if mem is not None and hasattr(mem, "close"):
+            try:
+                mem.close()
+            except Exception:
+                logger.debug("MemorySystem.close 失败", exc_info=True)
+        client = getattr(self, "_llm_client", None)
+        if client is not None and hasattr(client, "close"):
+            try:
+                client.close()
+            except Exception:
+                logger.debug("LLMClient.close 失败", exc_info=True)
+        # 关闭混合调度器持有的多模型 LLMClient 缓存 (避免 hybrid 泄漏 socket)
+        sched = getattr(self, "_hybrid_scheduler", None)
+        if sched is not None and hasattr(sched, "close"):
+            try:
+                sched.close()
+            except Exception:
+                logger.debug("HybridScheduler.close 失败", exc_info=True)
+
+    async def __aenter__(self) -> "Nonull":
+        return self
+
+    async def __aexit__(self, *exc) -> None:
+        self.close()
+
+    def __enter__(self) -> "Nonull":
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()
 
     # ─────────────────────────────────────────────────────────────
     # 状态管理 / State Management

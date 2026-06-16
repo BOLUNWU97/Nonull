@@ -717,3 +717,49 @@ class MemorySystem:
     def stats(self) -> Dict[str, Any]:
         """获取完整统计 / Get full statistics."""
         return self.update_stats().to_dict()
+
+    def close(self) -> None:
+        """停止后台资源 (SubconsciousLoop 守护线程) / Stop background resources.
+
+        每个启用了完整记忆的实例会启动一个 SubconsciousLoop 守护线程 (默认 60s
+        轮询)。若不停止, 重复实例化 (测试/CLI 循环/多 agent 池) 会累积泄漏线程。
+        Nonull.close()/__aexit__ 调用本方法。幂等, 可安全多次调用。
+
+        Stops the SubconsciousLoop daemon thread so repeated instantiation does
+        not leak threads for the process lifetime. Idempotent.
+        """
+        if self.subconscious is not None:
+            try:
+                self.subconscious.stop(wait=False)
+            except Exception:
+                logger.debug("SubconsciousLoop stop 失败", exc_info=True)
+
+    def prune(self, target_ratio: float = 0.7) -> int:
+        """裁剪记忆防无界增长 / Prune memory to prevent unbounded growth.
+
+        在长会话里, 每个 run() 会 store_experience + task_start episode, Neocortex
+        记忆会持续增长。本方法委托给 neocortex.prune (Ebbinghaus 遗忘 + 低重要性
+        淘汰); 简化模式无操作。返回裁剪的条目数。
+
+        Delegates to neocortex.prune (decay + low-importance eviction). No-op in
+        simple mode. Returns the number of pruned entries.
+        """
+        if self.neocortex is not None and hasattr(self.neocortex, "prune"):
+            try:
+                pruned = self.neocortex.prune(target_ratio=target_ratio)
+            except TypeError:
+                # neocortex.prune 可能不接受 target_ratio
+                try:
+                    pruned = self.neocortex.prune()
+                except Exception:
+                    logger.debug("neocortex.prune 失败", exc_info=True)
+                    return 0
+            except Exception:
+                logger.debug("neocortex.prune 失败", exc_info=True)
+                return 0
+            # neocortex.prune 返回 {layer: count} dict; 求和总数
+            if isinstance(pruned, dict):
+                return sum(int(v) for v in pruned.values())
+            return int(pruned or 0)
+        return 0
+
