@@ -145,6 +145,7 @@ class ModelDispatcher:
                 max_tokens=entry.max_tokens,
                 temperature=entry.temperature,
                 context_window=entry.context_window,
+                timeout=entry.timeout,  # 推理模型(长<think>)需更长超时, 避免误判超时走重试
                 max_retries=0,  # 重试由 dispatcher 控制, 避免双层重试
             )
             client = LLMClient(cfg)

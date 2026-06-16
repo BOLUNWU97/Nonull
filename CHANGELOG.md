@@ -4,6 +4,73 @@ All notable changes to Nonull will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-06-16
+
+### Multi-Model Hybrid Scheduling + Deep Optimization
+
+The headline of this release is a new `multimodel/` package — multi-vendor model
+scheduling with automatic routing and multi-model collaboration — plus two new
+execution modes (`run_react`, `run_hybrid`) and an audit-driven pass that fixed real
+resource leaks and correctness bugs. **839 tests passing.**
+
+#### Added — Execution modes
+- `core/agent_loop.py` — `AgentLoop`, a standard ReAct while-loop (LLM owns control
+  flow). async/sync tool execution, per-tool circuit-breaker (≥3 consecutive failures
+  → hint the LLM to switch), `asyncio.wait_for` timeout with per-step event-loop yield,
+  context trimming, signature-inferred tool schemas, shared cost tracking.
+- `Nonull.run_react(task, tools, max_steps)` — ReAct execution mode; same instance,
+  shared LLM/cost/memory, run()-compatible return format.
+- `Nonull.run_hybrid(task, *, strategy, privacy, force_single)` — multi-model
+  scheduling mode via `HybridScheduler`.
+
+#### Added — `multimodel/` package (multi-model hybrid scheduling)
+- `registry.py` — `ModelRegistry` + `ModelEntry` + `KeyRotator` (multi-API-key
+  round-robin with 429/401 cooldown-skip). Cloud (OpenAI/Claude/DeepSeek/Qwen) +
+  local (Ollama/LM Studio). `${ENV_VAR}` expansion in config.
+- `router.py` — `TaskRouter`: heuristic complexity classification (code/length/
+  keywords) + privacy detection (forces local) + quality/cost/speed strategies.
+- `dispatcher.py` — `ModelDispatcher`: multi-key rotation + retry + model fallback +
+  load balancing + call logging. Thread-safe client cache with `close()`.
+- `collaborator.py` — `MultiModelCollaborator`: super-complex tasks decompose →
+  parallel execute → cross-model verification → synthesize.
+- `scheduler.py` — `HybridScheduler` unified facade.
+- `litellm_config.yaml` + `nonull_models.yaml` + `INTEGRATION_GUIDE.md` (7-section
+  integration doc). No hard LiteLLM dependency — the pure-httpx OpenAI-compatible
+  client covers all providers; point base_url at a LiteLLM gateway if desired.
+- `tests/test_multimodel.py` — 29 tests. `examples/multimodel_demo.py` — real-LLM
+  routing + collaboration demo.
+
+#### Added — Lifecycle & memory
+- `Nonull.close()` + `__enter__/__exit__/__aenter__/__aexit__`, `MemorySystem.close()`
+  — stop the SubconsciousLoop daemon thread + httpx client (fixes a per-instance
+  thread+socket leak).
+- `MemorySystem.prune()` wired into `run()` end — prevents unbounded memory growth.
+- Memory recall chain (cross-session continuity): `_extract_memory_finding` +
+  `_best_memory_findings` + recency fallback in `get_context`. Verified end-to-end
+  (Agent A stores → Agent B recalls verbatim in a fresh session).
+
+#### Fixed
+- **P0 resource leak**: SubconsciousLoop thread + httpx client never closed.
+- **P1 correctness**: `run()` returned `output=None` when finishing via the "complete"
+  action — now backfills from reflection summary / last result.
+- **P1**: empty-task guard on `run()`/`run_react()` (was wasting iterations).
+- **P0 (multimodel)**: `${ENV_VAR}` in model config wasn't expanded → literal string
+  passed as API key → every cloud call would 401. Now expanded in `from_config`.
+- **P1 (multimodel)**: dispatcher client-cache data race under parallel dispatch
+  (added lock) + cached clients never closed (added `close()` chain into Nonull.close).
+- **Safety over-sensitivity**: `text:` agent output was content-risk-scored, so a code
+  review *discussing* "write/delete" got falsely blocked. `text:` now passes the
+  blocklist but skips content scoring.
+- `<think>` reasoning blocks from MiniMax/DeepSeek-R1 stripped from JSON + final output.
+- `run_react` timeout was a no-op (sync chat blocked the event loop) — fixed with a
+  per-step `await asyncio.sleep(0)` yield.
+
+#### Tests
+- 690 → **839 passing** (9 skipped). New: multimodel (29), agent_loop (28),
+  deep_optimization (13), memory_recall_unit (16), core_safety (15).
+
+---
+
 ## [Unreleased] - 0.2.2
 
 ### Deep Optimization & Cleanup (2026-06-13)

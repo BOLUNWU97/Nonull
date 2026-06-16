@@ -96,6 +96,7 @@ class ModelEntry:
     max_tokens: int = 4096
     context_window: int = 128_000
     temperature: float = 0.2
+    timeout: float = 60.0          # 单次请求超时(秒); 推理模型(长<think>)建议 90-120
     is_local: bool = False
     enabled: bool = True
     tags: List[str] = field(default_factory=list)
@@ -237,6 +238,7 @@ class ModelRegistry:
                     max_tokens=int(spec.get("max_tokens", 4096)),
                     context_window=int(spec.get("context_window", 128_000)),
                     temperature=float(spec.get("temperature", 0.2)),
+                    timeout=float(spec.get("timeout", 60.0)),
                     is_local=bool(spec.get("is_local", False)),
                     enabled=bool(spec.get("enabled", True)),
                     tags=spec.get("tags", []),
