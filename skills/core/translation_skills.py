@@ -5,21 +5,25 @@ from __future__ import annotations
 import re
 from typing import Any, Dict
 from skills.base import BaseSkill, SkillMetadata, SkillCategory
+from skills.core.lang_detect import detect_language
 
 
 class LanguageDetectorSkill(BaseSkill):
-    """Naive language detection based on Unicode character ranges.
+    """Zero-dependency language detection.
 
-    Returns one of: 'en', 'zh', 'ja', 'ko', 'ru', 'ar', 'other'.
+    Script-based detection for non-Latin (zh/ja/ko/ru/ar/el/th/he via Unicode
+    ranges + kana/hangul disambiguation), and n-gram/stopword fingerprinting for
+    Latin-script languages (en/de/fr/es/pt/it/nl). No external deps.
     """
 
     @property
     def metadata(self) -> SkillMetadata:
         return SkillMetadata(
             name="language_detector",
-            version="0.1.0",
+            version="0.2.0",
             category=SkillCategory.GENERAL,
-            description="Heuristic language detection from Unicode character ranges. DEMO: not a real detector.",
+            description="Detect text language: script-based for CJK/Cyrillic/Arabic/etc, "
+                        "stopword+diacritic fingerprinting for Latin languages. Zero-dependency.",
             tags=["language", "i18n", "nlp"],
             author="Nonull Team",
             safety_level=1,
@@ -31,26 +35,10 @@ class LanguageDetectorSkill(BaseSkill):
 
     def _execute_impl(self, context):
         text = context["text"]
-        if not text.strip():
-            return {"language": "unknown", "confidence": 0.0}
-
-        # Count chars in different Unicode ranges
-        cjk = len(re.findall(r"[一-鿿぀-ゟ゠-ヿ가-힯]", text))
-        latin = len(re.findall(r"[a-zA-Z]", text))
-        cyrillic = len(re.findall(r"[Ѐ-ӿ]", text))
-        arabic = len(re.findall(r"[؀-ۿ]", text))
-
-        total = max(len(text.strip()), 1)
-        ratios = {"zh": cjk, "latin": latin, "cyrillic": cyrillic, "arabic": arabic}
-        primary = max(ratios, key=ratios.get)
-        confidence = ratios[primary] / total
-
-        if primary == "latin" and confidence > 0.5: lang = "en"
-        elif primary == "zh" and confidence > 0.1: lang = "zh"
-        elif primary == "cyrillic" and confidence > 0.3: lang = "ru"
-        elif primary == "arabic" and confidence > 0.3: lang = "ar"
-        else: lang = "other"
-        return {"language": lang, "confidence": round(confidence, 3), "char_distribution": ratios}
+        result = detect_language(text)
+        # 兼容旧返回字段 char_distribution (映射到 scripts)
+        result["char_distribution"] = result.get("scripts", {})
+        return result
 
 
 class TranslationPromptSkill(BaseSkill):
