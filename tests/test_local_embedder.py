@@ -97,6 +97,26 @@ class TestLocalEmbedder:
         mat = emb.encode_batch(["a", "b", "c"])
         assert mat.shape == (3, 128)
 
+    def test_cooccurrence_off_by_default(self):
+        """共现增强默认关闭 (小语料噪声大, 基础TF-IDF更稳健)。"""
+        emb = LocalSemanticEmbedder(dim=256)
+        assert emb.use_cooccurrence is False
+        emb.fit(["the cat sat", "the dog ran"])
+        # 默认关闭时不学共现
+        assert emb._cooc == {}
+
+    def test_cooccurrence_opt_in(self):
+        """显式开启共现时学习关联, 且不崩。"""
+        emb = LocalSemanticEmbedder(dim=256, use_cooccurrence=True)
+        emb.fit([
+            "户外 散步 公园 休闲", "户外 爬山 休闲 活动",
+            "公园 散步 放松", "线程 安全 队列", "锁 死锁 线程",
+        ])
+        # 开启后应学到一些共现关联 (不强求具体内容, 只验证机制运行)
+        assert isinstance(emb._cooc, dict)
+        v = emb.encode("户外活动")  # 共现扩散不应使 encode 崩溃
+        assert v.shape == (256,)
+
 
 # ── SemanticIndex ────────────────────────────────────────────────
 

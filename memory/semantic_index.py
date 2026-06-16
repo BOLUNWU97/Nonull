@@ -148,6 +148,7 @@ class SemanticIndex:
             "texts": dict(self._texts),
             "meta": dict(self._meta),
             "idf": dict(self.embedder._idf),
+            "cooc": {k: [list(p) for p in v] for k, v in self.embedder._cooc.items()},
             "n_docs": self.embedder._n_docs,
             "fitted": self.embedder._fitted,
         }
@@ -157,6 +158,9 @@ class SemanticIndex:
         """从 save_dict 的输出重建索引 (重新编码向量, 不存原始向量省空间)。"""
         idx = cls(dim=int(data.get("dim", 512)))
         idx.embedder._idf = dict(data.get("idf", {}))
+        idx.embedder._cooc = {
+            k: [tuple(p) for p in v] for k, v in data.get("cooc", {}).items()
+        }
         idx.embedder._n_docs = int(data.get("n_docs", 0))
         idx.embedder._fitted = bool(data.get("fitted", False))
         for doc_id in data.get("ids", []):

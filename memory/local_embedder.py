@@ -104,32 +104,66 @@ class LocalSemanticEmbedder:
     未调用 fit() 也能用 (IDF 退化为 log 词频), 但 fit 后语义召回明显更好。
     """
 
-    def __init__(self, dim: int = 512, use_char_ngrams: bool = True):
+    def __init__(self, dim: int = 512, use_char_ngrams: bool = True,
+                 use_cooccurrence: bool = False):
+        """
+        use_cooccurrence: 共现扩散增强。默认 **关闭** —— 共现统计需要大语料才可靠,
+          小语料下噪声会污染基础语义召回 (实测会让相关性反转)。仅在有较大同主题
+          语料 (数百+文档) 时开启可能增益概念关联召回。基础 TF-IDF 召回已足够稳健。
+        """
         self.dim = dim
         self.use_char_ngrams = use_char_ngrams
+        self.use_cooccurrence = use_cooccurrence
         self._idf: Dict[str, float] = {}
         self._n_docs = 0
         self._fitted = False
+        # 共现增强: token -> [(相关token, 权重), ...] (fit 时学习)
+        self._cooc: Dict[str, List[tuple]] = {}
 
     # ── 训练 IDF / Fit ───────────────────────────────────────────
 
     def fit(self, corpus: Iterable[str]) -> "LocalSemanticEmbedder":
-        """在语料上学习 IDF 权重 / Learn IDF weights from a corpus.
+        """在语料上学习 IDF + 词共现 / Learn IDF + co-occurrence from a corpus.
 
-        IDF(t) = log((N + 1) / (df(t) + 1)) + 1
-        高频词 (出现在很多文档) IDF 低, 稀有词 IDF 高 —— 提升语义区分度。
+        IDF(t) = log((N + 1) / (df(t) + 1)) + 1 —— 高频词降权。
+
+        共现增强 (零依赖的"概念关联"近似): 统计哪些词常出现在同一文档, 用
+        PMI-ish 权重记录每个词的 top 相关词。encode 时把相关词的信号按权重
+        "扩散"到向量, 让 "散步" 和 "户外"(若常共现) 即使不同字面也能靠近 ——
+        这是纯字面匹配做不到、又无需神经网络的概念关联召回。
         """
         df: Counter = Counter()
+        cooc: Dict[str, Counter] = defaultdict(Counter)
         n = 0
-        for doc in corpus:
+        corpus_list = list(corpus)
+        for doc in corpus_list:
             n += 1
-            seen = set(_tokenize(doc))
-            for tok in seen:
+            toks = list(set(_tokenize(doc)))
+            for tok in toks:
                 df[tok] += 1
+            # 同文档内词两两共现
+            if self.use_cooccurrence:
+                for i in range(len(toks)):
+                    for j in range(i + 1, len(toks)):
+                        cooc[toks[i]][toks[j]] += 1
+                        cooc[toks[j]][toks[i]] += 1
         self._n_docs = n
         self._idf = {
             tok: math.log((n + 1) / (cnt + 1)) + 1.0 for tok, cnt in df.items()
         }
+        # 为每个词保留 top-5 共现词 (PMI 加权: 共现频次 / sqrt(df_a·df_b))
+        self._cooc = {}
+        if self.use_cooccurrence:
+            for tok, partners in cooc.items():
+                scored = []
+                for other, c in partners.items():
+                    denom = math.sqrt(max(1, df[tok]) * max(1, df[other]))
+                    pmi = c / denom
+                    if pmi > 0.3:  # 只保留强关联, 小语料下阈值要高, 避免噪声扩散
+                        scored.append((other, pmi))
+                scored.sort(key=lambda x: x[1], reverse=True)
+                if scored:
+                    self._cooc[tok] = scored[:5]
         self._fitted = n > 0
         return self
 
@@ -161,6 +195,13 @@ class LocalSemanticEmbedder:
             w = self._idf_weight(tok, cnt)
             idx, sign = _signed_hash(f"w::{tok}", self.dim)
             vec[idx] += sign * w
+            # 1b) 共现扩散: 把该词的相关词信号按权重加入 (零依赖概念关联)。
+            #     保守: 仅 top-2 相关词 + 0.2 衰减 —— 共现在小语料上噪声大, 过强会
+            #     污染基础语义 (实测 0.5 衰减会让相关性反转), 弱扩散才稳健增益。
+            if self.use_cooccurrence and self._cooc:
+                for other, pmi in self._cooc.get(tok, ())[:2]:  # 仅 top-2 相关词
+                    o_idx, o_sign = _signed_hash(f"w::{other}", self.dim)
+                    vec[o_idx] += o_sign * w * pmi * 0.2  # 弱扩散
 
         # 2) 词 bigram (捕捉局部搭配 / 短语语义)
         for i in range(len(tokens) - 1):
