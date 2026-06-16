@@ -1,837 +1,337 @@
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Nonull-全领域智能体-Universal-FF6B35?style=for-the-badge&logo=autoprefixer&logoColor=white"/>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/version-0.3.0-blue?style=flat-square"/>
-  <img src="https://img.shields.io/badge/python-3.10%2B-green?style=flat-square&logo=python&logoColor=white"/>
-  <img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square"/>
-  <img src="https://img.shields.io/badge/tests-839%20passing-success?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Advisory%20Safety-orange?style=flat-square"/>
-  <img src="https://img.shields.io/badge/multi--model-hybrid%20scheduling-FF6B35?style=flat-square"/>
-  <img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square"/>
-  <img src="https://img.shields.io/badge/domains-ADAS%20%2B%20General-6C63FF?style=flat-square"/>
-</p>
-
-<p align="center">
-  <b>🇨🇳 中文</b> · 
-  <a href="#english">English</a>
-</p>
-
-<br>
-
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&height=200&color=0:FF6B35,100:1A1A2E&text=Nonull&fontSize=80&fontColor=white&animation=fadeIn&section=header"/>
-</p>
-
-<h3 align="center">
-  🌍 通用领域 AI 智能体，内置智驾、通用技能、LLM 接入
-</h3>
-
-<p align="center">
-  <i>Universal Domain AI Agent — with built-in ADAS, general-purpose skills, and LLM integration.</i>
-</p>
-
-<br>
-
----
-
-<h2 align="center">✨ 一句话认识 Nonull ✨</h2>
-
-<p align="center">
-  <b>Nonull</b> 是面向<b>任意领域</b>的下一代 AI 智能体框架。<br>
-  内置<b>智驾（ADAS）领域</b>与<b>通用领域</b>，自带 50+ 技能、四层记忆、五关安全、LLM 接入、Web UI、评估套件。<br>
-  领域无关，<b>有记忆、有安全意识、有自己的性格</b>。
-</p>
-
-<br>
-
-> **📌 重要声明 / Important Disclaimer**
->
-> Nonull 是一个**内部使用的 ADAS 工程开发助手（developer assistant）**，**不是**经过 ISO 26262 / ASIL-D 认证的车规级（非车规级）安全产品。
->
-> 本项目中的"安全层 / safety layer"是**建议性（advisory）**的：它参考 ISO 26262 / MISRA / ASPICE 等标准的**模式与术语**进行风险提示和检查建议，但**并不实现** ASIL-D 要求的"抗干扰（freedom from interference）"、"MC/DC 覆盖"、"形式化验证"、"独立安全单元（SEooC）流程"等条款。
->
-> **请勿将本项目用于任何量产部署、安全关键决策，或替代经过认证的安全机制。**
->
-> ---
->
-> Nonull is an **internal ADAS engineering assistant** — **not** an ISO 26262 / ASIL-D product and **not** a certified safety product. The safety layer is **advisory only** (not certified safety) — it references ISO 26262 / MISRA / ASPICE patterns and terminology for risk hints, but does **not** implement ASIL-D requirements such as freedom from interference, MC/DC coverage, formal verification, or SEooC processes. **Do not use this project for production deployment, safety-critical decisions, or as a substitute for any non-certified, non-production-ready advisory reference. This is a pattern reference, not a certified safety mechanism.**
-
-<br>
-
 <div align="center">
 
-```
-"帮我审查这个 AEB 模块的代码"     →  🛡️  MISRA 规范检查 + Bug 定位 + 优化建议
-"对紧急制动系统做 HARA 分析"     →  📋  ISO 26262 标准分析 + ASIL 等级
-"生成雨天夜间行人横穿场景"       →  🌧️  标准 OpenSCENARIO 场景文件
-"分析今天路测日志有什么问题"     →  📊  异常模式识别 + 关键问题汇总
-```
+<img src="https://capsule-render.vercel.app/api?type=waving&height=220&color=gradient&customColorList=12,20,24&text=Nonull&fontSize=90&fontColor=ffffff&fontAlignY=38&desc=Universal%20AI%20Agent%20Framework&descSize=20&descAlignY=60&animation=fadeIn"/>
+
+<p>
+  <img src="https://img.shields.io/badge/version-0.3.0-1f6feb?style=flat-square"/>
+  <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white"/>
+  <img src="https://img.shields.io/badge/tests-839_passing-2ea043?style=flat-square&logo=pytest&logoColor=white"/>
+  <img src="https://img.shields.io/badge/license-MIT-eac54f?style=flat-square"/>
+  <img src="https://img.shields.io/badge/safety-advisory_only-f0883e?style=flat-square"/>
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/3_execution_modes-1f6feb?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/multi--model_scheduling-8957e5?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/4--layer_memory-1a7f37?style=for-the-badge"/>
+  <img src="https://img.shields.io/badge/58_skills-bf3989?style=for-the-badge"/>
+</p>
+
+<p><b>🇨🇳 中文</b> · <a href="#-english">English</a></p>
+
+<h3>一个有记忆、会路由、能协作的领域无关 AI Agent 框架</h3>
+<p><i>A domain-agnostic AI agent framework with persistent memory, intelligent model routing, and multi-model collaboration.</i></p>
 
 </div>
 
-<br>
-
 ---
 
-<h2 align="center">🔥 它和别的 AI 有什么不一样？</h2>
+> [!IMPORTANT]
+> **声明 / Disclaimer** — Nonull 是一个**建议性（advisory）的工程开发助手**，**不是**经过 ISO 26262 / ASIL-D 认证的车规级安全产品。其"安全层"参考 ISO 26262 / MISRA / ASPICE 的**模式与术语**做风险提示，但**不实现** ASIL-D 的抗干扰、MC/DC 覆盖、形式化验证等条款。**请勿用于量产部署、安全关键决策，或替代任何认证安全机制。**
+>
+> Nonull is an **advisory engineering assistant**, **not** an ISO 26262 / ASIL-D certified safety product. The safety layer references standards' *patterns and terminology* for risk hints only. **Do not use for production deployment, safety-critical decisions, or as a substitute for certified safety mechanisms.**
 
 <br>
 
-<table align="center">
-  <tr>
-    <th width="120">对比项</th>
-    <th width="250">其他 AI Agent</th>
-    <th width="350"><b>🚀 Nonull</b></th>
-  </tr>
-  <tr>
-    <td align="center">🧠 <b>记忆</b></td>
-    <td align="center">聊完就忘，每次都是新会话</td>
-    <td align="center"><b>四种记忆系统</b>，可配置容量（默认 10K 条目），越用越懂你</td>
-  </tr>
-  <tr>
-    <td align="center">🛡️ <b>安全</b></td>
-    <td align="center">你说啥它做啥，没有安全检查</td>
-    <td align="center"><b>五关安全建议</b> + ASIL 风险提示（开发助手级，非认证）</td>
-  </tr>
-  <tr>
-    <td align="center">👤 <b>性格</b></td>
-    <td align="center">一个风格到底，冷冰冰</td>
-    <td align="center"><b>三种驾驶人格</b>：保守派 🛡️ / 运动派 🚀 / 老司机 🧓</td>
-  </tr>
-  <tr>
-    <td align="center">📊 <b>反馈</b></td>
-    <td align="center">没有反馈机制</td>
-    <td align="center"><b>安全指标记录</b>（基础反馈统计，建议性，非游戏化进度）</td>
-  </tr>
-</table>
+## 📋 目录
+
+- [60 秒认识](#-60-秒认识) · [三种执行模式](#-三种执行模式) · [多模型混合调度](#-多模型混合调度)
+- [记忆系统](#-记忆系统) · [技能库（58 个）](#-技能库58-个) · [安全层](#-安全层) · [架构](#-架构)
+- [快速开始](#-快速开始) · [项目结构](#-项目结构) · [状态与诚实清单](#-状态与诚实清单) · [English](#-english)
 
 <br>
 
----
+## ⚡ 60 秒认识
 
-<h2 align="center">🌍 All Domains / 全领域</h2>
-
-<p align="center">
-  <b>Nonull is domain-agnostic.</b> ADAS is one of many built-in domains.<br>
-  <b>Nonull 是领域无关的。</b> 智驾（ADAS）只是众多内置领域之一。
-</p>
-
-Each domain provides:
-- Domain-specific skills
-- Domain-specific personas (e.g., ADAS: Conservative/Sporty/Veteran)
-- Domain-specific scenarios (e.g., ADAS: 36 driving scenarios)
-- Domain-specific safety disclaimers
-
-### Built-in Domains / 内置领域
-
-| Domain | Status | Contents / 内容 |
-|---|---|---|
-| `general` | ✅ Always loaded | Neutral defaults, no domain-specific knowledge / 中性默认，无领域知识 |
-| `adas` | ✅ Default-on | 13 ADAS skills, 36 scenarios, 3 personas, HARA templates / 13 个智驾技能，36 个场景，3 种人格，HARA 模板 |
-
-### Adding Your Own Domain / 添加自定义领域
+Nonull 把**任务**交给最合适的执行方式和模型，自己记住做过什么，并在需要时让多个模型协作。
 
 ```python
-from domains import DomainPackage, DomainMetadata
+from core import Nonull
 
-class MyDomain:
-    @property
-    def metadata(self):
-        return DomainMetadata(name="my", display_name="...", description="...")
+agent = Nonull()
 
-    def register(self, registry):
-        # Register your skills
-        registry.register_skill(MySkill())
+# 复杂多步任务 → 结构化认知循环（规划/推理/行动/反思）
+await agent.run("分析 AEB 系统的安全需求")
 
-    def get_safety_disclaimers(self):
-        return ["My domain: not for clinical use."]
+# 工具驱动任务 → ReAct 循环（LLM 自主选工具）
+await agent.run_react("算 15×23 再统计这句话的字数", tools=[calc, word_count])
+
+# 任意任务 → 多模型混合调度（自动选模型，超复杂任务多模型协作）
+r = await agent.run_hybrid("帮我设计一个分布式限流方案")
+print(r["schedule_mode"])   # "single" | "collaboration"
+print(r["model_used"])      # 用了哪个/几个模型
 ```
 
-### Domain-Agnostic Skills (skills/core/)
-
-21 skills that work for ANY domain:
-- **Web (3)**: `web_fetch`, `web_search`, `link_extractor`
-- **Data (4)**: `json_formatter`, `csv_parser`, `text_statistics`, `diff`
-- **Code (3)**: `regex_tester`, `json_schema_generator`, `code_counter`
-- **Documentation (3)**: `markdown_to_html`, `readme_skeleton`, `docstring_generator`
-- **Translation (2)**: `language_detector`, `translation_prompt`
-- **Utilities (4)**: `uuid_generator`, `hash`, `timestamp`, `base64`
-- **Multimodal (7)**: `image_info`, `image_resize`, `image_base64`, `pdf_info`, `pdf_extract_text`, `audio_info`, `audio_transcribe`
-- **Creative (3)**: `brainstorm`, `metaphor_generator`, `story_plot`
-- **Productivity (2)**: `pomodoro_schedule`, `eisenhower_matrix`
-- **Learning (3)**: `flashcard_generator`, `quiz_generator`, `spaced_repetition`
+三种模式背靠**同一个 agent 实例**，共享 LLM 客户端、成本追踪、记忆（召回+存储）、安全层，返回**统一格式**。
 
 <br>
 
----
+## 🚀 三种执行模式
 
-<h2 align="center">🏗️ 四大架构融合</h2>
+| 模式 | 方法 | 内核 | 适用场景 |
+|------|------|------|---------|
+| 🧩 **结构化循环** | `run()` | 五阶段状态机 `PLAN → REASON → ACT → REFLECT`（ReAct + Plan-and-Execute + Reflexion 融合）+ 失败恢复 | 复杂多步任务，需要规划/反思/记忆召回 |
+| 🔁 **ReAct 循环** | `run_react()` | `AgentLoop`：while 循环 + LLM 完全控制流（Reason→Act→Observe）+ async 工具 + circuit-breaker + timeout | 工具驱动任务，LLM 自主选工具 |
+| 🌐 **混合调度** | `run_hybrid()` | `HybridScheduler`：自动分类路由 + 单模型分发 / 多模型协作 | 任意任务，让框架自动决定用哪个/几个模型 |
 
-<p align="center">
-  Nonull 融合了业界四种领先的智能体架构，取长补短：
-</p>
+**统一返回格式**（三种模式都有）：
+```python
+{ "status", "output", "iterations", "duration", "cost", "mode", "error", ... }
+```
 
-<br>
+<details>
+<summary><b>AgentLoop（ReAct 内核）的真实能力</b></summary>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/OpenClaw-Triple--Layer-FF6B35?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Hermes%20Agent-Profile%20Isolation-6C63FF?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/openHuman-Neocortex%20Memory-00C9A7?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Claude%20Code-Deny--First%20Safety-FF6B6B?style=for-the-badge"/>
-</p>
-
-<br>
-
-| 架构 | 贡献 | 在 Nonull 中的体现 |
-|------|------|-------------------|
-| 🦞 **OpenClaw** | 三层架构 | Gateway / Agent / Channels 三层分离 + Nexus+Tendrils 编排 |
-| 🏛️ **Hermes Agent** | 配置隔离 | Profile 隔离（dev/test/prod/simulation）+ 工具注册表 |
-| 🧠 **openHuman** | 记忆系统 | Neocortex 多层记忆 + 潜意识循环 + 遗忘曲线（默认内存实现，可插拔后端） |
-| 🔐 **Claude Code** | 安全体系 | Deny-First 安全 + 40 个钩子事件 + SubAgent 隔离 |
+- **async / sync 工具**：自动 `await` 协程工具（HTTP/DB 等），不会返回未执行的 coroutine
+- **circuit-breaker**：同一工具连续失败 ≥3 次 → 提示 LLM 换路，防止烧光 max_steps
+- **timeout 保护**：`asyncio.wait_for` + 每步让出 event loop，LLM 挂起时能真正中断
+- **context trimming**：messages 超阈值时丢弃中间轮、保留首尾，防 context 撑爆
+- **成本追踪**：每次调用记入共享 `CostTracker`
+- **参数 schema 推断**：从函数签名推断工具参数，弱模型也不会漏参数
+</details>
 
 <br>
 
----
+## 🌐 多模型混合调度
 
-<h2 align="center">⚡ 60 秒上手</h2>
+`multimodel/` 包：接入多厂商大模型，按任务**复杂度 / 隐私 / 成本 / 速度**自动路由，超复杂任务自动多模型协作。
+
+```
+┌──────────────────────── HybridScheduler（统一门面）─────────────────────────┐
+│                                                                            │
+│   TaskRouter          ModelDispatcher          MultiModelCollaborator       │
+│   ─────────           ───────────────          ─────────────────────       │
+│   分类 + 路由          多Key轮询 + 重试           拆解 → 并行 → 交叉校验 → 汇总   │
+│   简单→小模型           降级 + 负载均衡            （仅超复杂任务）              │
+│   复杂→强模型           调用日志                                              │
+│   隐私→本地                                                                  │
+│        └──────────────────── ModelRegistry（模型管理层）────────────────────┘ │
+│              ModelEntry × N  +  KeyRotator × N（每模型一个多Key轮询器）        │
+└────────────────────────────────────┬───────────────────────────────────────┘
+                                     │ 复用纯 httpx 的 OpenAI 兼容 client
+        ┌────────────────────────────┼────────────────────────────┐
+   云端 API                       本地部署                      LiteLLM 网关
+   OpenAI / Claude               Ollama                       （可选，统一所有厂商）
+   DeepSeek / 通义千问            LM Studio
+```
+
+| 层 | 组件 | 能力 |
+|---|---|---|
+| 模型管理 | `ModelRegistry` `KeyRotator` | 多厂商注册 + 多 API Key 轮询 + 冷却跳过（429/401） |
+| 智能路由 | `TaskRouter` | 启发式分类（代码/长度/关键词/隐私）+ 质量/成本/速度策略 |
+| 调用分发 | `ModelDispatcher` | 多 Key 轮询 + 失败重试 + 模型降级 + 负载均衡 + 调用日志 |
+| 多模型协作 | `MultiModelCollaborator` | 超复杂任务：强模型拆解 → 子任务并行 → 跨模型交叉校验 → 汇总整合 |
+| 统一门面 | `HybridScheduler` | 一个 `aschedule()` 串联以上全部 |
+
+> **设计取舍**：内置 client 是纯 httpx 打 OpenAI 兼容端点，而 Ollama / LM Studio / DeepSeek / 通义千问（兼容模式）/ LiteLLM / vLLM **都暴露 OpenAI 兼容 `/chat/completions`** —— 所以一个 client 全覆盖，**不强依赖 LiteLLM**。想用 LiteLLM 网关，把 `base_url` 指向网关即可，代码零改动。
+
+📖 完整集成文档（架构 / 配置 / 路由 / 分发 / 协作 / 接入 / 报错 7 节）：[`multimodel/INTEGRATION_GUIDE.md`](multimodel/INTEGRATION_GUIDE.md)
 
 <br>
 
-<h3 align="left">📦 Installation / 安装</h3>
+## 🧠 记忆系统
+
+四层记忆 + 新皮层协调 + 后台潜意识循环，跨会话持久化（`save_state` / `load_state`）。
+
+| 层 | 类 | 存什么 | 召回 / 遗忘 |
+|---|---|---|---|
+| 工作记忆 | `WorkingMemory` | 滑动上下文窗口 + token 预算（软 4000 / 硬 8000）+ 摘要缓冲 | 优先级淘汰 + 可选摘要回调 |
+| 情景记忆 | `EpisodicMemory` | 事件/场景/调试会话（带 strength、importance、embedding） | **真实艾宾浩斯遗忘**（`strength *= exp(-rate·hours)`）+ 余弦相似度×重要度×强度召回 |
+| 语义记忆 | `SemanticMemory` | 知识节点 + 关系图（内置 8 条 ADAS 知识种子） | 余弦相似度×置信度查询 + 关系图游走 |
+| 程序记忆 | `ProceduralMemory` | 技能定义 + 执行轨迹（EMA 成功率） | 余弦相似度找技能 + 频率统计发现模式 |
+| 新皮层 | `Neocortex` | 协调四层 + 倒排关键词索引 + n-gram 向量索引 | **混合召回**（关键词 + n-gram 向量）+ prune / consolidate / 持久化 |
+| 潜意识 | `SubconsciousLoop` | 后台线程生成洞察 | 9 类洞察生成器（模式/联系/类比/…），可 start/stop/pause |
+
+> **诚实说明**：召回是 **n-gram 关键词 + 向量混合**，**不是** transformer 语义嵌入。真正的语义嵌入 / FAISS / Chroma / Redis 需要你提供 `embedder=` 或后端 —— 框架默认零依赖、纯内存实现。跨会话记忆连续性已端到端验证（Agent A 存 → Agent B 跨会话逐字召回）。
+
+<br>
+
+## 🔧 技能库（58 个）
+
+全部**自动发现注册**，按领域无关 / ADAS / 多模态 / 创意等分类。
+
+<table>
+<tr><th>分类</th><th>数量</th><th>技能（invoke 名）</th></tr>
+<tr><td>🌐 <b>Web</b></td><td>3</td><td><code>web_fetch</code> · <code>web_search</code>⚠️ · <code>link_extractor</code></td></tr>
+<tr><td>📊 <b>数据</b></td><td>4</td><td><code>json_formatter</code> · <code>csv_parser</code> · <code>text_statistics</code> · <code>diff</code></td></tr>
+<tr><td>💻 <b>代码（通用）</b></td><td>3</td><td><code>regex_tester</code> · <code>json_schema_generator</code> · <code>code_counter</code></td></tr>
+<tr><td>📄 <b>文档</b></td><td>3</td><td><code>markdown_to_html</code> · <code>readme_skeleton</code> · <code>docstring_generator</code></td></tr>
+<tr><td>🌍 <b>翻译</b></td><td>2</td><td><code>language_detector</code>⚠️ · <code>translation_prompt</code></td></tr>
+<tr><td>🔨 <b>工具</b></td><td>4</td><td><code>uuid_generator</code> · <code>hash</code> · <code>timestamp</code> · <code>base64</code></td></tr>
+<tr><td>🖼️ <b>多模态</b></td><td>7</td><td><code>image_info</code> · <code>image_resize</code> · <code>image_base64</code> · <code>pdf_info</code> · <code>pdf_extract_text</code> · <code>audio_info</code> · <code>audio_transcribe</code>⚠️</td></tr>
+<tr><td>💡 <b>创意/效率/学习</b></td><td>8</td><td><code>brainstorm</code> · <code>metaphor_generator</code> · <code>story_plot</code> · <code>pomodoro_schedule</code> · <code>eisenhower_matrix</code> · <code>flashcard_generator</code> · <code>quiz_generator</code> · <code>spaced_repetition</code></td></tr>
+<tr><td>📁 <b>文件系统</b></td><td>6</td><td><code>file_read</code> · <code>file_write</code> · <code>file_edit</code> · <code>glob</code> · <code>grep</code> · <code>list_dir</code></td></tr>
+<tr><td>⚙️ <b>执行</b></td><td>1</td><td><code>code_runner</code></td></tr>
+<tr><td>🚗 <b>ADAS 感知</b></td><td>4</td><td><code>sensor_analysis</code> · <code>perception_model_review</code> · <code>sensor_calibration</code> · <code>object_detection_review</code></td></tr>
+<tr><td>🚗 <b>ADAS 规划</b></td><td>3</td><td><code>route_planning</code> · <code>behavior_planning</code> · <code>trajectory_optimization</code></td></tr>
+<tr><td>🛡️ <b>ADAS 安全</b></td><td>4</td><td><code>hara_analysis</code> · <code>fmea</code> · <code>iso26262_check</code> · <code>safety_case</code></td></tr>
+<tr><td>🎮 <b>ADAS 仿真</b></td><td>3</td><td><code>scenario_generation</code> · <code>carla_runner</code> · <code>edge_case</code></td></tr>
+<tr><td>🔧 <b>ADAS 工程</b></td><td>16</td><td>code_review/optimization/refactoring/bug_detection · log_analysis · test_case_design · sil/hil/regression_test · paper_analysis · sota_tracking · cicd · deployment · monitoring …</td></tr>
+</table>
+
+> ⚠️ 标注的是 **stub / demo**：`web_search`、`audio_transcribe`、`language_detector` 当前返回占位结果 + 警告（接真实 API / 模型后即可用）。`image_resize` / `pdf_extract_text` 在缺 Pillow / pypdf 时降级。**其余均为真实实现，graceful 降级、不抛异常。**
+
+```python
+# 技能自动发现，按名调用
+from skills.registry import SkillRegistry
+reg = SkillRegistry()
+reg.auto_discover()
+result = reg.get("brainstorm").execute({"topic": "智能家居", "count": 5})
+```
+
+<br>
+
+## 🛡️ 安全层
+
+Nonull 实际使用 `core/safety.py` 的 **`SafetyGuardian`** —— 一个 **3 步建议性门控**：
+
+1. **正则黑名单** — `block_pattern()` 拦截危险模式（始终先于放行）
+2. **命令白名单** — 不在白名单的动作类型加风险分
+3. **上下文风险评分** — `_evaluate_context_risk` 启发式打分 vs `max_risk_score`（默认 0.7，deny-first 起步 0.5）
+
+`text:` 文本输出**跳过内容评分**（agent 的回答讨论 "write/delete" 概念不会被误拦）。**无 ASIL 分级 —— 纯建议性。**
+
+> `safety/` 包里另有一个 5 层管线 `SafetyGuardian`（含 ASIL 枚举），但**生产代码不使用它**（仅测试 / CI 引用）—— 属于参考实现，不要混淆。
+
+<br>
+
+## 🏗️ 架构
+
+融合四种业界智能体架构的设计理念：
+
+| 架构 | 借鉴 | 在 Nonull 的体现 |
+|------|------|-----------------|
+| 🦞 **OpenClaw** | 三层分离 | Gateway / Agent / Channels 三层 |
+| 🏛️ **Hermes Agent** | 配置隔离 | Profile 隔离（dev/test/prod/sim）+ 工具注册表 |
+| 🧠 **openHuman** | 新皮层记忆 | 四层记忆 + 潜意识循环 + 遗忘曲线 |
+| 🔐 **Claude Code** | Deny-First 安全 | 建议性安全门控 + 41 钩子事件 + SubAgent 隔离 |
+
+**多 Agent 编排**（`orchestration/`）：`Orchestrator` 做 DAG 任务分解，8 个预置工作流（code_review / safety_analysis / test_generation / bug_triage / architecture_review / scenario_generation / compliance_check / data_pipeline_review），通过注入的 `executor_fn` 执行（LLM 在 agent 侧，编排器本身回调驱动）。
+
+**钩子系统**（`hooks/`）：41 个钩子事件 × 4 种类型（SHELL / HTTP / LLM / AGENT）。
+
+<br>
+
+## 📦 快速开始
 
 ```bash
-# Install (after git clone)
+# 安装
 pip install -e .
 
-# Run
-nonull                    # after pip install
-python -m nonull          # any time
-```
-
-<h3 align="left">🔐 Set up environment / 配置环境变量</h3>
-
-To run the LLM agent, you need an API key. Copy the example file and fill in your key:
-
-```bash
-# 1. Copy the template
+# 配置 LLM（复制模板填 key）
 cp .env.example .env
+#   NONULL_LLM_API_KEY=sk-your-key-here
+#   NONULL_LLM_PROVIDER=openai            # 可选
+#   NONULL_LLM_MODEL=gpt-4o               # 可选
+#   NONULL_LLM_API_BASE=https://...       # 可选（本地模型/兼容端点）
 
-# 2. Edit .env and set your key
-#    (on Windows: notepad .env, or use any editor)
-NONULL_LLM_API_KEY=sk-your-key-here
-
-# Optional: pick a different provider / model
-# NONULL_LLM_PROVIDER=openai
-# NONULL_LLM_MODEL=gpt-4o
-# NONULL_LLM_API_BASE=https://api.openai.com/v1
+# 运行 CLI
+nonull                # pip 安装后
+python -m nonull      # 任何时候
 ```
 
-**Without a key?** The CLI still works for slash commands (`/help`, `/clear`, `/history`, `/session`, `/stats`, etc.) — you just can't run the LLM agent. On startup you'll see:
+无 key 时 CLI 仍可用斜杠命令（`/help` `/stats` `/session` …），只是不能跑 LLM agent。
+
+**多模型配置**：编辑 [`multimodel/nonull_models.yaml`](multimodel/nonull_models.yaml) 的 `models:` 段（加一条即注册一个模型）。LiteLLM 网关配置见 [`multimodel/litellm_config.yaml`](multimodel/litellm_config.yaml)。
+
+<br>
+
+## 📂 项目结构
 
 ```
-(Agent mode disabled — set NONULL_LLM_API_KEY to enable)
-```
-
-<p align="center">
-  <img src="https://img.shields.io/badge/CLI-Rich%20Formatting-FF6B35?style=flat-square"/>
-  &nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/12%20Slash%20Commands-Ready-success?style=flat-square"/>
-  &nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/Multi--line-Supported-blue?style=flat-square"/>
-</p>
-
-<h3 align="left">🐍 在代码中使用</h3>
-
-```python
-from core import Nonull
-
-agent = Nonull()
-result = agent.run_sync("分析 AEB 系统的安全需求")
-print(result["output"])
-```
-
-<br>
-
----
-
-<br>
-
----
-
-<h2 align="center">🚀 三种执行模式 + 多模型混合调度（v0.3.0 新增）</h2>
-
-<p align="center">
-  同一个 <code>Nonull</code> 实例，三种可互换的执行模式，共享 LLM / 成本 / 记忆 / 安全。<br>
-  <i>One agent instance, three interchangeable execution modes, sharing LLM / cost / memory / safety.</i>
-</p>
-
-<br>
-
-| 模式 | 方法 | 适用场景 | 特性 |
-|------|------|---------|------|
-| 🧩 **结构化循环** | `agent.run(task)` | 复杂多步任务（需规划/反思/记忆召回） | 五阶段状态机 plan→reason→act→reflect + 恢复机制 |
-| 🔁 **ReAct 循环** | `agent.run_react(task, tools)` | 工具驱动任务（LLM 自主选工具） | while 循环 + LLM 完全控制流 + async 工具 + circuit-breaker |
-| 🌐 **混合调度** | `agent.run_hybrid(task)` | 任意任务（自动路由 + 超复杂协作） | 自动分类路由 + 多模型协作 + 多 Key 轮询 |
-
-<br>
-
-```python
-from core import Nonull
-
-agent = Nonull()
-
-# 模式 1: 结构化认知循环
-result = await agent.run("分析 AEB 系统的安全需求")
-
-# 模式 2: ReAct 工具循环
-result = await agent.run_react("算 15×23 再统计字数", tools=[calc, word_count])
-
-# 模式 3: 多模型混合调度（自动选模型 + 超复杂任务多模型协作）
-result = await agent.run_hybrid("帮我设计一个分布式限流方案")
-print(result["schedule_mode"])   # "single" | "collaboration"
-print(result["model_used"])      # 用了哪个/几个模型
-```
-
-<h3 align="center">🌐 多模型混合调度（<code>multimodel/</code>）</h3>
-
-<p align="center">
-  接入多厂商大模型，自动按任务复杂度/隐私/成本/速度路由，超复杂任务多模型协作。<br>
-  <i>Multi-vendor models with automatic routing by complexity/privacy/cost/speed, plus multi-model collaboration.</i>
-</p>
-
-| 层 | 组件 | 职责 |
-|---|---|---|
-| **模型管理层** | `ModelRegistry` + `KeyRotator` | 多厂商注册（OpenAI/Claude/DeepSeek/通义千问 + 本地 Ollama/LM Studio）+ 多 Key 轮询 |
-| **智能路由层** | `TaskRouter` | 简单→小模型 / 复杂→强模型 / 隐私→本地；质量/成本/速度策略 |
-| **调用封装层** | `ModelDispatcher` | 多 Key 轮询 + 失败重试 + 模型降级 + 负载均衡 + 调用日志 |
-| **多模型协作层** | `MultiModelCollaborator` | 超复杂任务：拆解 → 并行 → 交叉校验 → 汇总 |
-| **统一门面** | `HybridScheduler` | 一个入口串联以上全部 |
-
-- **不强依赖 LiteLLM**：内置 client 是纯 httpx 打 OpenAI 兼容端点，Ollama/LM Studio/DeepSeek/通义千问/LiteLLM/vLLM 一个 client 全覆盖。想用 LiteLLM 网关就把 `base_url` 指向网关，代码零改动。
-- 完整文档见 [`multimodel/INTEGRATION_GUIDE.md`](multimodel/INTEGRATION_GUIDE.md)（架构图 / 配置 / 路由 / 分发 / 协作 / 接入 / 报错 7 节）。
-
-<br>
-
----
-
-<h2 align="center">🎯 核心功能一览</h2>
-
-<br>
-
-<div align="center">
-
-| 模块 | 一句话描述 | 状态 |
-|------|-----------|:----:|
-| 🤖 **核心引擎** | ReAct + 规划 + 反思 融合状态机（三种执行模式可互换） | ✅ |
-| 🌐 **多模型调度** | 多厂商接入 + 智能路由 + 多模型协作 + 多Key轮询 | ✅ 🆕 |
-| 🧠 **记忆系统** | 工作/情景/知识/技能 四种记忆 + 潜意识 + 跨会话召回闭环 | ✅ |
-| 🛡️ **安全卫士** | ISO 26262 模式参考 + Deny-First + 五关检查（建议性，非认证） | ✅ |
-| 💰 **成本追踪** | 按模型计价 + 预算上限 + 调用日志 | ✅ 🆕 |
-| 🔧 **50+ 个技能** | 31 个 ADAS 专属 + 19 个通用 (web/data/code/docs/translation/utilities) + 8 个创意 (brainstorm/pomodoro/flashcards/...) | ✅ |
-| 🔄 **多Agent** | DAG 任务分解 + 8 个 Agent 并行 + 冲突解决 | ✅ |
-| 👤 **驾驶人格** | 🛡️ 保守派 / 🚀 运动派 / 🧓 老司机 | ✅ |
-| 🧠 **场景思维** | 36 个标准场景自动关联 + 覆盖率分析 | ✅ |
-| 📊 **安全指标** | 安全指标记录与统计（建议性，非游戏化） | ✅ |
-| 👋 **副驾模式** | 主动风险提醒 + 每日简报 | ✅ |
-| 🔌 **多通道** | CLI / API / MCP / 飞书 / 钉钉 / Telegram | ✅ |
-
-</div>
-
-<br>
-
----
-
-<h2 align="center">🧪 实验性功能</h2>
-
-<p align="center">
-  <b>⚠️ 警告 / WARNING</b>：以下模块是<strong>实验性的</strong>，未达到生产环境要求。<br>
-  The following modules are <strong>experimental</strong> and not production-ready.
-</p>
-
-<div align="center">
-
-| 模块 | 描述 | 风险 |
-|------|------|------|
-| 🧬 **自我进化**（`experimental/evolution/`） | 经验挖掘 / 技能创生 / 元认知 / 提示词优化 | 会自我修改技能注册表和提示词库 |
-| 🌟 **自我意识**（`experimental/consciousness/`） | SelfModel / 好奇心 / 自主成长 / 意识循环 | 非确定性、行为不可预测 |
-
-</div>
-
-<p align="center">
-  <b>绝对不要</b>将实验性模块接入任何<strong>影响车辆控制决策</strong>的路径。<br>
-  它们与 ISO 26262 的"无不可接受风险"原则直接冲突。<br><br>
-  <b>Never</b> wire experimental modules into any path that influences a vehicle control decision.<br>
-  They directly conflict with ISO 26262's "freedom from unacceptable risk" principle.
-</p>
-
-<p align="center">
-  详见 <a href="experimental/README.md">experimental/README.md</a>
-</p>
-
-<br>
-
----
-
-<h2 align="center">🏗️ Adding Your Own Domain (添加你自己的领域)</h2>
-
-<p align="center">
-  Nonull is <b>domain-agnostic</b>. ADAS is just one built-in domain. To add your own:
-</p>
-
-```python
-# domains/my_domain/__init__.py
-from domains import DomainPackage, DomainMetadata
-
-class MyDomain:
-    @property
-    def metadata(self):
-        return DomainMetadata(
-            name="medical",
-            display_name="医疗 / Medical",
-            description="Medical domain (or whatever you want).",
-            safety_profile="regulated-medical",  # 'advisory' | 'regulated-medical' | 'safety-critical'
-        )
-
-    def register(self, registry):
-        # Register your skills/personas/scenarios
-        from domains.my_domain.skills import MySkill
-        registry.register_skill(MySkill())
-
-    def get_safety_disclaimers(self):
-        return ["Medical domain: not for clinical use without review."]
-```
-
-```python
-# main.py
-from domains import load_default_domains
-reg = load_default_domains()
-reg.deactivate('adas')  # turn off ADAS if you don't need it
-# Or register your own:
-reg.register(MyDomain())
-reg.activate('medical')
-```
-
-That's it. Your domain's skills become available alongside (or instead of) the built-ins.
-
-The built-in domains are:
-- `domains/adas/` — 智驾 / ADAS (default)
-- `domains/general/` — always-active fallback (cannot be deactivated)
-
-<br>
-
----
-
-<h2 align="center">👤 独有特色：驾驶人格系统</h2>
-
-<br>
-
-<table align="center">
-  <tr>
-    <th width="33%">🛡️ 保守派工程师</th>
-    <th width="33%">🚀 运动派工程师</th>
-    <th width="33%">🧓 老司机</th>
-  </tr>
-  <tr>
-    <td align="center"><i>"这个场景的边界条件考虑了吗？"</i></td>
-    <td align="center"><i>"这个模块还有 30% 的优化空间！"</i></td>
-    <td align="center"><i>"这种情况我见过，通常是..."</i></td>
-  </tr>
-  <tr>
-    <td><b>风格：</b>谨慎、稳妥、重视冗余</td>
-    <td><b>风格：</b>激进、追求极限、创新</td>
-    <td><b>风格：</b>经验丰富、直觉锐利</td>
-  </tr>
-  <tr>
-    <td><b>适合：</b>安全分析、量产项目审查</td>
-    <td><b>适合：</b>性能优化、算法评估</td>
-    <td><b>适合：</b>场景分析、异常诊断</td>
-  </tr>
-</table>
-
-<br>
-
-```python
-from persona import PersonaOrchestrator, PersonaType
-
-# 同一段代码，三种人格三种看法
-for p in [PersonaType.CONSERVATIVE, PersonaType.SPORTY, PersonaType.VETERAN]:
-    ai = PersonaOrchestrator(p)
-    info = ai.get_current_persona()
-    print(f"[{info['name']}] {info['phrase']}")
+nonull/
+├── core/                 # 🤖 核心引擎
+│   ├── agent_core.py     #    Nonull 主类 + 三种执行模式（run/run_react/run_hybrid）
+│   ├── agent_loop.py     #    AgentLoop —— ReAct 内核（async工具/circuit-breaker/timeout）
+│   ├── memory_system.py  #    记忆系统门面（Neocortex + 潜意识）
+│   ├── safety.py         #    SafetyGuardian（实际使用的 3 步建议性门控）
+│   ├── llm_client.py     #    纯 httpx 的 OpenAI 兼容 client（多 provider + fallback）
+│   ├── cost_tracker.py   #    成本追踪（按模型计价 + 预算）
+│   └── config.py         #    配置系统（YAML + 环境变量）
+│
+├── multimodel/           # 🌐 多模型混合调度（v0.3.0）
+│   ├── registry.py       #    ModelRegistry + KeyRotator（多Key轮询）
+│   ├── router.py         #    TaskRouter（分类路由 + 策略）
+│   ├── dispatcher.py     #    ModelDispatcher（重试/降级/负载均衡/日志）
+│   ├── collaborator.py   #    MultiModelCollaborator（拆解/并行/校验/汇总）
+│   ├── scheduler.py      #    HybridScheduler（统一门面）
+│   └── INTEGRATION_GUIDE.md
+│
+├── memory/               # 🧠 四层记忆
+│   ├── working_memory.py · episodic.py · semantic.py · procedural.py
+│   ├── neocortex.py      #    新皮层聚合（混合召回）
+│   └── subconscious_loop.py
+│
+├── skills/               # 🔧 58 个技能（自动发现）
+│   ├── registry.py · code/data/testing/research/devops_skills.py
+│   └── core/             #    通用 + 多模态 + 创意 + 文件系统 + 执行
+│
+├── domains/              # 🌍 领域包（adas / general）
+│   └── adas/             #    14 技能 + 36 场景 + 3 人格 + CoPilot
+│
+├── orchestration/        # 🔄 多 Agent 编排（DAG + 8 工作流）
+├── safety/               # 🛡️ 5 层管线（参考实现，未接入生产）
+├── channels/             # 🔌 CLI / Gateway / MCP（平台适配器为 stub）
+├── hooks/                # 🪝 41 钩子事件 × 4 类型
+├── persona/              # 👤 人格系统（→ domains/adas 的兼容 re-export）
+├── experimental/         # 🧪 自我进化 / 自我意识（⚠️ 非生产就绪）
+├── examples/ · tests/ · docs/ · config/
 ```
 
 <br>
 
----
+## 📊 状态与诚实清单
 
-<h2 align="center">🎨 Creative / Productivity / Learning Skills</h2>
-
-<br>
-
-<p align="center">
-  Nonull 越来越像一个"next-gen 智能体"：除了 ADAS 专属技能和通用工具，
-  它还配备了 8 个 <b>创意 / 效率 / 学习</b> 技能（来自 <code>skills/creative/</code>）。
-</p>
-
-<p align="center">
-  <i>Beyond the 31 ADAS-specific skills and 19 general-purpose utilities,
-  Nonull ships 8 additional <b>creative / productivity / learning</b> skills
-  (<code>skills/creative/</code>) — making it feel like a next-gen agent.</i>
-</p>
-
-<br>
-
-<div align="center">
-
-| 分类 | 技能 | 用途 |
-|------|------|------|
-| 💡 **创意激发 / Ideation** | `brainstorm` | 用 7 种经典头脑风暴技术（SCAMPER、六顶思考帽、最坏想法、类比、Reversal、First Principles）针对主题生成创意 |
-| 💡 **创意激发 / Ideation** | `metaphor_generator` | 为抽象概念生成隐喻 / 类比（"X is like ___ because both ___"） |
-| 💡 **创意激发 / Ideation** | `story_plot` | 用 4 种叙事结构（Three-Act / Hero's Journey / Freytag / 起承转合）生成故事骨架 |
-| ⏱️ **效率 / Productivity** | `pomodoro_schedule` | 把任务列表拆成 25 分钟番茄钟 + 5/15 分钟休息的节奏表 |
-| ⏱️ **效率 / Productivity** | `eisenhower_matrix` | 把任务按"紧急/重要"四象限分类（Do / Schedule / Delegate / Eliminate） |
-| 📚 **学习 / Learning** | `flashcard_generator` | 从一段文本中生成 N 张 Q&A 抽认卡（Anki 风格） |
-| 📚 **学习 / Learning** | `quiz_generator` | 从一段文本中生成 N 道多选题（1 正确 + 3 干扰） |
-| 📚 **学习 / Learning** | `spaced_repetition` | 为一组记忆项生成 Leitner 间隔重复复习计划（1/3/7/14/30/60/120 天） |
-
-</div>
-
-<br>
-
-```python
-# 5 秒钟上手 / 5-second start
-from skills.creative.idea_skills import BrainstormSkill
-from skills.creative.learning_skills import FlashcardGeneratorSkill
-
-# 用 3 种头脑风暴技术为某个主题生成 5 个创意
-result = BrainstormSkill().execute({"topic": "smart home for elderly", "count": 5})
-for idea in result.data["ideas"]:
-    print(idea)
-
-# 把一段关于光合作用的文字切成 10 张抽认卡
-cards = FlashcardGeneratorSkill().execute({
-    "text": "Photosynthesis converts CO2 and H2O into glucose using sunlight.",
-    "count": 10,
-})
-print(cards.data["instruction"])
-```
-
-<br>
-
----
-
-<h2 align="center">🌍 Internationalization (i18n) / 多语言支持</h2>
-
-<br>
-
-<p align="center">
-  Nonull 用户面字符串已支持中英双语切换，存放在 <code>i18n/__init__.py</code>。
-</p>
-
-```python
-from i18n import t, set_lang
-
-# 默认英文 / English by default
-print(t("welcome"))            # "Nonull — Universal AI Agent"
-
-# 切到中文 / Switch to Chinese
-set_lang("zh")
-print(t("welcome"))            # "Nonull — 通用 AI 智能体"
-print(t("skills_loaded", n=8)) # "已加载 8 个技能"
-
-# Per-call 覆盖 / Per-call override
-print(t("welcome", lang="en")) # "Nonull — Universal AI Agent"
-```
-
-<br>
-
----
-
-<h2 align="center">📂 项目结构</h2>
-
-<br>
-
-```
-📁 nonull/
-├── 📄 README.md              # 项目介绍（就是你正在看的这个）
-├── 📄 AGENT.md               # 智能体身份标识 (SOUL.md 风格)
-├── 📄 CLAUDE.md              # 开发指南
-├── 📄 requirements.txt       # 依赖
-├── 📄 setup.py               # 安装配置
-│
-├── 📁 core/                  # 🤖 核心引擎
-│   ├── agent_core.py         #    主循环（状态机 + ReAct + 反思）
-│   └── config.py             #    配置系统
-│
-├── 📁 memory/                # 🧠 记忆系统
-│   ├── working_memory.py     #    工作记忆（前额叶）
-│   ├── episodic.py           #    情景记忆（海马体）
-│   ├── semantic.py           #    语义记忆（新皮层）
-│   ├── procedural.py         #    程序性记忆（小脑）
-│   ├── neocortex.py          #    新皮层聚合（默认内存后端，可插拔）
-│   └── subconscious_loop.py  #    潜意识循环
-│
-├── 📁 safety/                # 🛡️ 安全卫士
-│   ├── guardian.py           #    五层安全流水线
-│   ├── deny_first.py         #    Deny-First 规则引擎
-│   └── compliance.py         #    ISO 26262 / MISRA 合规
-│
-├── 📁 skills/                # 🔧 50 个技能 (31 ADAS + 19 通用)
-│   ├── registry.py           #    动态注册中心
-│   ├── code_skills.py        #    代码技能组
-│   ├── safety_skills.py      #    (P15 移至 domains/adas/skills/)
-│   ├── perception_skills.py  #    (P15 移至 domains/adas/skills/)
-│   ├── planning_skills.py    #    (P15 移至 domains/adas/skills/)
-│   ├── testing_skills.py     #    测试技能组
-│   ├── simulation_skills.py  #    (P15 移至 domains/adas/skills/)
-│   ├── data_skills.py        #    数据技能组
-│   ├── research_skills.py    #    研究技能组
-│   ├── devops_skills.py      #    DevOps 技能组
-│   └── core/                 #    P16: 19 个通用领域无关技能
-│       ├── web_skills.py          #    web_fetch / web_search / link_extractor
-│       ├── data_skills.py         #    json_formatter / csv_parser / text_statistics / diff
-│       ├── code_skills.py         #    regex_tester / json_schema_generator / code_counter
-│       ├── documentation_skills.py #    markdown_to_html / readme_skeleton / docstring_generator
-│       ├── translation_skills.py  #    language_detector / translation_prompt
-│       └── utilities_skills.py    #    uuid_generator / hash / timestamp / base64
-│
-├── 📁 persona/               # 👤 独有：人格系统
-│   ├── driving_persona.py    #    三种驾驶人格
-│   ├── scenario_engine.py    #    场景思维引擎（36 场景）
-│   ├── safety_badge.py       #    安全指标记录系统
-│   ├── co_pilot.py           #    副驾主动提醒
-│   └── persona_orchestrator.py #  人格编排器
-│
-├── 📁 orchestration/         # 🔄 多 Agent 编排
-│   ├── orchestrator.py       #    DAG 任务分解
-│   ├── agent_pool.py         #    Agent 池
-│   ├── communication.py      #    EventBus 通信
-│   └── workflows.py          #    8 个预置工作流
-│
-├── 📁 multimodel/            # 🌐 多模型混合调度（v0.3.0 新增）
-│   ├── registry.py           #    模型注册表 + 多Key轮询 (KeyRotator)
-│   ├── router.py             #    任务分类路由 (简单/复杂/隐私 + 策略)
-│   ├── dispatcher.py         #    单模型分发 (重试/降级/负载均衡/日志)
-│   ├── collaborator.py       #    超复杂任务多模型协作
-│   ├── scheduler.py          #    HybridScheduler 统一门面
-│   ├── litellm_config.yaml   #    LiteLLM 网关配置 (可选)
-│   ├── nonull_models.yaml    #    模型注册配置
-│   └── INTEGRATION_GUIDE.md  #    7 节完整集成文档
-│
-├── 📁 experimental/          # 🧪 实验性模块（⚠️ 非生产就绪）
-│   ├── README.md             #    警告与使用说明
-│   ├── consciousness/        #    🌟 自我意识（实验性）
-│   └── evolution/            #    🌱 自我进化（实验性）
-│
-├── 📁 channels/              # 🔌 通信通道
-│   ├── cli.py                #    CLI 交互（Rich 格式化）
-│   ├── gateway.py            #    网关路由
-│   ├── mcp_adapter.py        #    MCP 协议适配
-│   └── platform_adapters.py  #    飞书/钉钉/Telegram/WebSocket/HTTP 5 个适配器
-│
-├── 📁 hooks/                 # 🪝 钩子系统
-│   └── hook_system.py        #    40 钩子事件 × 4 类型
-│
-├── 📁 docs/                  # 📚 文档
-│   ├── 说明书-完整版.md       #    完整使用说明书
-│   ├── 一页纸速览.md          #    一分钟看完
-│   ├── 快速上手指南.md        #    两分钟上手
-│   └── architecture.md       #    架构深度解析
-│
-├── 📁 examples/              # 📖 使用示例
-│   ├── quickstart.py         #    快速入门
-│   ├── code_review.py        #    代码审查
-│   ├── safety_analysis.py    #    安全分析
-│   └── multi_agent_workflow.py #  多 Agent 工作流
-│
-├── 📁 tests/                 # 🧪 测试
-│   ├── test_core.py                      # 核心测试
-│   ├── test_memory.py                    # 记忆系统测试
-│   ├── test_safety_badge_api.py          # SafetyBadge API + 弃用包装器
-│   └── test_persona_exports.py           # persona 包对外导出契约
-│
-└── 📁 config/                # ⚙️ 配置
-    ├── config.yaml
-    └── safety_rules.yaml
-```
-
-<br>
-
----
-
-<h2 align="center">📖 文档导航</h2>
-
-<br>
-
-<p align="center">
-  <a href="docs/说明书-完整版.md">
-    <img src="https://img.shields.io/badge/📖-完整说明书-FF6B35?style=for-the-badge"/>
-  </a>
-  <a href="docs/一页纸速览.md">
-    <img src="https://img.shields.io/badge/📄-一页纸速览-6C63FF?style=for-the-badge"/>
-  </a>
-  <a href="docs/快速上手指南.md">
-    <img src="https://img.shields.io/badge/🚀-快速上手-00C9A7?style=for-the-badge"/>
-  </a>
-  <a href="docs/architecture.md">
-    <img src="https://img.shields.io/badge/🏗️-架构文档-FF6B6B?style=for-the-badge"/>
-  </a>
-  <a href="docs/llm-setup.md">
-    <img src="https://img.shields.io/badge/🔌-LLM%20Setup-00BFA5?style=for-the-badge"/>
-  </a>
-</p>
-
-<br>
-
----
-
-<h2 align="center">🧑‍💻 Internal use guide</h2>
-
-<p align="center">
-  First day on the team? Start with the one-page warning sheet:
-  <a href="INTERNAL-NOTES.md"><b>INTERNAL-NOTES.md</b></a>.<br>
-  It covers first install, LLM setup, the three workflows every new
-  engineer uses (code review, scenario coverage, multi-agent),
-  known limitations, and where to ask for help.<br>
-  <i>Advisory only — does not replace the disclaimer above.</i>
-</p>
-
-<br>
-
-The example `examples/skill_workflow.py` (one-shot AEB review) is
-guarded by an end-to-end smoke test at
-[`tests/test_skill_workflow_integration.py`](tests/test_skill_workflow_integration.py).
-It imports the example, auto-discovers the real `SkillRegistry`,
-verifies the `code_review` skill is present, instantiates the
-`Orchestrator`, and pins the public
-`Orchestrator.run_with_skills` signature. Run it with:
-
-```bash
-pytest tests/test_skill_workflow_integration.py -v
-```
-
-If you change `examples/skill_workflow.py` or the orchestrator's
-public method shape, this test is the first thing CI will flag.
-
-<br>
-
----
-
-<h2 align="center">🔗 Project Links / 项目链接</h2>
-
-<p align="center">
-  <a href="CONTRIBUTING.md">
-    <img src="https://img.shields.io/badge/📝-CONTRIBUTING-FF6B35?style=for-the-badge"/>
-  </a>
-  <a href="CHANGELOG.md">
-    <img src="https://img.shields.io/badge/📜-CHANGELOG-6C63FF?style=for-the-badge"/>
-  </a>
-  <a href="LICENSE">
-    <img src="https://img.shields.io/badge/⚖️-LICENSE-yellow?style=for-the-badge"/>
-  </a>
-  <a href="INTERNAL-NOTES.md">
-    <img src="https://img.shields.io/badge/🧑‍💻-INTERNAL%20NOTES-00C9A7?style=for-the-badge"/>
-  </a>
-</p>
-
-| File | Purpose | 用途 |
-|------|---------|------|
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Development setup, code style, testing, PR process, marketing red lines | 开发环境、代码风格、测试、PR 流程、营销文案红线 |
-| [`CHANGELOG.md`](CHANGELOG.md) | Release history in [Keep a Changelog](https://keepachangelog.com/) format | [Keep a Changelog](https://keepachangelog.com/) 格式的发布历史 |
-| [`LICENSE`](LICENSE) | MIT license terms | MIT 许可证条款 |
-| [`INTERNAL-NOTES.md`](INTERNAL-NOTES.md) | One-page warning sheet for first-day engineers | 首日工程师一页纸警告说明 |
-
-<p align="center">
-  <i>All four files are advisory documentation. The binding safety
-  disclaimer is at the top of this README.</i>
-</p>
-
-<br>
-
----
-
-## 📊 Project Status (2026-06-16)
-
-| Metric | Value |
+| 指标 | 值 |
 |---|---|
-| Tests passing | 839 / 848 (9 skipped — see CHANGELOG) |
-| Execution modes | 3 — `run()` structured / `run_react()` ReAct / `run_hybrid()` multi-model |
-| Multi-model | OpenAI / Claude / DeepSeek / 通义千问 / Ollama / LM Studio (via OpenAI-compatible client; optional LiteLLM gateway) |
-| Skills | 50+ (31 ADAS + 19 general) |
+| 测试 | **839 passing** / 848（9 skipped） |
+| 执行模式 | 3（`run` / `run_react` / `run_hybrid`） |
+| 技能 | 58 个注册类（自动发现） |
+| 多模型 | OpenAI / Claude / DeepSeek / 通义千问 / Ollama / LM Studio（OpenAI 兼容；可选 LiteLLM 网关） |
 | Python | 3.10+ |
-| LLM | Any OpenAI-compatible endpoint (OpenAI / DeepSeek / MiniMax / Ollama / vLLM / LiteLLM) |
-| Status | **Alpha — internal pilot ready** |
+| 状态 | **Alpha — 内部试点就绪** |
 
-**Read this carefully:** Nonull is an **advisory** development assistant, not a certified safety product. It is suitable for:
-- ✅ Internal ADAS engineering productivity
-- ✅ Code review scaffolding
-- ✅ Scenario planning assistance
-- ✅ LLM integration demos
+**✅ 真实可用**：三种执行模式 · 多模型路由+协作 · 四层记忆+跨会话召回 · 成本追踪 · 安全门控 · 50+ 真实技能 · 多 Agent 编排
 
-It is **NOT** suitable for:
-- ❌ Production deployment in any vehicle
-- ❌ Safety-critical decisions
-- ❌ Any path that influences a vehicle control decision
-- ❌ Compliance certification
+**⚠️ stub / 需补全**：`web_search` / `audio_transcribe` / `language_detector`（占位）· channels 平台适配器（飞书/钉钉/Telegram 缺真实 HTTP 实现）· 语义召回（需自带 embedder）
 
-See `docs/project-report.md` for the complete 14-round polish history and the real test report.
+**❌ 不适用**：量产车辆部署 · 安全关键决策 · 任何影响车辆控制的路径 · 合规认证
 
 <br>
 
 ---
 
-<h2 align="center">🏅 Nonull = 非空 = Never Null</h2>
+<div align="center">
 
-<p align="center">
-  <i>"每一个决策都有依据，不空想。<br>
-  每一次响应都有内容，不空答。<br>
-  每一个动作都经过安全验证，不出错。"</i>
-</p>
+### Nonull = 非空 = Never Null
 
-<br>
+<i>每一个决策都有依据，不空想。<br>
+每一次响应都有内容，不空答。<br>
+每一个动作都经过安全验证，不出错。</i>
 
-<p align="center">
-  <b>如临深渊，如履薄冰。</b> — 《诗经·小雅》
-</p>
+<b>如临深渊，如履薄冰。</b> — 《诗经·小雅》
 
-<br>
-
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&height=120&color=0:1A1A2E,100:FF6B35&section=footer"/>
-</p>
+</div>
 
 ---
 
-<h2 id="english" align="center">🌐 English</h2>
+<h2 id="-english">🌐 English</h2>
 
-<p align="center">
-  <b>Nonull</b> is a next-generation AI agent built for the <b>autonomous driving industry</b>.<br>
-  It's like a seasoned senior engineer — reviewing code, analyzing safety, designing tests, and generating scenarios.<br>
-  With <b>memory, safety awareness, and a unique personality</b>.
-</p>
+**Nonull** is a domain-agnostic AI agent framework with three interchangeable execution modes, intelligent multi-model scheduling, a four-layer memory system, and 58 auto-discovered skills.
 
-<br>
+**Three execution modes** (one agent instance, shared LLM/cost/memory/safety):
+- `run(task)` — structured 5-phase loop (Plan → Reason → Act → Reflect)
+- `run_react(task, tools)` — ReAct loop where the LLM owns control flow (async tools, circuit-breaker, timeout)
+- `run_hybrid(task)` — multi-model scheduling: auto-route by complexity/privacy/cost/speed, multi-model collaboration for super-complex tasks
 
-<table align="center">
-  <tr>
-    <th>Feature</th>
-    <th>Description</th>
-  </tr>
-  <tr><td>🤖 Core Engine</td><td>ReAct + Plan-and-Execute + Reflexion fused state machine — 3 interchangeable modes: <code>run()</code> / <code>run_react()</code> / <code>run_hybrid()</code></td></tr>
-  <tr><td>🌐 Multi-Model Scheduling</td><td>Multi-vendor models + auto routing (complexity/privacy/cost/speed) + multi-model collaboration + multi-key rotation (<code>multimodel/</code>)</td></tr>
-  <tr><td>🧠 Memory System</td><td>Working/Episodic/Semantic/Procedural + Neocortex + cross-session recall (configurable capacity, default in-memory backend)</td></tr>
-  <tr><td>🛡️ Safety Guardian</td><td>ISO 26262 pattern refs + Deny-First + 5-layer advisory pipeline (not certified)</td></tr>
-  <tr><td>💰 Cost Tracking</td><td>Per-model pricing + budget cap + call logging</td></tr>
-  <tr><td>🔧 50 Skills</td><td>31 ADAS-specific (Code/Safety/Perception/Planning/Testing/Simulation/Data/Research/DevOps) + 19 general-purpose (Web/Data/Code/Docs/Translation/Utilities) under <code>skills/core/</code></td></tr>
-  <tr><td>👤 Driving Persona</td><td>Conservative 🛡️ / Sporty 🚀 / Veteran 🧓 — three characters</td></tr>
-  <tr><td>🧠 Scenario Engine</td><td>36 built-in driving scenarios + coverage analysis</td></tr>
-  <tr><td>📊 Safety Metrics</td><td>Safety metrics tracking (advisory, not gamified)</td></tr>
-  <tr><td>🔌 Multi-Channel</td><td>CLI / API / MCP / Telegram / Feishu / DingTalk</td></tr>
-</table>
+**Multi-model scheduling** (`multimodel/`): multi-vendor models (OpenAI / Claude / DeepSeek / Qwen / Ollama / LM Studio) via a pure-httpx OpenAI-compatible client — **no hard LiteLLM dependency**; point `base_url` at a LiteLLM gateway if you want one. Auto routing + multi-key rotation + retry/fallback + multi-model collaboration (decompose → parallel → cross-check → synthesize).
 
-<br>
+**Memory**: four layers (working / episodic / semantic / procedural) + Neocortex coordinator + background subconscious loop. Episodic has **real Ebbinghaus decay**; recall is **hybrid keyword + n-gram vector** (not transformer-semantic — bring your own `embedder=` for that). Cross-session continuity verified end-to-end.
 
-> **Note**: Self-evolution and self-awareness modules are <b>experimental</b> and have been moved to <code>experimental/</code>. They are not wired into the production agent loop and must not be used in any safety-critical path. See <a href="experimental/README.md">experimental/README.md</a> for warnings.
+**Safety**: `core/safety.py` `SafetyGuardian` — a 3-step advisory gate (regex blocklist → command allowlist → context-risk scoring). **Advisory only, no ASIL.**
+
+**Honest status**: 839 tests passing. Stubs to flag: `web_search` / `audio_transcribe` / `language_detector` (placeholders), platform channel adapters (Feishu/DingTalk/Telegram lack real HTTP impl), semantic recall (needs a user-supplied embedder). **Not for production vehicle deployment or safety-critical decisions.**
+
+<div align="center">
+<img src="https://capsule-render.vercel.app/api?type=waving&height=120&color=gradient&customColorList=12,20,24&section=footer"/>
+</div>
