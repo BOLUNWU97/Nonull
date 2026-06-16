@@ -60,19 +60,22 @@ class WebFetchSkill(BaseSkill):
 
 
 class WebSearchSkill(BaseSkill):
-    """Search the web. NOTE: Requires a search API key — currently a stub.
+    """Search the web. Real implementation with multiple backends.
 
-    To enable: set NONULL_SEARCH_API_KEY and NONULL_SEARCH_ENGINE in env.
-    For now, this returns a clear DEMO message.
+    Backends (auto-selected):
+      - duckduckgo (default, no API key — parses the DDG HTML endpoint)
+      - brave (set NONULL_SEARCH_ENGINE=brave + NONULL_SEARCH_API_KEY)
+      - serpapi (set NONULL_SEARCH_ENGINE=serpapi + NONULL_SEARCH_API_KEY)
     """
 
     @property
     def metadata(self) -> SkillMetadata:
         return SkillMetadata(
             name="web_search",
-            version="0.1.0",
+            version="0.2.0",
             category=SkillCategory.GENERAL,
-            description="Search the web. DEMO PLACEHOLDER: requires a search API key.",
+            description="Search the web (DuckDuckGo by default, no key needed; "
+                        "Brave/SerpAPI with a key). Returns title/url/snippet results.",
             tags=["web", "search"],
             author="Nonull Team",
             safety_level=2,
@@ -84,14 +87,13 @@ class WebSearchSkill(BaseSkill):
             raise ValueError("'query' must be a non-empty string")
 
     def _execute_impl(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            "query": context["query"],
-            "results": [],
-            "warning": (
-                "Web search is a DEMO PLACEHOLDER. To enable real search, "
-                "wire a search API (Bing / Google / SerpAPI / Brave). See docs/llm-setup.md."
-            ),
-        }
+        from skills.core.web_search_backend import web_search
+        query = context["query"]
+        max_results = int(context.get("max_results", 8))
+        timeout = float(context.get("timeout", 15.0))
+        backend = context.get("backend")  # 可选: 显式指定后端
+        resp = web_search(query, max_results=max_results, timeout=timeout, backend=backend)
+        return resp.to_dict()
 
 
 class LinkExtractorSkill(BaseSkill):

@@ -29,7 +29,7 @@
 > [!IMPORTANT]
 > **声明 / Disclaimer** — Nonull 是一个**建议性（advisory）的工程开发助手**，**不是**经过 ISO 26262 / ASIL-D 认证的车规级安全产品。其"安全层"参考 ISO 26262 / MISRA / ASPICE 的**模式与术语**做风险提示，但**不实现** ASIL-D 的抗干扰、MC/DC 覆盖、形式化验证等条款。**请勿用于量产部署、安全关键决策，或替代任何认证安全机制。**
 >
-> Nonull is an **advisory engineering assistant**, **not** an ISO 26262 / ASIL-D certified safety product. The safety layer references standards' *patterns and terminology* for risk hints only. **Do not use for production deployment, safety-critical decisions, or as a substitute for certified safety mechanisms.**
+> Nonull is an **advisory engineering assistant**, **not** an ISO 26262 / ASIL-D certified safety product. The safety layer references standards' *patterns and terminology* for risk hints only. **Do not use for production deployment, safety-critical decisions; it is not a certified safety mechanism and must not replace one.**
 
 <br>
 

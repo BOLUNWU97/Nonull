@@ -58,15 +58,24 @@ def _activate(skill: BaseSkill) -> BaseSkill:
 
 
 class TestWebSearchSkill:
-    """WebSearchSkill is a stub that returns a clear demo warning."""
+    """WebSearchSkill now calls a real multi-backend search (DuckDuckGo/Brave/SerpAPI)."""
 
-    def test_search_returns_demo_warning(self):
+    def test_search_returns_results(self, monkeypatch):
+        """真实后端 (mock 网络): 返回结构化结果, 不再是 demo placeholder。"""
+        import skills.core.web_search_backend as be
+        monkeypatch.setattr(be, "search_duckduckgo",
+                            lambda q, m, t: be.SearchResponse(
+                                query=q, backend="duckduckgo",
+                                results=[be.SearchResult("Title", "https://x.com", "snip")]))
+        monkeypatch.delenv("NONULL_SEARCH_ENGINE", raising=False)
         skill = _activate(WebSearchSkill())
         result = skill.execute({"query": "test query"})
         assert result.success
         assert result.data["query"] == "test query"
-        assert result.data["results"] == []
-        assert "DEMO PLACEHOLDER" in result.data["warning"]
+        assert result.data["result_count"] == 1
+        assert result.data["results"][0]["url"] == "https://x.com"
+        # 不再有 DEMO PLACEHOLDER
+        assert "warning" not in result.data or "PLACEHOLDER" not in str(result.data.get("warning", ""))
 
     def test_search_validates_query(self):
         skill = _activate(WebSearchSkill())
