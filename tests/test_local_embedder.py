@@ -156,6 +156,18 @@ class TestLocalEmbedder:
         emb.fit(["a b c", "d e f"])
         assert "fitted=True" in repr(emb)
 
+    def test_deterministic_across_instances(self):
+        """同文本在不同实例产生相同向量 (确定性哈希, 非 PYTHONHASHSEED 随机)。
+
+        这是持久化/跨进程检索能工作的前提: 用 md5 而非内置 hash()。
+        """
+        import numpy as np
+        e1 = LocalSemanticEmbedder(dim=256)
+        e2 = LocalSemanticEmbedder(dim=256)
+        v1 = e1.encode("thread-safe concurrent queue")
+        v2 = e2.encode("thread-safe concurrent queue")
+        assert np.allclose(v1, v2)  # 完全相同, 与进程无关
+
 
 # ── SemanticIndex ────────────────────────────────────────────────
 

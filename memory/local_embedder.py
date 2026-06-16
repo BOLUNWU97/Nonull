@@ -28,6 +28,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import math
 import re
 from collections import Counter, defaultdict
@@ -85,10 +86,15 @@ def _char_ngrams(text: str, n: int) -> Iterable[str]:
 
 
 def _signed_hash(feature: str, dim: int) -> tuple[int, float]:
-    """符号哈希: 返回 (维度索引, ±1 符号)。减少哈希冲突的系统偏差。"""
-    h = hash(feature)
+    """符号哈希: 返回 (维度索引, ±1 符号)。减少哈希冲突的系统偏差。
+
+    用 md5 而非内置 hash(): Python 对 str 的 hash() 受 PYTHONHASHSEED 随机化,
+    会导致同一文本在不同进程产生不同向量 —— 跨进程持久化/检索就失效了。
+    md5 是确定性的, 保证可复现 (这里只用作特征散列, 非加密用途)。
+    """
+    h = int.from_bytes(hashlib.md5(feature.encode("utf-8")).digest()[:8], "big")
     idx = (h & 0x7FFFFFFF) % dim
-    sign = 1.0 if (h >> 31) & 1 else -1.0
+    sign = 1.0 if (h >> 63) & 1 else -1.0
     return idx, sign
 
 
