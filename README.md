@@ -4,11 +4,12 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.0-blue?style=flat-square"/>
+  <img src="https://img.shields.io/badge/version-0.3.0-blue?style=flat-square"/>
   <img src="https://img.shields.io/badge/python-3.10%2B-green?style=flat-square&logo=python&logoColor=white"/>
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square"/>
+  <img src="https://img.shields.io/badge/tests-839%20passing-success?style=flat-square"/>
   <img src="https://img.shields.io/badge/Advisory%20Safety-orange?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Advisory%20Checks-yellow?style=flat-square"/>
+  <img src="https://img.shields.io/badge/multi--model-hybrid%20scheduling-FF6B35?style=flat-square"/>
   <img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square"/>
   <img src="https://img.shields.io/badge/domains-ADAS%20%2B%20General-6C63FF?style=flat-square"/>
 </p>
@@ -256,6 +257,66 @@ print(result["output"])
 
 ---
 
+<br>
+
+---
+
+<h2 align="center">🚀 三种执行模式 + 多模型混合调度（v0.3.0 新增）</h2>
+
+<p align="center">
+  同一个 <code>Nonull</code> 实例，三种可互换的执行模式，共享 LLM / 成本 / 记忆 / 安全。<br>
+  <i>One agent instance, three interchangeable execution modes, sharing LLM / cost / memory / safety.</i>
+</p>
+
+<br>
+
+| 模式 | 方法 | 适用场景 | 特性 |
+|------|------|---------|------|
+| 🧩 **结构化循环** | `agent.run(task)` | 复杂多步任务（需规划/反思/记忆召回） | 五阶段状态机 plan→reason→act→reflect + 恢复机制 |
+| 🔁 **ReAct 循环** | `agent.run_react(task, tools)` | 工具驱动任务（LLM 自主选工具） | while 循环 + LLM 完全控制流 + async 工具 + circuit-breaker |
+| 🌐 **混合调度** | `agent.run_hybrid(task)` | 任意任务（自动路由 + 超复杂协作） | 自动分类路由 + 多模型协作 + 多 Key 轮询 |
+
+<br>
+
+```python
+from core import Nonull
+
+agent = Nonull()
+
+# 模式 1: 结构化认知循环
+result = await agent.run("分析 AEB 系统的安全需求")
+
+# 模式 2: ReAct 工具循环
+result = await agent.run_react("算 15×23 再统计字数", tools=[calc, word_count])
+
+# 模式 3: 多模型混合调度（自动选模型 + 超复杂任务多模型协作）
+result = await agent.run_hybrid("帮我设计一个分布式限流方案")
+print(result["schedule_mode"])   # "single" | "collaboration"
+print(result["model_used"])      # 用了哪个/几个模型
+```
+
+<h3 align="center">🌐 多模型混合调度（<code>multimodel/</code>）</h3>
+
+<p align="center">
+  接入多厂商大模型，自动按任务复杂度/隐私/成本/速度路由，超复杂任务多模型协作。<br>
+  <i>Multi-vendor models with automatic routing by complexity/privacy/cost/speed, plus multi-model collaboration.</i>
+</p>
+
+| 层 | 组件 | 职责 |
+|---|---|---|
+| **模型管理层** | `ModelRegistry` + `KeyRotator` | 多厂商注册（OpenAI/Claude/DeepSeek/通义千问 + 本地 Ollama/LM Studio）+ 多 Key 轮询 |
+| **智能路由层** | `TaskRouter` | 简单→小模型 / 复杂→强模型 / 隐私→本地；质量/成本/速度策略 |
+| **调用封装层** | `ModelDispatcher` | 多 Key 轮询 + 失败重试 + 模型降级 + 负载均衡 + 调用日志 |
+| **多模型协作层** | `MultiModelCollaborator` | 超复杂任务：拆解 → 并行 → 交叉校验 → 汇总 |
+| **统一门面** | `HybridScheduler` | 一个入口串联以上全部 |
+
+- **不强依赖 LiteLLM**：内置 client 是纯 httpx 打 OpenAI 兼容端点，Ollama/LM Studio/DeepSeek/通义千问/LiteLLM/vLLM 一个 client 全覆盖。想用 LiteLLM 网关就把 `base_url` 指向网关，代码零改动。
+- 完整文档见 [`multimodel/INTEGRATION_GUIDE.md`](multimodel/INTEGRATION_GUIDE.md)（架构图 / 配置 / 路由 / 分发 / 协作 / 接入 / 报错 7 节）。
+
+<br>
+
+---
+
 <h2 align="center">🎯 核心功能一览</h2>
 
 <br>
@@ -264,15 +325,17 @@ print(result["output"])
 
 | 模块 | 一句话描述 | 状态 |
 |------|-----------|:----:|
-| 🤖 **核心引擎** | ReAct + 规划 + 反思 融合状态机 | ✅ |
-| 🧠 **记忆系统** | 工作/情景/知识/技能 四种记忆 + 潜意识 | ✅ |
+| 🤖 **核心引擎** | ReAct + 规划 + 反思 融合状态机（三种执行模式可互换） | ✅ |
+| 🌐 **多模型调度** | 多厂商接入 + 智能路由 + 多模型协作 + 多Key轮询 | ✅ 🆕 |
+| 🧠 **记忆系统** | 工作/情景/知识/技能 四种记忆 + 潜意识 + 跨会话召回闭环 | ✅ |
 | 🛡️ **安全卫士** | ISO 26262 模式参考 + Deny-First + 五关检查（建议性，非认证） | ✅ |
+| 💰 **成本追踪** | 按模型计价 + 预算上限 + 调用日志 | ✅ 🆕 |
 | 🔧 **50+ 个技能** | 31 个 ADAS 专属 + 19 个通用 (web/data/code/docs/translation/utilities) + 8 个创意 (brainstorm/pomodoro/flashcards/...) | ✅ |
 | 🔄 **多Agent** | DAG 任务分解 + 8 个 Agent 并行 + 冲突解决 | ✅ |
-| 👤 **驾驶人格** | 🛡️ 保守派 / 🚀 运动派 / 🧓 老司机 | ✅ 🆕 |
-| 🧠 **场景思维** | 36 个标准场景自动关联 + 覆盖率分析 | ✅ 🆕 |
-| 📊 **安全指标** | 安全指标记录与统计（建议性，非游戏化） | ✅ 🆕 |
-| 👋 **副驾模式** | 主动风险提醒 + 每日简报 | ✅ 🆕 |
+| 👤 **驾驶人格** | 🛡️ 保守派 / 🚀 运动派 / 🧓 老司机 | ✅ |
+| 🧠 **场景思维** | 36 个标准场景自动关联 + 覆盖率分析 | ✅ |
+| 📊 **安全指标** | 安全指标记录与统计（建议性，非游戏化） | ✅ |
+| 👋 **副驾模式** | 主动风险提醒 + 每日简报 | ✅ |
 | 🔌 **多通道** | CLI / API / MCP / 飞书 / 钉钉 / Telegram | ✅ |
 
 </div>
@@ -548,6 +611,16 @@ print(t("welcome", lang="en")) # "Nonull — Universal AI Agent"
 │   ├── communication.py      #    EventBus 通信
 │   └── workflows.py          #    8 个预置工作流
 │
+├── 📁 multimodel/            # 🌐 多模型混合调度（v0.3.0 新增）
+│   ├── registry.py           #    模型注册表 + 多Key轮询 (KeyRotator)
+│   ├── router.py             #    任务分类路由 (简单/复杂/隐私 + 策略)
+│   ├── dispatcher.py         #    单模型分发 (重试/降级/负载均衡/日志)
+│   ├── collaborator.py       #    超复杂任务多模型协作
+│   ├── scheduler.py          #    HybridScheduler 统一门面
+│   ├── litellm_config.yaml   #    LiteLLM 网关配置 (可选)
+│   ├── nonull_models.yaml    #    模型注册配置
+│   └── INTEGRATION_GUIDE.md  #    7 节完整集成文档
+│
 ├── 📁 experimental/          # 🧪 实验性模块（⚠️ 非生产就绪）
 │   ├── README.md             #    警告与使用说明
 │   ├── consciousness/        #    🌟 自我意识（实验性）
@@ -680,14 +753,16 @@ public method shape, this test is the first thing CI will flag.
 
 ---
 
-## 📊 Project Status (2026-06-06)
+## 📊 Project Status (2026-06-16)
 
 | Metric | Value |
 |---|---|
-| Tests passing | ~690 / ~700 (see CHANGELOG) |
+| Tests passing | 839 / 848 (9 skipped — see CHANGELOG) |
+| Execution modes | 3 — `run()` structured / `run_react()` ReAct / `run_hybrid()` multi-model |
+| Multi-model | OpenAI / Claude / DeepSeek / 通义千问 / Ollama / LM Studio (via OpenAI-compatible client; optional LiteLLM gateway) |
 | Skills | 50+ (31 ADAS + 19 general) |
 | Python | 3.10+ |
-| LLM | Any OpenAI-compatible endpoint (OpenAI / DeepSeek / MiniMax / Ollama / vLLM) |
+| LLM | Any OpenAI-compatible endpoint (OpenAI / DeepSeek / MiniMax / Ollama / vLLM / LiteLLM) |
 | Status | **Alpha — internal pilot ready** |
 
 **Read this carefully:** Nonull is an **advisory** development assistant, not a certified safety product. It is suitable for:
@@ -745,9 +820,11 @@ See `docs/project-report.md` for the complete 14-round polish history and the re
     <th>Feature</th>
     <th>Description</th>
   </tr>
-  <tr><td>🤖 Core Engine</td><td>ReAct + Plan-and-Execute + Reflexion fused state machine</td></tr>
-  <tr><td>🧠 Memory System</td><td>Working/Episodic/Semantic/Procedural + Neocortex (configurable capacity, default in-memory backend)</td></tr>
+  <tr><td>🤖 Core Engine</td><td>ReAct + Plan-and-Execute + Reflexion fused state machine — 3 interchangeable modes: <code>run()</code> / <code>run_react()</code> / <code>run_hybrid()</code></td></tr>
+  <tr><td>🌐 Multi-Model Scheduling</td><td>Multi-vendor models + auto routing (complexity/privacy/cost/speed) + multi-model collaboration + multi-key rotation (<code>multimodel/</code>)</td></tr>
+  <tr><td>🧠 Memory System</td><td>Working/Episodic/Semantic/Procedural + Neocortex + cross-session recall (configurable capacity, default in-memory backend)</td></tr>
   <tr><td>🛡️ Safety Guardian</td><td>ISO 26262 pattern refs + Deny-First + 5-layer advisory pipeline (not certified)</td></tr>
+  <tr><td>💰 Cost Tracking</td><td>Per-model pricing + budget cap + call logging</td></tr>
   <tr><td>🔧 50 Skills</td><td>31 ADAS-specific (Code/Safety/Perception/Planning/Testing/Simulation/Data/Research/DevOps) + 19 general-purpose (Web/Data/Code/Docs/Translation/Utilities) under <code>skills/core/</code></td></tr>
   <tr><td>👤 Driving Persona</td><td>Conservative 🛡️ / Sporty 🚀 / Veteran 🧓 — three characters</td></tr>
   <tr><td>🧠 Scenario Engine</td><td>36 built-in driving scenarios + coverage analysis</td></tr>
