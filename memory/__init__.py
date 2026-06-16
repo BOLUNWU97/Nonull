@@ -45,6 +45,8 @@ from .semantic import SemanticMemory, KnowledgeNode
 from .procedural import ProceduralMemory, Skill, ExecutionTrace
 from .neocortex import Neocortex, MemoryQuery, MemoryResult, RelevanceScore
 from .subconscious_loop import SubconsciousLoop, Insight
+from .local_embedder import LocalSemanticEmbedder
+from .semantic_index import SemanticIndex, SearchHit
 
 __all__ = [
     # Version
@@ -78,4 +80,9 @@ __all__ = [
     # Subconscious Loop
     "SubconsciousLoop",
     "Insight",
+
+    # Local semantic retrieval (native, zero-dependency)
+    "LocalSemanticEmbedder",
+    "SemanticIndex",
+    "SearchHit",
 ]
