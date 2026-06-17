@@ -108,6 +108,8 @@ class AudioTranscribeStubSkill(BaseSkill):
                      "or set NONULL_LLM_API_KEY + `pip install openai` for the hosted API."),
         }
 
+    _whisper_model_cache = {}  # model_name -> loaded model (跨调用复用, 类级)
+
     def _try_local_whisper(self, path, language):
         """本地 Whisper 转写; 库不存在返回 None (让上层降级)。"""
         try:
@@ -117,7 +119,12 @@ class AudioTranscribeStubSkill(BaseSkill):
         import os as _os
         model_name = _os.environ.get("NONULL_WHISPER_MODEL", "base")
         try:
-            model = whisper.load_model(model_name)
+            # 模型缓存: load_model 是秒级~分钟级磁盘+计算开销, 每次转写都重载会
+            # 病态地慢。按 model_name 缓存复用。
+            model = self._whisper_model_cache.get(model_name)
+            if model is None:
+                model = whisper.load_model(model_name)
+                self._whisper_model_cache[model_name] = model
             kwargs = {"language": language} if language else {}
             result = model.transcribe(str(path), **kwargs)
             return {

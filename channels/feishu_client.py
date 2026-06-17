@@ -23,9 +23,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import json
 import logging
 import os
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -139,6 +141,7 @@ class FeishuClient:
         self.timeout = timeout
         self._token: str = ""
         self._token_expire_at: float = 0.0
+        self._token_lock = threading.Lock()  # token 缓存并发保护
         self._crypto: Optional[FeishuCrypto] = (
             FeishuCrypto(self.encrypt_key) if self.encrypt_key else None
         )
@@ -151,23 +154,29 @@ class FeishuClient:
         飞书自建应用用 app_id + app_secret 换 token, 有效期 ~2h。
         提前 5 分钟刷新。
         """
+        # 快路径: 锁外读缓存 (常见情况, 无竞争开销)
         now = time.time()
         if not force and self._token and now < self._token_expire_at - 300:
             return self._token
         if not self.app_id or not self.app_secret:
             raise RuntimeError("飞书 app_id / app_secret 未配置")
 
-        url = f"{_FEISHU_BASE}/auth/v3/tenant_access_token/internal"
-        with httpx.Client(timeout=self.timeout) as client:
-            r = client.post(url, json={"app_id": self.app_id, "app_secret": self.app_secret})
-            r.raise_for_status()
-            data = r.json()
-        if data.get("code") != 0:
-            raise RuntimeError(f"获取 token 失败: {data.get('code')} {data.get('msg')}")
-        self._token = data["tenant_access_token"]
-        self._token_expire_at = now + data.get("expire", 7200)
-        logger.info("飞书 tenant_access_token 已刷新 (expire=%ss)", data.get("expire"))
-        return self._token
+        # 双检锁: 防多线程并发刷新时的 thundering herd + 撕裂更新
+        with self._token_lock:
+            now = time.time()
+            if not force and self._token and now < self._token_expire_at - 300:
+                return self._token
+            url = f"{_FEISHU_BASE}/auth/v3/tenant_access_token/internal"
+            with httpx.Client(timeout=self.timeout) as client:
+                r = client.post(url, json={"app_id": self.app_id, "app_secret": self.app_secret})
+                r.raise_for_status()
+                data = r.json()
+            if data.get("code") != 0:
+                raise RuntimeError(f"获取 token 失败: {data.get('code')} {data.get('msg')}")
+            self._token = data["tenant_access_token"]
+            self._token_expire_at = now + data.get("expire", 7200)
+            logger.info("飞书 tenant_access_token 已刷新 (expire=%ss)", data.get("expire"))
+            return self._token
 
     def _auth_headers(self) -> Dict[str, str]:
         return {"Authorization": f"Bearer {self.get_tenant_access_token()}",
@@ -268,10 +277,16 @@ class FeishuClient:
 
         # URL 验证 challenge (飞书配置事件订阅地址时会发)
         if raw.get("type") == "url_verification" or "challenge" in raw:
-            # 可选: 校验 verification_token
-            if self.verification_token and raw.get("token") != self.verification_token:
-                return {"type": "error", "error": "verification token mismatch"}
+            # 校验 verification_token (配置了就强制, constant-time 防时序侧信道)
+            if self.verification_token:
+                if not hmac.compare_digest(raw.get("token", ""), self.verification_token):
+                    return {"type": "error", "error": "verification token mismatch"}
             return {"challenge": raw.get("challenge", "")}
+
+        # 普通事件路径也校验 verification_token (配置了就强制)
+        if self.verification_token and "token" in raw:
+            if not hmac.compare_digest(raw.get("token", ""), self.verification_token):
+                return {"type": "error", "error": "verification token mismatch"}
 
         # 普通事件 (v2 schema: {schema, header, event})
         event = raw.get("event", {})
@@ -291,10 +306,13 @@ class FeishuClient:
                 text = json.loads(msg.get("content", "{}")).get("text", "")
             except Exception:
                 text = ""
+        # sender_id 可能是 dict 或被构造成非 dict (攻击者控制的事件体), 类型守卫
+        sid = sender.get("sender_id")
+        sender_open_id = sid.get("open_id", "") if isinstance(sid, dict) else ""
         return FeishuMessage(
             message_id=msg.get("message_id", ""),
             chat_id=msg.get("chat_id", ""),
-            sender_id=sender.get("sender_id", {}).get("open_id", ""),
+            sender_id=sender_open_id,
             sender_type=sender.get("sender_type", "user"),
             msg_type=msg.get("message_type", ""),
             text=text,

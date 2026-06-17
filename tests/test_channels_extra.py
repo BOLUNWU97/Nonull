@@ -14,9 +14,11 @@ from channels.qq_client import QQBotClient
 
 
 class _MockResp:
-    def __init__(self, payload, content=b"x"):
+    def __init__(self, payload, content=b"x", status_code=200):
         self._p = payload
         self.content = content
+        self.status_code = status_code
+        self.text = str(payload)
     def raise_for_status(self): pass
     def json(self): return self._p
 
@@ -213,6 +215,46 @@ class TestWeComApp:
         assert capture[0]["json"]["agentid"] == 42
         assert capture[0]["json"]["text"]["content"] == "通知"
 
+    def test_agent_id_explicit_zero(self, monkeypatch):
+        """P1: 显式 agent_id=0 应被尊重 (不回退 env)。"""
+        monkeypatch.setenv("NONULL_WECOM_AGENT_ID", "999")
+        app = WeComAppClient(corp_id="x", corp_secret="y", agent_id=0)
+        assert app.agent_id == 0
+
+    def test_agent_id_non_numeric_env(self, monkeypatch):
+        """P1: 非数字 env agent_id 不让构造崩溃 (降级 0)。"""
+        monkeypatch.setenv("NONULL_WECOM_AGENT_ID", "agent1\n")
+        app = WeComAppClient(corp_id="x", corp_secret="y")
+        assert app.agent_id == 0
+
+    def test_token_invalid_retry(self, monkeypatch):
+        """P1: errcode 42001 (token失效) → force刷新重试一次。"""
+        import channels.wecom_client as wc
+        app = WeComAppClient(corp_id="ww1", corp_secret="s", agent_id=1)
+        app._token = "stale"; app._token_expire_at = 9_999_999_999
+        responses = [
+            {"errcode": 42001, "errmsg": "access_token expired"},  # 第1次: token失效
+            {"errcode": 0, "errmsg": "ok"},                         # 重试: 成功
+        ]
+        # token 刷新请求也会经过 httpx; 用计数器分发
+        state = {"i": 0}
+        class _Seq:
+            def __enter__(self): return self
+            def __exit__(self, *a): pass
+            def post(self, url, params=None, json=None):
+                # message/send 请求按序返回; gettoken 返回新 token
+                if "gettoken" in url:
+                    return _MockResp({"errcode": 0, "access_token": "fresh", "expires_in": 7200})
+                resp = responses[min(state["i"], len(responses) - 1)]
+                state["i"] += 1
+                return _MockResp(resp)
+            def get(self, url, params=None):
+                return _MockResp({"errcode": 0, "access_token": "fresh", "expires_in": 7200})
+        monkeypatch.setattr(wc.httpx, "Client", lambda *a, **k: _Seq())
+        r = app.send_text("@all", "hi")
+        assert r.success  # 重试后成功
+        assert state["i"] == 2  # 发了2次 (首次失效 + 重试)
+
 
 # ── QQ 官方机器人 ────────────────────────────────────────────────
 
@@ -281,7 +323,33 @@ class TestQQBot:
         pytest.importorskip("cryptography")
         client = QQBotClient(app_id="123", client_secret="")
         with pytest.raises(RuntimeError, match="client_secret"):
-            client.verify_signature("token", "ts", b"body", "00")
+            client.verify_signature("ts", b"body", "00")
+
+    def test_sign_validation_and_verify_roundtrip(self):
+        """P1: sign_validation 签名 + verify_signature 验证往返一致。"""
+        pytest.importorskip("cryptography")
+        client = QQBotClient(app_id="123", client_secret="mysecret")
+        # sign_validation 用于 URL 验证 (op=13)
+        sig = client.sign_validation(plain_token="ptk", event_ts="1700000000")
+        assert isinstance(sig, str) and len(sig) == 128  # Ed25519 hex = 64字节*2
+        # verify_signature 用于入站事件: 自签自验往返
+        body = b'{"op":0}'
+        ev_ts = "1700000001"
+        priv = client._ed25519_private_key()
+        real_sig = priv.sign(ev_ts.encode() + body).hex()
+        assert client.verify_signature(ev_ts, body, real_sig) is True
+        assert client.verify_signature(ev_ts, body, "00" * 64) is False
+
+    def test_reply_group_msg_seq(self, monkeypatch):
+        """P1: reply_group_message 透传 msg_seq。"""
+        import channels.qq_client as qc
+        client = QQBotClient(app_id="123", client_secret="s")
+        client._access_token = "c"; client._token_expire_at = 9_999_999_999
+        capture = []
+        monkeypatch.setattr(qc.httpx, "Client",
+                            lambda *a, **k: _MockClient({"id": "m"}, capture))
+        client.reply_group_message("grp", "msg1", "回复", msg_seq=3)
+        assert capture[0]["json"]["msg_seq"] == 3
 
 
 # ── audio_transcribe 降级 ────────────────────────────────────────

@@ -140,37 +140,39 @@ class WeComAppClient:
 
         to_user: 成员 userid, 多个用 '|' 分隔, '@all' 发全员。
         """
-        url = f"{_WECOM_BASE}/message/send"
-        payload = {
+        return self._send_message({
             "touser": to_user, "msgtype": "text",
             "agentid": self.agent_id, "text": {"content": text},
-        }
-        try:
-            with httpx.Client(timeout=self.timeout) as client:
-                r = client.post(url, params={"access_token": self.get_access_token()},
-                                json=payload)
-                data = r.json()
-        except Exception as e:
-            return WeComResult(success=False, error=f"{type(e).__name__}: {e}")
-        if data.get("errcode", 0) != 0:
-            return WeComResult(success=False, code=data.get("errcode", -1),
-                               error=data.get("errmsg"), data=data)
-        return WeComResult(success=True, data=data)
+        })
 
     def send_markdown(self, to_user: str, content: str) -> WeComResult:
         """发 markdown 消息给成员。"""
+        return self._send_message({
+            "touser": to_user, "msgtype": "markdown",
+            "agentid": self.agent_id, "markdown": {"content": content},
+        })
+
+    def _send_message(self, payload: dict, _retried: bool = False) -> WeComResult:
+        """发应用消息底层 (token 失效自动 force 刷新重试一次)。
+
+        WeCom token 可能被提前失效 (别处重发/时钟偏移/密钥重置), errcode 40014/
+        42001 表示 token 无效/过期 —— 清缓存 + force 刷新 + 重试一次, 避免一直
+        用死 token 静默失败。
+        """
         url = f"{_WECOM_BASE}/message/send"
-        payload = {"touser": to_user, "msgtype": "markdown",
-                   "agentid": self.agent_id, "markdown": {"content": content}}
         try:
+            token = self.get_access_token(force=_retried)
             with httpx.Client(timeout=self.timeout) as client:
-                r = client.post(url, params={"access_token": self.get_access_token()},
-                                json=payload)
+                r = client.post(url, params={"access_token": token}, json=payload)
                 data = r.json()
         except Exception as e:
             return WeComResult(success=False, error=f"{type(e).__name__}: {e}")
-        if data.get("errcode", 0) != 0:
-            return WeComResult(success=False, code=data.get("errcode", -1),
+        errcode = data.get("errcode", 0)
+        if errcode in (40014, 42001) and not _retried:
+            self._token = ""  # 强制下次重新获取
+            return self._send_message(payload, _retried=True)
+        if errcode != 0:
+            return WeComResult(success=False, code=errcode,
                                error=data.get("errmsg"), data=data)
         return WeComResult(success=True, data=data)
 

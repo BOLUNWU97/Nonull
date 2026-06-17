@@ -305,3 +305,28 @@ class TestEventCallback:
         client = FeishuClient(app_id="x", app_secret="y")
         result = client.handle_event(b"not json{{{")
         assert result["type"] == "error"
+
+    def test_malformed_sender_id_no_crash(self):
+        """P1: sender_id 被构造成非 dict (攻击者输入) 不崩溃。"""
+        client = FeishuClient(app_id="x", app_secret="y")
+        event_body = {
+            "schema": "2.0",
+            "header": {"event_type": "im.message.receive_v1"},
+            "event": {
+                "sender": {"sender_id": "evil_string", "sender_type": "user"},  # 非 dict
+                "message": {"message_id": "om", "chat_id": "oc",
+                            "message_type": "text", "content": json.dumps({"text": "hi"})},
+            },
+        }
+        result = client.handle_event(json.dumps(event_body).encode())
+        assert result["type"] == "event"
+        assert result["message"].sender_id == ""  # 守卫: 非 dict → 空串
+
+    def test_verification_token_enforced(self):
+        """P1: 配了 verification_token 时, 普通事件路径也强制校验。"""
+        client = FeishuClient(app_id="x", app_secret="y", verification_token="correct")
+        # token 错误的普通事件应被拒
+        body = json.dumps({"schema": "2.0", "token": "wrong", "event": {}}).encode()
+        result = client.handle_event(body)
+        assert result["type"] == "error"
+        assert "token" in result["error"]
