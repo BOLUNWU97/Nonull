@@ -102,7 +102,16 @@ class WeComAppClient:
                  agent_id: Optional[int] = None, timeout: float = 15.0):
         self.corp_id = corp_id or os.environ.get("NONULL_WECOM_CORP_ID", "")
         self.corp_secret = corp_secret or os.environ.get("NONULL_WECOM_CORP_SECRET", "")
-        self.agent_id = agent_id or int(os.environ.get("NONULL_WECOM_AGENT_ID", "0") or "0")
+        # agent_id 防御性解析: 非数字 env 值不应让构造函数崩溃; 显式传 0 也应尊重
+        if agent_id is not None:
+            self.agent_id = agent_id
+        else:
+            _raw = (os.environ.get("NONULL_WECOM_AGENT_ID", "") or "").strip()
+            try:
+                self.agent_id = int(_raw) if _raw else 0
+            except ValueError:
+                logger.warning("NONULL_WECOM_AGENT_ID 非数字 %r, 用 0", _raw)
+                self.agent_id = 0
         self.timeout = timeout
         self._token = ""
         self._token_expire_at = 0.0

@@ -155,6 +155,8 @@ class QQBotClient:
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
         except ImportError:
             raise RuntimeError("QQ 回调验签需要 cryptography: pip install cryptography")
+        if not self.client_secret:
+            raise RuntimeError("QQ client_secret 未配置, 无法验签")
         seed = self.client_secret
         while len(seed) < 32:
             seed = (seed + seed)[:32]

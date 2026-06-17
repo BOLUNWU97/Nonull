@@ -56,6 +56,25 @@ class TestFeishuCrypto:
         assert crypto.verify_signature(ts, nonce, body, sig) is True
         assert crypto.verify_signature(ts, nonce, body, "wrong") is False
 
+    def test_decrypt_rejects_bad_padding(self):
+        """P0 修复: 非法 PKCS7 填充被拒绝 (攻击者构造密文不会静默返回错误数据)。"""
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.backends import default_backend
+        import os as _os
+        key_str = "k"
+        crypto = FeishuCrypto(key_str)
+        key = hashlib.sha256(key_str.encode()).digest()
+        iv = _os.urandom(16)
+        # 构造填充字节错误的明文: 末字节 pad_len=5, 但前面 5 字节不全是 5
+        # (块必须是 16 倍数; 这里用 32 字节, 末尾 b"\x01\x02\x03\x04\x05" → pad_len=5 但 padding[-5:] != 5*5)
+        bad = b"hello world data" + b"abcdefghijk" + bytes([1, 2, 3, 4, 5])  # 16+11+5 = 32
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        enc = cipher.encryptor()
+        ct = enc.update(bad) + enc.finalize()
+        import base64 as _b64
+        with pytest.raises(ValueError, match="PKCS7"):
+            crypto.decrypt(_b64.b64encode(iv + ct).decode())
+
 
 # ── token 获取/缓存 (mock httpx) ─────────────────────────────────
 

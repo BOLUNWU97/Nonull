@@ -62,20 +62,34 @@ class TelegramClient:
         self._base = f"https://api.telegram.org/bot{self.bot_token}"
         self._last_update_id = 0
 
-    def _call(self, method: str, params: Optional[Dict] = None) -> TelegramResult:
-        """调用 Bot API 方法 / Call a Bot API method."""
+    def _call(self, method: str, params: Optional[Dict] = None,
+              timeout: Optional[float] = None) -> TelegramResult:
+        """调用 Bot API 方法 / Call a Bot API method.
+
+        timeout: 覆盖本次请求的 httpx 超时。长轮询 (getUpdates) 必须传一个
+        大于服务端 hold 时间的超时, 否则 httpx 读超时会先于服务端返回触发,
+        导致大量空轮询报 ReadTimeout 并丢消息。
+        """
         if not self.bot_token:
             return TelegramResult(success=False, error="Telegram bot_token 未配置")
         url = f"{self._base}/{method}"
+        eff_timeout = timeout if timeout is not None else self.timeout
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=eff_timeout) as client:
                 r = client.post(url, json=params or {})
-                data = r.json()
+                try:
+                    data = r.json()
+                except ValueError:
+                    return TelegramResult(success=False,
+                                          error=f"HTTP {r.status_code}: non-JSON response")
         except Exception as e:
             return TelegramResult(success=False, error=f"{type(e).__name__}: {e}")
         if not data.get("ok"):
-            return TelegramResult(success=False, data=data,
-                                  error=data.get("description", "unknown"))
+            # 429 限流: 透出 retry_after, 让调用方退避而非空转
+            retry = (data.get("parameters") or {}).get("retry_after")
+            desc = data.get("description", "unknown")
+            err = f"{desc} (retry_after={retry})" if retry else desc
+            return TelegramResult(success=False, data=data, error=err)
         return TelegramResult(success=True, data=data.get("result", {}))
 
     # ── 验证 / Verify ────────────────────────────────────────────
@@ -112,7 +126,9 @@ class TelegramClient:
             "offset": offset if offset is not None else self._last_update_id + 1,
             "timeout": timeout, "limit": limit,
         }
-        result = self._call("getUpdates", params)
+        # httpx 读超时必须严格大于服务端长轮询 hold 时间, 否则空轮询会先 ReadTimeout。
+        http_timeout = self.timeout if timeout == 0 else float(timeout) + 10.0
+        result = self._call("getUpdates", params, timeout=http_timeout)
         # 更新 last_update_id
         if result.success and isinstance(result.data, list):
             for upd in result.data:

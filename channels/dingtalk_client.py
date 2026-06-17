@@ -220,9 +220,21 @@ class DingTalkCrypto:
         cipher = Cipher(algorithms.AES(self._key), modes.CBC(iv), backend=default_backend())
         decryptor = cipher.decryptor()
         padded = decryptor.update(raw) + decryptor.finalize()
+        # PKCS7 去填充 + 校验 (pad_len 攻击者可控):
+        if not padded:
+            raise ValueError("解密结果为空 / empty plaintext")
         pad_len = padded[-1]
+        if not (1 <= pad_len <= 16) or pad_len > len(padded):
+            raise ValueError(f"非法 PKCS7 填充 / invalid PKCS7 padding: {pad_len}")
+        if padded[-pad_len:] != bytes([pad_len]) * pad_len:
+            raise ValueError("非法 PKCS7 填充字节 / invalid PKCS7 padding bytes")
         content = padded[:-pad_len]
-        # 跳过前 16 随机字节, 读 4 字节大端长度
+        # 跳过前 16 随机字节, 读 4 字节大端长度 —— msg_len 攻击者可控, 必须边界检查,
+        # 否则 content[20:20+msg_len] 可能切断多字节 UTF-8 触发 UnicodeDecodeError。
+        if len(content) < 20:
+            raise ValueError("密文过短 / content too short")
         msg_len = int.from_bytes(content[16:20], "big")
+        if msg_len < 0 or 20 + msg_len > len(content):
+            raise ValueError(f"msg_len 越界 / msg_len exceeds content: {msg_len}")
         msg = content[20:20 + msg_len].decode("utf-8")
         return msg

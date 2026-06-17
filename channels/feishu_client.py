@@ -64,8 +64,15 @@ class FeishuCrypto:
         cipher = Cipher(algorithms.AES(self._key), modes.CBC(iv), backend=default_backend())
         decryptor = cipher.decryptor()
         padded = decryptor.update(ciphertext) + decryptor.finalize()
-        # 去 PKCS7 填充
+        # PKCS7 去填充 + 校验 (pad_len 来自攻击者可控密文, 必须验证):
+        #   空数据 → IndexError; pad_len=0 或 >16 或 >len → 静默错误数据。
+        if not padded:
+            raise ValueError("解密结果为空 / empty plaintext")
         pad_len = padded[-1]
+        if not (1 <= pad_len <= 16) or pad_len > len(padded):
+            raise ValueError(f"非法 PKCS7 填充长度 / invalid PKCS7 padding: {pad_len}")
+        if padded[-pad_len:] != bytes([pad_len]) * pad_len:
+            raise ValueError("非法 PKCS7 填充字节 / invalid PKCS7 padding bytes")
         plaintext = padded[:-pad_len]
         return plaintext.decode("utf-8")
 
@@ -240,10 +247,19 @@ class FeishuClient:
         except Exception as e:
             return {"type": "error", "error": f"invalid JSON: {e}"}
 
-        # 加密模式: 先解密
+        # 加密模式: 先验签再解密 (MAC-then-decrypt), 防止未授权者驱动解密。
+        # 飞书在请求头给 X-Lark-Signature/Timestamp/Nonce; 配了 encrypt_key 时校验。
         if "encrypt" in raw:
             if not self._crypto:
                 return {"type": "error", "error": "encrypted event but no encrypt_key configured"}
+            hdrs = headers or {}
+            sig = hdrs.get("X-Lark-Signature") or hdrs.get("x-lark-signature")
+            ts = hdrs.get("X-Lark-Request-Timestamp") or hdrs.get("x-lark-request-timestamp")
+            nonce = hdrs.get("X-Lark-Request-Nonce") or hdrs.get("x-lark-request-nonce")
+            # 有签名头则必须通过校验 (无头时退化为仅解密, 兼容本地测试/无头场景)
+            if sig:
+                if not self._crypto.verify_signature(ts or "", nonce or "", body, sig):
+                    return {"type": "error", "error": "signature mismatch"}
             try:
                 decrypted = self._crypto.decrypt(raw["encrypt"])
                 raw = json.loads(decrypted)

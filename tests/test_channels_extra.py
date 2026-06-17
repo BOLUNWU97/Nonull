@@ -108,6 +108,32 @@ class TestTelegram:
         msg = client.parse_webhook_update(body)
         assert msg.text == "hi"
 
+    def test_long_poll_timeout_margin(self, monkeypatch):
+        """P0 修复: 长轮询 httpx 超时 > 服务端 hold 时间 (timeout+10)。"""
+        import channels.telegram_client as tc
+        captured = {}
+        class _Cap:
+            def __init__(self, *a, timeout=None, **k): captured["timeout"] = timeout
+            def __enter__(self): return self
+            def __exit__(self, *a): pass
+            def post(self, url, json=None):
+                return _MockResp({"ok": True, "result": []})
+        monkeypatch.setattr(tc.httpx, "Client", _Cap)
+        client = TelegramClient(bot_token="123:ABC", timeout=30.0)
+        client.get_updates(timeout=30)  # 服务端 hold 30s
+        assert captured["timeout"] == 40.0  # httpx 超时 = 30+10 > 30
+
+    def test_retry_after_surfaced(self, monkeypatch):
+        """429 限流的 retry_after 透出到 error (调用方可退避)。"""
+        import channels.telegram_client as tc
+        monkeypatch.setattr(tc.httpx, "Client",
+                            lambda *a, **k: _MockClient({"ok": False, "description": "Too Many Requests",
+                                                         "parameters": {"retry_after": 15}}))
+        client = TelegramClient(bot_token="123:ABC")
+        r = client.send_message(chat_id=1, text="x")
+        assert not r.success
+        assert "retry_after=15" in r.error
+
 
 # ── 企业微信 / WeCom ─────────────────────────────────────────────
 
@@ -249,6 +275,13 @@ class TestQQBot:
         r = client.send_channel_message("c", "x", msg_id="bad")
         assert not r.success
         assert r.code == 11253
+
+    def test_verify_signature_empty_secret_guards(self):
+        """P0 修复: 空 client_secret 验签时抛错而非无限循环挂死。"""
+        pytest.importorskip("cryptography")
+        client = QQBotClient(app_id="123", client_secret="")
+        with pytest.raises(RuntimeError, match="client_secret"):
+            client.verify_signature("token", "ts", b"body", "00")
 
 
 # ── audio_transcribe 降级 ────────────────────────────────────────
