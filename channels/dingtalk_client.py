@@ -202,11 +202,11 @@ class DingTalkCrypto:
         self._key = base64.b64decode(aes_key + "=")
 
     def verify_signature(self, timestamp: str, nonce: str, encrypt: str, signature: str) -> bool:
-        """验签: sha1(sorted(token, timestamp, nonce, encrypt))。"""
+        """验签: sha1(sorted(token, timestamp, nonce, encrypt))。constant-time 比较防时序侧信道。"""
         params = sorted([self.token, timestamp, nonce, encrypt])
         sha = hashlib.sha1()
         sha.update("".join(params).encode("utf-8"))
-        return sha.hexdigest() == signature
+        return hmac.compare_digest(sha.hexdigest(), signature)
 
     def decrypt(self, encrypt_b64: str) -> str:
         """解密钉钉回调密文 → 明文 JSON。"""

@@ -167,14 +167,16 @@ class QQBotClient:
     # ── 回调验签 (Ed25519) ───────────────────────────────────────
 
     def _ed25519_private_key(self):
-        """从 client_secret 派生 Ed25519 私钥 (seed 填充到 32 字节)。"""
+        """从 client_secret 派生 Ed25519 私钥 (seed 在字节上 repeat-pad 到 32 字节)。"""
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
         if not self.client_secret:
             raise RuntimeError("QQ client_secret 未配置, 无法验签")
-        seed = self.client_secret
-        while len(seed) < 32:
-            seed = (seed + seed)[:32]
-        return Ed25519PrivateKey.from_private_bytes(seed.encode("utf-8")[:32])
+        # 在字节上 repeat-pad: 非 ASCII secret 时, str 填充到 32 字符再 encode 可能
+        # ≠ 32 字节, from_private_bytes 要求恰好 32 字节会崩。直接 bytes repeat 更稳。
+        seed_b = self.client_secret.encode("utf-8")
+        while len(seed_b) < 32:
+            seed_b = seed_b + seed_b
+        return Ed25519PrivateKey.from_private_bytes(seed_b[:32])
 
     def sign_validation(self, plain_token: str, event_ts: str) -> str:
         """QQ webhook URL 验证 (op=13): 签名 event_ts+plain_token 返回 hex。

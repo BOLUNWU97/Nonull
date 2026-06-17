@@ -351,6 +351,14 @@ class TestQQBot:
         client.reply_group_message("grp", "msg1", "回复", msg_seq=3)
         assert capture[0]["json"]["msg_seq"] == 3
 
+    def test_ed25519_non_ascii_secret(self):
+        """P2: 非 ASCII client_secret 不让 Ed25519 派生崩溃 (字节 repeat-pad)。"""
+        pytest.importorskip("cryptography")
+        client = QQBotClient(app_id="1", client_secret="密钥secret")  # 含中文
+        priv = client._ed25519_private_key()  # 不应抛 ValueError
+        sig = client.sign_validation("ptk", "1700000000")
+        assert len(sig) == 128
+
 
 # ── audio_transcribe 降级 ────────────────────────────────────────
 

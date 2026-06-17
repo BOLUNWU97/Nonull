@@ -156,6 +156,18 @@ class TestLocalEmbedder:
         emb.fit(["a b c", "d e f"])
         assert "fitted=True" in repr(emb)
 
+    def test_idf_weight_zero_count_guarded(self):
+        """P2: local_count=0 不触发 math domain error (log(0))。"""
+        emb = LocalSemanticEmbedder(dim=128)
+        # 直接调内部方法验证守卫 (正常调用方传 >=1, 但守卫防御性)
+        w = emb._idf_weight("token", 0)
+        assert isinstance(w, float)  # 不抛 ValueError
+
+    def test_suffixes_no_duplicate(self):
+        """P2: _SUFFIXES 去掉重复的 'edly'。"""
+        from memory.local_embedder import _SUFFIXES
+        assert len(_SUFFIXES) == len(set(_SUFFIXES))
+
     def test_deterministic_across_instances(self):
         """同文本在不同实例产生相同向量 (确定性哈希, 非 PYTHONHASHSEED 随机)。
 
@@ -245,6 +257,23 @@ class TestSemanticIndex:
         idx = self._build()
         idx.clear()
         assert len(idx) == 0
+
+    def test_dirty_flag_after_add(self):
+        """P2: fit 后再 add 置 dirty (语料变了 IDF 过时)。"""
+        idx = SemanticIndex(dim=256)
+        idx.add("a", "thread safe queue")
+        idx.fit()
+        assert idx._dirty is False  # fit 后干净
+        idx.add("b", "new document added later")
+        assert idx._dirty is True   # add 后标记脏
+        idx.search("queue")          # search 消费 dirty (警告一次)
+        assert idx._dirty is False   # 警告后清除
+
+    def test_dirty_not_set_before_fit(self):
+        """未 fit 时 add 不置 dirty (没 IDF 可言)。"""
+        idx = SemanticIndex(dim=256)
+        idx.add("a", "text")
+        assert idx._dirty is False
 
 
 # ── 接口兼容性 (可替换原 EmbeddingProvider) ──────────────────────

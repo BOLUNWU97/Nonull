@@ -73,6 +73,9 @@ class SemanticIndex:
         self._texts[doc_id] = text
         self._meta[doc_id] = metadata or {}
         self._vectors[doc_id] = self.embedder.encode(text)
+        # 已 fit 过则标记 dirty: 新文档改变了语料, IDF 已过时, 建议重新 fit。
+        if self.embedder._fitted:
+            self._dirty = True
 
     def add_batch(self, items: List[Tuple[str, str]]) -> None:
         """批量加入 [(id, text), ...]。"""
@@ -93,6 +96,7 @@ class SemanticIndex:
         # IDF 变了, 重新编码全部向量
         for doc_id, text in self._texts.items():
             self._vectors[doc_id] = self.embedder.encode(text)
+        self._dirty = False  # 已重新 fit, IDF 与语料一致
         logger.info("SemanticIndex.fit: %d 文档, embedder=%r", len(self._texts), self.embedder)
         return self
 
@@ -102,6 +106,9 @@ class SemanticIndex:
         """语义检索 top-k / Semantic top-k retrieval (cosine similarity)."""
         if not self._ids:
             return []
+        if self._dirty:
+            logger.warning("SemanticIndex: fit 后又 add 了文档, IDF 已过时, 建议重新 fit() 以获最佳召回")
+            self._dirty = False  # 只警告一次, 避免刷屏
         qv = self.embedder.encode(query)
         scored: List[Tuple[str, float]] = []
         for doc_id in self._ids:

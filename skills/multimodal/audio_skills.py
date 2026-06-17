@@ -138,6 +138,8 @@ class AudioTranscribeStubSkill(BaseSkill):
             return {"path": str(path), "transcript": "",
                     "error": f"whisper failed: {type(e).__name__}: {e}"}
 
+    _openai_client_cache = {}  # api_key -> OpenAI client (跨调用复用, 类级)
+
     def _try_openai_api(self, path, language):
         """OpenAI 托管 whisper-1 转写; 无 key/库返回 None。"""
         import os as _os
@@ -149,7 +151,11 @@ class AudioTranscribeStubSkill(BaseSkill):
         except ImportError:
             return None
         try:
-            client = OpenAI(api_key=api_key)
+            # client 按 api_key 缓存复用, 避免每次转写都重建
+            client = self._openai_client_cache.get(api_key)
+            if client is None:
+                client = OpenAI(api_key=api_key)
+                self._openai_client_cache[api_key] = client
             with open(path, "rb") as f:
                 kwargs = {"language": language} if language else {}
                 tr = client.audio.transcriptions.create(model="whisper-1", file=f, **kwargs)

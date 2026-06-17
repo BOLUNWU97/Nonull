@@ -47,7 +47,7 @@ _STOPWORDS_ZH = {"的", "了", "是", "在", "和", "与", "或", "也", "都", 
                  "我", "你", "他", "她", "它", "这", "那", "个", "把", "被"}
 
 # 英文常见后缀 (轻量词干化)
-_SUFFIXES = ("ing", "edly", "edly", "ed", "ly", "es", "s", "ment", "tion", "er")
+_SUFFIXES = ("ing", "edly", "ed", "ly", "es", "s", "ment", "tion", "er")
 
 
 def _stem_en(word: str) -> str:
@@ -175,7 +175,7 @@ class LocalSemanticEmbedder:
 
     def _idf_weight(self, token: str, local_count: int) -> float:
         """token 权重 = TF(log) × IDF。未 fit 时 IDF 退化为 1。"""
-        tf = 1.0 + math.log(local_count)
+        tf = 1.0 + math.log(local_count) if local_count > 0 else 1.0
         if self._fitted:
             idf = self._idf.get(token)
             if idf is None:
