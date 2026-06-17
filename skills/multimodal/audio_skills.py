@@ -50,15 +50,25 @@ class AudioInfoSkill(BaseSkill):
 
 
 class AudioTranscribeStubSkill(BaseSkill):
-    """Audio transcription (STUB — requires Whisper or other ASR)."""
+    """Audio transcription via Whisper (local) or OpenAI API.
+
+    Backends (auto-selected):
+      - openai-whisper (local, no key): if `openai-whisper` is installed, runs a
+        local Whisper model (model size via NONULL_WHISPER_MODEL, default "base").
+      - OpenAI API (key): if NONULL_LLM_API_KEY/OPENAI_API_KEY set and openai SDK
+        present, uses the hosted whisper-1 transcription.
+      - graceful fallback: if neither is available, returns a clear actionable
+        message (not a silent fake transcript).
+    """
 
     @property
     def metadata(self) -> SkillMetadata:
         return SkillMetadata(
             name="audio_transcribe",
-            version="0.1.0",
+            version="0.2.0",
             category=SkillCategory.GENERAL,
-            description="Transcribe audio to text. DEMO STUB — wire to Whisper, Google STT, or Azure Speech.",
+            description="Transcribe audio to text via local Whisper (no key) or OpenAI API. "
+                        "Falls back with a clear message if no ASR backend is installed.",
             tags=["audio", "transcribe", "asr", "speech-to-text"],
             author="Nonull Team",
             safety_level=2,
@@ -69,11 +79,78 @@ class AudioTranscribeStubSkill(BaseSkill):
             raise ValueError("'path' required")
 
     def _execute_impl(self, context):
+        from pathlib import Path as _Path
+        path = _Path(context["path"])
+        if not path.exists():
+            return {"path": str(path), "transcript": "", "error": f"File not found: {path}"}
+
+        language = context.get("language")  # 可选: 指定语言加速/提准
+        backend = context.get("backend")    # 可选: "whisper" | "openai"
+
+        # 后端 1: 本地 openai-whisper (无需 key)
+        if backend in (None, "whisper"):
+            result = self._try_local_whisper(path, language)
+            if result is not None:
+                return result
+
+        # 后端 2: OpenAI API (需 key)
+        if backend in (None, "openai"):
+            result = self._try_openai_api(path, language)
+            if result is not None:
+                return result
+
+        # 优雅降级: 明确告知如何启用 (不返回假转写)
         return {
-            "path": context["path"],
+            "path": str(path),
             "transcript": "",
-            "warning": (
-                "Audio transcription is a STUB. To enable, install and integrate "
-                "an ASR engine: openai-whisper, faster-whisper, Google STT, etc."
-            ),
+            "error": "no ASR backend available",
+            "hint": ("Install a backend: `pip install openai-whisper` (local, no key) "
+                     "or set NONULL_LLM_API_KEY + `pip install openai` for the hosted API."),
         }
+
+    def _try_local_whisper(self, path, language):
+        """本地 Whisper 转写; 库不存在返回 None (让上层降级)。"""
+        try:
+            import whisper  # openai-whisper
+        except ImportError:
+            return None
+        import os as _os
+        model_name = _os.environ.get("NONULL_WHISPER_MODEL", "base")
+        try:
+            model = whisper.load_model(model_name)
+            kwargs = {"language": language} if language else {}
+            result = model.transcribe(str(path), **kwargs)
+            return {
+                "path": str(path),
+                "transcript": result.get("text", "").strip(),
+                "language": result.get("language", language or ""),
+                "backend": f"local-whisper:{model_name}",
+                "segments": len(result.get("segments", [])),
+            }
+        except Exception as e:
+            return {"path": str(path), "transcript": "",
+                    "error": f"whisper failed: {type(e).__name__}: {e}"}
+
+    def _try_openai_api(self, path, language):
+        """OpenAI 托管 whisper-1 转写; 无 key/库返回 None。"""
+        import os as _os
+        api_key = _os.environ.get("NONULL_LLM_API_KEY") or _os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            return None
+        try:
+            from openai import OpenAI
+        except ImportError:
+            return None
+        try:
+            client = OpenAI(api_key=api_key)
+            with open(path, "rb") as f:
+                kwargs = {"language": language} if language else {}
+                tr = client.audio.transcriptions.create(model="whisper-1", file=f, **kwargs)
+            return {
+                "path": str(path),
+                "transcript": getattr(tr, "text", "").strip(),
+                "backend": "openai:whisper-1",
+            }
+        except Exception as e:
+            return {"path": str(path), "transcript": "",
+                    "error": f"openai transcription failed: {type(e).__name__}: {e}"}

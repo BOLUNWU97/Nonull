@@ -305,7 +305,12 @@ def test_audio_info_invalid_wav():
 
 
 def test_audio_transcribe_stub():
-    """AudioTranscribeStubSkill should return an empty transcript and warning."""
+    """AudioTranscribeStubSkill now uses a real ASR backend (Whisper/OpenAI).
+
+    With no backend installed and a non-existent file, it should degrade
+    gracefully: empty transcript plus an explanatory ``error`` (never a fake
+    transcript and never a silent STUB warning).
+    """
     from skills.multimodal.audio_skills import AudioTranscribeStubSkill
 
     skill = AudioTranscribeStubSkill()
@@ -313,7 +318,8 @@ def test_audio_transcribe_stub():
     result = skill.execute({"path": "/tmp/somefile.wav"})
     assert result.success
     assert result.data["transcript"] == ""
-    assert "STUB" in result.data["warning"]
+    assert "error" in result.data
+    assert result.data["error"]
 
 
 # ---------------------------------------------------------------------------
